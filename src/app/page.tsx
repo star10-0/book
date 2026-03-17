@@ -1,16 +1,51 @@
+import { prisma } from "@/lib/prisma";
 import { SiteHeader } from "@/components/site-header";
+import {
+  CategoriesPreviewSection,
+  FeaturedBooksSection,
+  HeroSection,
+} from "@/components/storefront";
 
-export default function HomePage() {
+export default async function HomePage() {
+  const [featuredBooks, categories] = await Promise.all([
+    prisma.book.findMany({
+      where: { status: "PUBLISHED", format: "DIGITAL" },
+      orderBy: { createdAt: "desc" },
+      take: 3,
+      include: {
+        author: { select: { nameAr: true } },
+        category: { select: { nameAr: true } },
+      },
+    }),
+    prisma.category.findMany({
+      orderBy: { books: { _count: "desc" } },
+      take: 4,
+      select: {
+        nameAr: true,
+        description: true,
+      },
+    }),
+  ]);
+
   return (
     <main>
       <SiteHeader />
-      <section className="rounded-2xl bg-white p-8 shadow-sm ring-1 ring-slate-200">
-        <h1 className="text-3xl font-bold text-slate-900 sm:text-4xl">مرحبًا بكم في Book</h1>
-        <p className="mt-4 max-w-2xl text-base leading-7 text-slate-600 sm:text-lg">
-          منصة عربية أولًا لشراء واستئجار الكتب الرقمية، بتجربة قراءة حديثة ومناسبة للهواتف والأجهزة
-          اللوحية وسطح المكتب.
-        </p>
-      </section>
+      <HeroSection />
+      <FeaturedBooksSection
+        books={featuredBooks.map((book) => ({
+          id: book.id,
+          title: book.titleAr,
+          author: book.author.nameAr,
+          category: book.category.nameAr,
+          coverImageUrl: book.coverImageUrl,
+        }))}
+      />
+      <CategoriesPreviewSection
+        categories={categories.map((category) => ({
+          name: category.nameAr,
+          description: category.description ?? "مجموعة متنوعة من الكتب المختارة بعناية.",
+        }))}
+      />
     </main>
   );
 }
