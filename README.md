@@ -17,9 +17,9 @@
   - `/`
   - `/books`
   - `/admin`
-- Prisma initialized with a starter `Book` model
+- Production-ready Prisma schema for catalog, orders, payments, access, and reading progress
 - Environment template for local setup
-- Architecture ready for future digital purchase/rental workflows
+- Architecture ready for digital purchase/rental workflows and future physical books
 - PWA-ready foundation (manifest + service worker integration planned next)
 
 ## Project Structure
@@ -27,6 +27,7 @@
 ```text
 .
 ├── prisma/
+│   ├── migrations/
 │   └── schema.prisma
 ├── src/
 │   ├── app/
@@ -43,7 +44,7 @@
 └── package.json
 ```
 
-## Local Setup
+## Database Setup (Prisma + PostgreSQL)
 
 1. Install dependencies:
 
@@ -57,25 +58,39 @@
    cp .env.example .env
    ```
 
-3. Start PostgreSQL locally and ensure `DATABASE_URL` in `.env` is correct.
+3. Set `DATABASE_URL` in `.env` to your PostgreSQL database.
 
-4. Generate Prisma client:
+4. Generate Prisma Client:
 
    ```bash
    npm run prisma:generate
    ```
 
-5. Run migrations:
+5. Create and apply a local migration:
 
    ```bash
-   npm run prisma:migrate
+   npm run prisma:migrate -- --name init_bookstore
    ```
 
-6. Start development server:
+6. (Optional) Validate the Prisma schema:
+
+   ```bash
+   DATABASE_URL="postgresql://postgres:postgres@localhost:5432/book" npx prisma validate
+   ```
+
+7. Start the app:
 
    ```bash
    npm run dev
    ```
+
+## Schema Design Notes
+
+- `BookOffer` models purchasable/rentable offers per book (purchase vs rental, pricing, optional rental duration).
+- `Order` + `OrderItem` keeps commercial history immutable via snapshot fields.
+- `Payment` separates transaction lifecycle from order lifecycle and keeps provider metadata extensible.
+- `AccessGrant` is the entitlement source of truth for digital access (perpetual purchase or time-boxed rental).
+- `Book.format` already supports future physical products without adding shipping tables yet.
 
 ## Quality Checks
 
@@ -86,7 +101,6 @@ npm run typecheck
 
 ## Next Suggested Steps
 
-- Add web app manifest and icons.
-- Add `next-pwa` or a custom service worker strategy.
-- Add domain modules for catalog, purchases, and rentals.
-- Add route handlers for book listing and detail APIs.
+- Add route handlers for catalog, checkout, payment webhook handling, and reader APIs.
+- Implement entitlement checks around `AccessGrant` for reader access control.
+- Add admin CRUD for books, offers, and files.
