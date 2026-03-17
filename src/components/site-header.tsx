@@ -4,6 +4,8 @@ const links = [
   { href: "/", label: "الرئيسية" },
   { href: "/books", label: "الكتب" },
   { href: "/account/orders", label: "طلباتي" },
+  { href: "/account/library", label: "مكتبتي" },
+  { href: "/account/rentals", label: "إعاراتي" },
   { href: "/admin", label: "لوحة الإدارة" },
 ];
 
