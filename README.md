@@ -111,6 +111,17 @@ The seed is safely rerunnable: it uses upserts for unique records and refreshes 
 - `AccessGrant` is the entitlement source of truth for digital access (perpetual purchase or time-boxed rental).
 - `Book.format` already supports future physical products without adding shipping tables yet.
 
+## Payment Module (Mock-ready)
+
+- Added modular payment architecture with provider interfaces and gateway placeholders.
+- New route handlers:
+  - `POST /api/payments/create`
+  - `POST /api/payments/verify-mock`
+- Payment attempts are persisted in `PaymentAttempt` with status flow:
+  - `PENDING -> SUBMITTED -> VERIFYING -> PAID | FAILED`
+- Provider-specific logic is isolated in gateway classes under `src/lib/payments/gateways`.
+- Developer integration notes: `src/lib/payments/README.md`.
+
 ## Quality Checks
 
 ```bash
