@@ -2,6 +2,7 @@ import Link from "next/link";
 import { notFound } from "next/navigation";
 import { SiteHeader } from "@/components/site-header";
 import { OrderDetailsCard } from "@/components/order-details";
+import { OrderPaymentPanel } from "@/components/order-payment-panel";
 import { getOrCreateDemoUser } from "@/lib/auth-demo-user";
 import { prisma } from "@/lib/prisma";
 
@@ -21,12 +22,18 @@ export default async function CheckoutPage({ params }: CheckoutPageProps) {
       items: {
         orderBy: { createdAt: "asc" },
       },
+      paymentAttempts: {
+        orderBy: { createdAt: "desc" },
+        take: 1,
+      },
     },
   });
 
   if (!order) {
     notFound();
   }
+
+  const latestAttempt = order.paymentAttempts[0];
 
   return (
     <main>
@@ -38,15 +45,24 @@ export default async function CheckoutPage({ params }: CheckoutPageProps) {
         </Link>
       </div>
 
-      <OrderDetailsCard
-        orderId={order.id}
-        status={order.status}
-        currency={order.currency}
-        subtotalCents={order.subtotalCents}
-        totalCents={order.totalCents}
-        createdAt={order.createdAt}
-        items={order.items}
-      />
+      <div className="grid gap-5 lg:grid-cols-[minmax(0,1fr)_minmax(0,1fr)] lg:items-start">
+        <OrderDetailsCard
+          orderId={order.id}
+          status={order.status}
+          currency={order.currency}
+          subtotalCents={order.subtotalCents}
+          totalCents={order.totalCents}
+          createdAt={order.createdAt}
+          items={order.items}
+        />
+
+        <OrderPaymentPanel
+          orderId={order.id}
+          isPayable={order.status === "PENDING"}
+          initialAttemptId={latestAttempt?.id}
+          initialAttemptStatus={latestAttempt?.status}
+        />
+      </div>
     </main>
   );
 }

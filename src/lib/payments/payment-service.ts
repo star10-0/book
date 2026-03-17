@@ -14,6 +14,13 @@ export interface VerifyMockPaymentInput {
   mockOutcome?: "paid" | "failed";
 }
 
+export interface SubmitPaymentProofInput {
+  attemptId: string;
+  userId: string;
+  transactionReference: string;
+  proofNote?: string;
+}
+
 export async function createPaymentForOrder(input: CreatePaymentForOrderInput) {
   const order = await prisma.order.findFirst({
     where: {
@@ -100,6 +107,43 @@ export async function createPaymentForOrder(input: CreatePaymentForOrderInput) {
   });
 
   return result;
+}
+
+export async function submitPaymentProof(input: SubmitPaymentProofInput) {
+  const attempt = await prisma.paymentAttempt.findFirst({
+    where: {
+      id: input.attemptId,
+      userId: input.userId,
+    },
+  });
+
+  if (!attempt) {
+    throw new Error("ATTEMPT_NOT_FOUND");
+  }
+
+  if (attempt.status !== "SUBMITTED") {
+    throw new Error("ATTEMPT_NOT_SUBMITTABLE");
+  }
+
+  const existingPayload =
+    attempt.requestPayload && typeof attempt.requestPayload === "object" && !Array.isArray(attempt.requestPayload)
+      ? (attempt.requestPayload as Record<string, unknown>)
+      : {};
+
+  const requestPayload: Prisma.InputJsonValue = {
+    ...existingPayload,
+    source: "api/payments/submit-proof",
+    transactionReference: input.transactionReference,
+    proofNote: input.proofNote?.trim() || null,
+    submittedAt: new Date().toISOString(),
+  };
+
+  return prisma.paymentAttempt.update({
+    where: { id: attempt.id },
+    data: {
+      requestPayload,
+    },
+  });
 }
 
 export async function verifyPaymentMock(input: VerifyMockPaymentInput) {
