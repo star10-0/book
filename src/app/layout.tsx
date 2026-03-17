@@ -1,12 +1,5 @@
 import type { Metadata } from "next";
-import { Tajawal } from "next/font/google";
 import "./globals.css";
-
-const tajawal = Tajawal({
-  subsets: ["arabic", "latin"],
-  weight: ["400", "500", "700"],
-  display: "swap",
-});
 
 export const metadata: Metadata = {
   title: "Book | مكتبة رقمية عربية",
@@ -21,7 +14,7 @@ export default function RootLayout({
 }>) {
   return (
     <html lang="ar" dir="rtl">
-      <body className={tajawal.className}>
+      <body className="font-sans">
         <div className="mx-auto min-h-screen max-w-6xl px-4 py-8 sm:px-6 lg:px-8">
           {children}
         </div>
