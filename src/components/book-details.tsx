@@ -2,6 +2,7 @@ import Image from "next/image";
 import Link from "next/link";
 import type { BookOffer, OfferType } from "@prisma/client";
 import { formatArabicCurrency } from "@/lib/formatters/intl";
+import { OrderSummaryCard } from "@/components/order-summary-card";
 
 const defaultCover = "https://images.unsplash.com/photo-1512820790803-83ca734da794?auto=format&fit=crop&w=1200&q=80";
 
@@ -12,6 +13,7 @@ const offerLabelByType: Record<OfferType, string> = {
 
 type BookDetailsProps = {
   book: {
+    id: string;
     title: string;
     author: string;
     category: string;
@@ -33,9 +35,6 @@ type RelatedBooksProps = {
 };
 
 export function BookDetailsSection({ book, offers }: BookDetailsProps) {
-  const purchaseOffer = offers.find((offer) => offer.type === "PURCHASE");
-  const rentalOffer = offers.find((offer) => offer.type === "RENTAL");
-
   return (
     <section aria-labelledby="book-details-title" className="rounded-3xl bg-white p-6 shadow-sm ring-1 ring-slate-200 sm:p-8">
       <div className="grid gap-8 lg:grid-cols-[320px_1fr]">
@@ -74,35 +73,7 @@ export function BookDetailsSection({ book, offers }: BookDetailsProps) {
 
           <BookOffers offers={offers} />
 
-          <section aria-label="إجراءات الشراء والاستئجار" className="rounded-2xl bg-slate-50 p-4 ring-1 ring-slate-200">
-            <div className="grid gap-3 sm:grid-cols-2">
-              <button
-                type="button"
-                disabled={!purchaseOffer}
-                className="rounded-xl bg-indigo-600 px-4 py-3 text-sm font-semibold text-white transition hover:bg-indigo-500 focus-visible:outline-none focus-visible:ring-2 focus-visible:ring-indigo-500 focus-visible:ring-offset-2 disabled:cursor-not-allowed disabled:bg-slate-300"
-                aria-label={purchaseOffer ? `شراء الكتاب رقميًا بسعر ${formatOfferPrice(purchaseOffer.priceCents, purchaseOffer.currency)}` : "خيار الشراء غير متاح"}
-              >
-                {purchaseOffer
-                  ? `شراء الآن - ${formatOfferPrice(purchaseOffer.priceCents, purchaseOffer.currency)}`
-                  : "الشراء غير متاح"}
-              </button>
-
-              <button
-                type="button"
-                disabled={!rentalOffer}
-                className="rounded-xl border border-indigo-600 bg-white px-4 py-3 text-sm font-semibold text-indigo-700 transition hover:bg-indigo-50 focus-visible:outline-none focus-visible:ring-2 focus-visible:ring-indigo-500 focus-visible:ring-offset-2 disabled:cursor-not-allowed disabled:border-slate-300 disabled:text-slate-400"
-                aria-label={
-                  rentalOffer
-                    ? `استئجار الكتاب رقميًا ${rentalOffer.rentalDays ? `لمدة ${rentalOffer.rentalDays} يوم` : ""} بسعر ${formatOfferPrice(rentalOffer.priceCents, rentalOffer.currency)}`
-                    : "خيار الاستئجار غير متاح"
-                }
-              >
-                {rentalOffer
-                  ? `استئجار ${rentalOffer.rentalDays ? `(${rentalOffer.rentalDays} يوم)` : ""} - ${formatOfferPrice(rentalOffer.priceCents, rentalOffer.currency)}`
-                  : "الاستئجار غير متاح"}
-              </button>
-            </div>
-          </section>
+          <OrderSummaryCard bookId={book.id} bookTitle={book.title} offers={offers} />
         </div>
       </div>
     </section>

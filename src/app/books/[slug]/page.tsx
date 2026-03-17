@@ -61,6 +61,7 @@ export default async function BookDetailsPage({ params }: BookDetailsPageProps) 
       <div className="space-y-6">
         <BookDetailsSection
           book={{
+            id: book.id,
             title: book.titleAr,
             author: book.author.nameAr,
             category: book.category.nameAr,
