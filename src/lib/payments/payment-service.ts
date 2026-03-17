@@ -2,6 +2,7 @@ import { Prisma, OrderStatus, PaymentProvider, PaymentStatus, type PaymentAttemp
 import { prisma } from "@/lib/prisma";
 import { resolvePaymentGateway } from "@/lib/payments/gateways";
 import { ensurePaymentStatusTransition } from "@/lib/payments/status-flow";
+import { grantAccessForPaidOrder } from "@/lib/access-grants";
 
 export interface CreatePaymentForOrderInput {
   orderId: string;
@@ -203,13 +204,23 @@ export async function verifyPaymentMock(input: VerifyMockPaymentInput) {
       },
     });
 
+    const paidAt = gatewayResult.isPaid ? new Date() : null;
+
     await tx.order.update({
       where: { id: attempt.orderId },
       data: {
         status: gatewayResult.isPaid ? OrderStatus.PAID : OrderStatus.PENDING,
-        placedAt: gatewayResult.isPaid ? new Date() : null,
+        placedAt: paidAt,
       },
     });
+
+    if (gatewayResult.isPaid) {
+      await grantAccessForPaidOrder(tx, {
+        orderId: attempt.orderId,
+        userId: attempt.userId,
+        grantedAt: paidAt ?? new Date(),
+      });
+    }
 
     return finalizedAttempt;
   });

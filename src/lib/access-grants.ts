@@ -1,0 +1,94 @@
+import { AccessGrantType, AccessGrantStatus, OfferType, Prisma } from "@prisma/client";
+
+const DAY_IN_MS = 24 * 60 * 60 * 1000;
+
+function addDays(baseDate: Date, days: number) {
+  return new Date(baseDate.getTime() + days * DAY_IN_MS);
+}
+
+function mapOfferTypeToGrantType(type: OfferType): AccessGrantType {
+  return type === OfferType.PURCHASE ? AccessGrantType.PURCHASE : AccessGrantType.RENTAL;
+}
+
+export async function grantAccessForPaidOrder(
+  tx: Prisma.TransactionClient,
+  input: {
+    orderId: string;
+    userId: string;
+    grantedAt?: Date;
+  },
+) {
+  const grantedAt = input.grantedAt ?? new Date();
+
+  const orderItems = await tx.orderItem.findMany({
+    where: { orderId: input.orderId },
+    select: {
+      id: true,
+      bookId: true,
+      offerType: true,
+      rentalDays: true,
+    },
+  });
+
+  for (const item of orderItems) {
+    const type = mapOfferTypeToGrantType(item.offerType);
+
+    const existingGrant = await tx.accessGrant.findFirst({
+      where: {
+        userId: input.userId,
+        orderItemId: item.id,
+        type,
+      },
+      select: { id: true },
+    });
+
+    if (existingGrant) {
+      continue;
+    }
+
+    if (type === AccessGrantType.PURCHASE) {
+      const existingPurchaseForBook = await tx.accessGrant.findFirst({
+        where: {
+          userId: input.userId,
+          bookId: item.bookId,
+          type: AccessGrantType.PURCHASE,
+          status: AccessGrantStatus.ACTIVE,
+        },
+        select: { id: true },
+      });
+
+      if (existingPurchaseForBook) {
+        continue;
+      }
+
+      await tx.accessGrant.create({
+        data: {
+          userId: input.userId,
+          bookId: item.bookId,
+          orderItemId: item.id,
+          type,
+          startsAt: grantedAt,
+          status: AccessGrantStatus.ACTIVE,
+        },
+      });
+
+      continue;
+    }
+
+    if (!item.rentalDays || item.rentalDays <= 0) {
+      throw new Error("INVALID_RENTAL_DAYS");
+    }
+
+    await tx.accessGrant.create({
+      data: {
+        userId: input.userId,
+        bookId: item.bookId,
+        orderItemId: item.id,
+        type,
+        startsAt: grantedAt,
+        expiresAt: addDays(grantedAt, item.rentalDays),
+        status: AccessGrantStatus.ACTIVE,
+      },
+    });
+  }
+}
