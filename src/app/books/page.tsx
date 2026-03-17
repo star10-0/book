@@ -1,17 +1,106 @@
+import type { Prisma } from "@prisma/client";
 import { SiteHeader } from "@/components/site-header";
-import { BooksFiltersPlaceholder, BooksGrid } from "@/components/storefront";
+import { BooksFilters, BooksGrid } from "@/components/storefront";
 import { prisma } from "@/lib/prisma";
 
-export default async function BooksPage() {
+type BooksSearchParams = {
+  q?: string;
+  category?: string;
+  offer?: string;
+  sort?: string;
+};
+
+function normalizeOfferType(value?: string): "all" | "buy" | "rent" {
+  if (value === "buy" || value === "rent") {
+    return value;
+  }
+
+  return "all";
+}
+
+function normalizeSort(value?: string): "newest" | "title" | "price_asc" {
+  if (value === "title" || value === "price_asc") {
+    return value;
+  }
+
+  return "newest";
+}
+
+export default async function BooksPage({
+  searchParams,
+}: {
+  searchParams?: Promise<BooksSearchParams>;
+}) {
+  const params = (await searchParams) ?? {};
+  const search = params.q?.trim() ?? "";
+  const category = params.category?.trim() || "all";
+  const offerType = normalizeOfferType(params.offer);
+  const sort = normalizeSort(params.sort);
+
+  const whereClause: Prisma.BookWhereInput = {
+    status: "PUBLISHED",
+    format: "DIGITAL",
+    ...(search
+      ? {
+          titleAr: {
+            contains: search,
+            mode: "insensitive",
+          },
+        }
+      : {}),
+    ...(category !== "all"
+      ? {
+          category: {
+            slug: category,
+          },
+        }
+      : {}),
+    ...(offerType !== "all"
+      ? {
+          offers: {
+            some: {
+              isActive: true,
+              type: offerType === "buy" ? "PURCHASE" : "RENTAL",
+            },
+          },
+        }
+      : {
+          offers: {
+            some: {
+              isActive: true,
+            },
+          },
+        }),
+  };
+
+  const categories = await prisma.category.findMany({
+    where: {
+      books: {
+        some: {
+          status: "PUBLISHED",
+          format: "DIGITAL",
+        },
+      },
+    },
+    orderBy: { nameAr: "asc" },
+    select: {
+      slug: true,
+      nameAr: true,
+    },
+  });
+
   const books = await prisma.book.findMany({
-    where: { status: "PUBLISHED", format: "DIGITAL" },
-    orderBy: { createdAt: "desc" },
+    where: whereClause,
+    orderBy: sort === "title" ? { titleAr: "asc" } : { createdAt: "desc" },
     include: {
       author: { select: { nameAr: true } },
       category: { select: { nameAr: true } },
       offers: {
-        where: { isActive: true },
-        orderBy: { createdAt: "asc" },
+        where: {
+          isActive: true,
+          ...(offerType !== "all" ? { type: offerType === "buy" ? "PURCHASE" : "RENTAL" } : {}),
+        },
+        orderBy: { priceCents: "asc" },
         select: {
           id: true,
           type: true,
@@ -22,6 +111,16 @@ export default async function BooksPage() {
       },
     },
   });
+
+  const sortedBooks =
+    sort === "price_asc"
+      ? [...books].sort((a, b) => {
+          const aMin = Math.min(...a.offers.map((offer) => offer.priceCents));
+          const bMin = Math.min(...b.offers.map((offer) => offer.priceCents));
+
+          return aMin - bMin;
+        })
+      : books;
 
   return (
     <main>
@@ -34,9 +133,15 @@ export default async function BooksPage() {
       </section>
 
       <div className="space-y-6">
-        <BooksFiltersPlaceholder />
+        <BooksFilters
+          categories={categories}
+          search={search}
+          category={category}
+          offerType={offerType}
+          sort={sort}
+        />
         <BooksGrid
-          books={books.map((book) => ({
+          books={sortedBooks.map((book) => ({
             id: book.id,
             slug: book.slug,
             title: book.titleAr,
@@ -45,6 +150,7 @@ export default async function BooksPage() {
             coverImageUrl: book.coverImageUrl,
             offers: book.offers,
           }))}
+          hasActiveFilters={Boolean(search) || category !== "all" || offerType !== "all"}
         />
       </div>
     </main>
