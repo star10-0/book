@@ -32,6 +32,11 @@ type BookCardItem = {
   offers: BookCardOffer[];
 };
 
+type BooksFilterCategory = {
+  slug: string;
+  nameAr: string;
+};
+
 const offerLabels: Record<OfferType, string> = {
   PURCHASE: "شراء",
   RENTAL: "استئجار",
@@ -109,35 +114,88 @@ export function CategoriesPreviewSection({ categories }: { categories: CategoryP
   );
 }
 
-export function BooksFiltersPlaceholder() {
+type BooksFiltersProps = {
+  categories: BooksFilterCategory[];
+  search: string;
+  category: string;
+  offerType: "all" | "buy" | "rent";
+  sort: "newest" | "title" | "price_asc";
+};
+
+export function BooksFilters({ categories, search, category, offerType, sort }: BooksFiltersProps) {
   return (
     <section className="rounded-2xl bg-white p-5 shadow-sm ring-1 ring-slate-200 sm:p-6">
-      <div className="grid gap-4 md:grid-cols-3">
-        <label className="space-y-2 text-sm font-medium text-slate-700">
-          بحث عن كتاب
-          <input
-            type="search"
-            placeholder="ابحث بالعنوان أو المؤلف..."
-            className="w-full rounded-xl border border-slate-300 bg-white px-4 py-2.5 text-sm text-slate-900 placeholder:text-slate-400 focus:border-indigo-500 focus:outline-none focus:ring-2 focus:ring-indigo-200"
-          />
-        </label>
+      <form className="space-y-4" method="get">
+        <div className="grid gap-4 md:grid-cols-2 xl:grid-cols-4">
+          <label className="space-y-2 text-sm font-medium text-slate-700">
+            بحث عن كتاب
+            <input
+              name="q"
+              type="search"
+              defaultValue={search}
+              placeholder="ابحث بعنوان الكتاب..."
+              className="w-full rounded-xl border border-slate-300 bg-white px-4 py-2.5 text-sm text-slate-900 placeholder:text-slate-400 focus:border-indigo-500 focus:outline-none focus:ring-2 focus:ring-indigo-200"
+            />
+          </label>
 
-        <label className="space-y-2 text-sm font-medium text-slate-700">
-          التصنيف
-          <select className="w-full rounded-xl border border-slate-300 bg-white px-4 py-2.5 text-sm text-slate-900 focus:border-indigo-500 focus:outline-none focus:ring-2 focus:ring-indigo-200">
-            <option>كل التصنيفات</option>
-          </select>
-        </label>
+          <label className="space-y-2 text-sm font-medium text-slate-700">
+            التصنيف
+            <select
+              name="category"
+              defaultValue={category}
+              className="w-full rounded-xl border border-slate-300 bg-white px-4 py-2.5 text-sm text-slate-900 focus:border-indigo-500 focus:outline-none focus:ring-2 focus:ring-indigo-200"
+            >
+              <option value="all">كل التصنيفات</option>
+              {categories.map((item) => (
+                <option key={item.slug} value={item.slug}>
+                  {item.nameAr}
+                </option>
+              ))}
+            </select>
+          </label>
 
-        <label className="space-y-2 text-sm font-medium text-slate-700">
-          نوع العرض
-          <select className="w-full rounded-xl border border-slate-300 bg-white px-4 py-2.5 text-sm text-slate-900 focus:border-indigo-500 focus:outline-none focus:ring-2 focus:ring-indigo-200">
-            <option>كل العروض</option>
-            <option>شراء</option>
-            <option>استئجار</option>
-          </select>
-        </label>
-      </div>
+          <label className="space-y-2 text-sm font-medium text-slate-700">
+            نوع العرض
+            <select
+              name="offer"
+              defaultValue={offerType}
+              className="w-full rounded-xl border border-slate-300 bg-white px-4 py-2.5 text-sm text-slate-900 focus:border-indigo-500 focus:outline-none focus:ring-2 focus:ring-indigo-200"
+            >
+              <option value="all">كل العروض</option>
+              <option value="buy">شراء</option>
+              <option value="rent">استئجار</option>
+            </select>
+          </label>
+
+          <label className="space-y-2 text-sm font-medium text-slate-700">
+            ترتيب النتائج
+            <select
+              name="sort"
+              defaultValue={sort}
+              className="w-full rounded-xl border border-slate-300 bg-white px-4 py-2.5 text-sm text-slate-900 focus:border-indigo-500 focus:outline-none focus:ring-2 focus:ring-indigo-200"
+            >
+              <option value="newest">الأحدث</option>
+              <option value="title">العنوان</option>
+              <option value="price_asc">السعر: من الأقل إلى الأعلى</option>
+            </select>
+          </label>
+        </div>
+
+        <div className="flex flex-wrap items-center gap-3">
+          <button
+            type="submit"
+            className="rounded-xl bg-indigo-600 px-4 py-2 text-sm font-semibold text-white hover:bg-indigo-700 focus-visible:outline-none focus-visible:ring-2 focus-visible:ring-indigo-300"
+          >
+            تطبيق
+          </button>
+          <Link
+            href="/books"
+            className="rounded-xl border border-slate-300 px-4 py-2 text-sm font-semibold text-slate-700 hover:bg-slate-50 focus-visible:outline-none focus-visible:ring-2 focus-visible:ring-indigo-300"
+          >
+            إعادة التعيين
+          </Link>
+        </div>
+      </form>
     </section>
   );
 }
@@ -146,12 +204,24 @@ function formatPrice(priceCents: number, currency: string) {
   return `${(priceCents / 100).toLocaleString("ar-SY")} ${currency}`;
 }
 
-export function BooksGrid({ books }: { books: BookCardItem[] }) {
+export function BooksGrid({
+  books,
+  hasActiveFilters = false,
+}: {
+  books: BookCardItem[];
+  hasActiveFilters?: boolean;
+}) {
   if (books.length === 0) {
     return (
       <section className="rounded-2xl border border-dashed border-slate-300 bg-white p-10 text-center">
-        <h2 className="text-xl font-bold text-slate-900">لا توجد كتب متاحة حاليًا</h2>
-        <p className="mt-2 text-sm text-slate-600">سيتم إضافة كتب جديدة قريبًا. تفقد الصفحة لاحقًا.</p>
+        <h2 className="text-xl font-bold text-slate-900">
+          {hasActiveFilters ? "لا توجد نتائج مطابقة" : "لا توجد كتب متاحة حاليًا"}
+        </h2>
+        <p className="mt-2 text-sm text-slate-600">
+          {hasActiveFilters
+            ? "جرّب تعديل كلمات البحث أو الفلاتر للحصول على نتائج أكثر."
+            : "سيتم إضافة كتب جديدة قريبًا. تفقد الصفحة لاحقًا."}
+        </p>
       </section>
     );
   }
