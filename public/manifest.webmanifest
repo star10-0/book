@@ -1,0 +1,12 @@
+{
+  "name": "Book",
+  "short_name": "Book",
+  "lang": "ar",
+  "dir": "rtl",
+  "start_url": "/",
+  "display": "standalone",
+  "background_color": "#f8fafc",
+  "theme_color": "#0f172a",
+  "description": "منصة عربية لشراء واستئجار الكتب الرقمية",
+  "icons": []
+}
