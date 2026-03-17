@@ -67,8 +67,8 @@ export default async function AccountLibraryPage() {
                   <li key={grant.id} className="rounded-xl border border-slate-200 p-3">
                     <p className="font-semibold text-slate-900">{grant.book.titleAr}</p>
                     <p className="mt-1 text-xs text-slate-500">تمت الإضافة في {formatArabicDate(grant.createdAt)}</p>
-                    <Link href={`/books/${grant.book.slug}`} className="mt-3 inline-flex text-sm font-semibold text-indigo-700 hover:text-indigo-600">
-                      عرض الكتاب
+                    <Link href={`/reader/${grant.id}`} className="mt-3 inline-flex text-sm font-semibold text-indigo-700 hover:text-indigo-600">
+                      قراءة الكتاب
                     </Link>
                   </li>
                 ))}
@@ -88,8 +88,8 @@ export default async function AccountLibraryPage() {
                     <p className="mt-1 text-xs text-slate-500">
                       ينتهي الاستئجار في {grant.expiresAt ? formatArabicDate(grant.expiresAt) : "غير محدد"}
                     </p>
-                    <Link href={`/books/${grant.book.slug}`} className="mt-3 inline-flex text-sm font-semibold text-indigo-700 hover:text-indigo-600">
-                      متابعة القراءة
+                    <Link href={`/reader/${grant.id}`} className="mt-3 inline-flex text-sm font-semibold text-indigo-700 hover:text-indigo-600">
+                      فتح القارئ
                     </Link>
                   </li>
                 ))}
