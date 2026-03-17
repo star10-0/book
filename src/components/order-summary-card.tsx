@@ -1,5 +1,6 @@
 "use client";
 
+import Link from "next/link";
 import { useMemo, useState } from "react";
 import type { BookOffer, OfferType } from "@prisma/client";
 import { formatArabicCurrency } from "@/lib/formatters/intl";
@@ -80,6 +81,20 @@ export function OrderSummaryCard({ bookId, bookTitle, offers }: OrderSummaryCard
         <p className="mt-1 text-sm text-emerald-700">
           تم حفظ الطلب بالحالة المعلقة بانتظار ربط بوابة الدفع الفعلية.
         </p>
+        <div className="mt-3 flex flex-wrap gap-2">
+          <Link
+            href={`/checkout/${successOrderId}`}
+            className="rounded-lg bg-emerald-700 px-3 py-2 text-sm font-semibold text-white hover:bg-emerald-600"
+          >
+            المتابعة إلى الدفع
+          </Link>
+          <Link
+            href={`/account/orders/${successOrderId}`}
+            className="rounded-lg border border-emerald-300 px-3 py-2 text-sm font-semibold text-emerald-800 hover:bg-emerald-100"
+          >
+            عرض تفاصيل الطلب
+          </Link>
+        </div>
       </section>
     );
   }

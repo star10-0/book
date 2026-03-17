@@ -3,6 +3,7 @@ import Link from "next/link";
 const links = [
   { href: "/", label: "الرئيسية" },
   { href: "/books", label: "الكتب" },
+  { href: "/account/orders", label: "طلباتي" },
   { href: "/admin", label: "لوحة الإدارة" },
 ];
 
