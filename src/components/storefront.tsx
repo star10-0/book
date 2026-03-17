@@ -25,6 +25,7 @@ type BookCardOffer = {
 
 type BookCardItem = {
   id: string;
+  slug: string;
   title: string;
   author: string;
   category: string;
@@ -170,6 +171,13 @@ export function BooksGrid({ books }: { books: BookCardItem[] }) {
             <span className="inline-flex rounded-full bg-slate-100 px-3 py-1 text-xs font-semibold text-slate-700">
               {book.category}
             </span>
+
+            <Link
+              href={`/books/${book.slug}`}
+              className="inline-flex rounded-lg bg-indigo-50 px-3 py-2 text-sm font-semibold text-indigo-700 transition hover:bg-indigo-100 focus-visible:outline-none focus-visible:ring-2 focus-visible:ring-indigo-500"
+            >
+              عرض التفاصيل
+            </Link>
 
             <div className="space-y-2">
               <p className="text-xs font-semibold text-slate-500">العروض المتاحة</p>
