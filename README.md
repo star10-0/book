@@ -126,6 +126,7 @@ The seed is safely rerunnable: it uses upserts for unique records and refreshes 
 
 ```bash
 npm run lint
+npm run prisma:generate
 npm run typecheck
 ```
 
@@ -134,3 +135,35 @@ npm run typecheck
 - Add route handlers for catalog, checkout, payment webhook handling, and reader APIs.
 - Implement entitlement checks around `AccessGrant` for reader access control.
 - Add admin CRUD for books, offers, and files.
+
+
+## Local Development Reliability Notes
+
+To keep local development stable, this project now includes a Prisma generation hook before development and production builds:
+
+- `predev` runs `prisma generate` automatically before `npm run dev`
+- `prebuild` runs `prisma generate` automatically before `npm run build`
+
+This helps prevent stale Prisma Client artifacts after schema changes.
+
+### Recovery Checklist (when `npm run dev` fails)
+
+Run the following in order:
+
+```bash
+npm install
+npm run prisma:generate
+npm run lint
+npm run typecheck
+npm run dev
+```
+
+If Prisma schema changed recently, also ensure your DB schema is current:
+
+```bash
+npm run prisma:migrate
+```
+
+### Font strategy for offline/local development
+
+To avoid compile-time retries from remote Google Fonts fetches during local development, the app uses a local/system Arabic-friendly font stack (`Noto Sans Arabic`, `Noto Kufi Arabic`, `Tahoma`, `Arial`, `system-ui`) via Tailwind `font-sans`.

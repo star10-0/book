@@ -12,8 +12,19 @@ const config: Config = {
         background: "#f8fafc",
         foreground: "#0f172a",
       },
+      fontFamily: {
+        sans: [
+          '"Noto Sans Arabic"',
+          '"Noto Kufi Arabic"',
+          "Tahoma",
+          "Arial",
+          "system-ui",
+          "sans-serif",
+        ],
+      },
     },
   },
   plugins: [],
 };
+
 export default config;
