@@ -3,7 +3,7 @@ export const APP_DESCRIPTION = "منصة عربية لقراءة وشراء وا
 
 export const DEFAULT_LOCALE = "ar-SY";
 export const DEFAULT_CURRENCY = "SYP";
-export const DEFAULT_TEXT_DIRECTION: "rtl" = "rtl";
+export const DEFAULT_TEXT_DIRECTION = "rtl" as const;
 
 export const PAGINATION = {
   defaultPage: 1,

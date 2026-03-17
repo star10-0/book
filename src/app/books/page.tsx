@@ -38,6 +38,7 @@ export default async function BooksPage() {
         <BooksGrid
           books={books.map((book) => ({
             id: book.id,
+            slug: book.slug,
             title: book.titleAr,
             author: book.author.nameAr,
             category: book.category.nameAr,
