@@ -84,6 +84,25 @@
    npm run dev
    ```
 
+## Seed Demo Data
+
+After running migrations, seed the database with realistic demo data:
+
+```bash
+npm run prisma:seed
+```
+
+The seed script creates/updates:
+
+- 1 admin user (`admin@book.local`)
+- 1 demo customer user (`demo@book.local`)
+- 3 authors
+- 5 categories
+- 8 digital books with Arabic descriptions and cover placeholders
+- Mixed digital offers (purchase and rental), including books that support both
+
+The seed is safely rerunnable: it uses upserts for unique records and refreshes book offers per seeded book to avoid duplicates.
+
 ## Schema Design Notes
 
 - `BookOffer` models purchasable/rentable offers per book (purchase vs rental, pricing, optional rental duration).
