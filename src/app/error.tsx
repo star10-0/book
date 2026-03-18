@@ -2,13 +2,12 @@
 
 import Link from "next/link";
 
-export default function GlobalError({
-  error,
-  reset,
-}: {
+type ErrorPageProps = {
   error: Error & { digest?: string };
   reset: () => void;
-}) {
+};
+
+export default function ErrorPage({ error, reset }: ErrorPageProps) {
   return (
     <main className="bg-slate-50 p-4 sm:p-8">
       <section className="mx-auto max-w-2xl rounded-3xl border border-rose-200 bg-white p-8 text-center shadow-sm">
