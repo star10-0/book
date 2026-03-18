@@ -5,6 +5,7 @@ import { ReaderShell } from "@/components/reader-shell";
 import { SiteHeader } from "@/components/site-header";
 import { requireUser } from "@/lib/auth-session";
 import { formatArabicDate } from "@/lib/formatters/intl";
+import { ReaderDocumentSource } from "@/lib/reader/types";
 import { prisma } from "@/lib/prisma";
 
 type ReaderPageProps = {
@@ -48,6 +49,10 @@ export default async function ReaderPage({ params }: ReaderPageProps) {
             },
             select: {
               kind: true,
+              publicUrl: true,
+              storageKey: true,
+              isEncrypted: true,
+              metadata: true,
             },
             take: 1,
           },
@@ -96,8 +101,7 @@ export default async function ReaderPage({ params }: ReaderPageProps) {
     },
   });
 
-  const firstFileKind = accessGrant.book.files[0]?.kind;
-  const bookTypeLabel = firstFileKind === FileKind.EPUB || firstFileKind === FileKind.PDF ? firstFileKind : "غير متوفر";
+  const readerSource = accessGrant.book.files[0] as ReaderDocumentSource | undefined;
 
   return (
     <main className="space-y-6" dir="rtl">
@@ -129,9 +133,9 @@ export default async function ReaderPage({ params }: ReaderPageProps) {
         <ReaderShell
           accessId={accessGrant.id}
           bookTitle={accessGrant.book.titleAr}
-          bookTypeLabel={bookTypeLabel}
           initialProgressPercent={readingProgress?.progressPercent ?? 0}
           initialLocator={readingProgress?.locator ?? "page:1"}
+          source={readerSource ?? null}
         />
       )}
     </main>
