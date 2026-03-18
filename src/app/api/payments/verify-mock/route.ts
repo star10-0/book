@@ -1,4 +1,5 @@
 import { NextResponse } from "next/server";
+import { getCurrentUser } from "@/lib/auth-session";
 import { verifyPaymentMock } from "@/lib/payments/payment-service";
 
 interface VerifyMockRequestBody {
@@ -13,9 +14,16 @@ export async function POST(request: Request) {
     return NextResponse.json({ message: "معرف محاولة الدفع مطلوب." }, { status: 400 });
   }
 
+  const user = await getCurrentUser();
+
+  if (!user) {
+    return NextResponse.json({ message: "يجب تسجيل الدخول أولاً." }, { status: 401 });
+  }
+
   try {
     const attempt = await verifyPaymentMock({
       attemptId: body.attemptId,
+      userId: user.id,
       mockOutcome: body.mockOutcome,
     });
 

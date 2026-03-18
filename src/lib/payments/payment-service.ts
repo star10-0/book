@@ -12,6 +12,7 @@ export interface CreatePaymentForOrderInput {
 
 export interface VerifyMockPaymentInput {
   attemptId: string;
+  userId: string;
   mockOutcome?: "paid" | "failed";
 }
 
@@ -148,8 +149,11 @@ export async function submitPaymentProof(input: SubmitPaymentProofInput) {
 }
 
 export async function verifyPaymentMock(input: VerifyMockPaymentInput) {
-  const attempt = await prisma.paymentAttempt.findUnique({
-    where: { id: input.attemptId },
+  const attempt = await prisma.paymentAttempt.findFirst({
+    where: {
+      id: input.attemptId,
+      userId: input.userId,
+    },
     include: {
       payment: true,
       order: true,
