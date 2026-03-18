@@ -9,9 +9,18 @@ interface SubmitPaymentProofRequestBody {
 }
 
 export async function POST(request: Request) {
-  const body = (await request.json()) as SubmitPaymentProofRequestBody;
+  let body: SubmitPaymentProofRequestBody;
 
-  if (!body.attemptId || !body.transactionReference) {
+  try {
+    body = (await request.json()) as SubmitPaymentProofRequestBody;
+  } catch {
+    return NextResponse.json({ message: "تعذر قراءة بيانات إثبات الدفع." }, { status: 400 });
+  }
+
+  const attemptId = body.attemptId?.trim();
+  const transactionReference = body.transactionReference?.trim();
+
+  if (!attemptId || !transactionReference) {
     return NextResponse.json({ message: "بيانات إثبات الدفع غير مكتملة." }, { status: 400 });
   }
 
@@ -23,9 +32,9 @@ export async function POST(request: Request) {
 
   try {
     const attempt = await submitPaymentProof({
-      attemptId: body.attemptId,
+      attemptId,
       userId: user.id,
-      transactionReference: body.transactionReference,
+      transactionReference,
       proofNote: body.proofNote,
     });
 
@@ -37,6 +46,10 @@ export async function POST(request: Request) {
       },
     });
   } catch (error) {
+    if (error instanceof Error && error.message === "INVALID_PAYMENT_PROOF_INPUT") {
+      return NextResponse.json({ message: "بيانات إثبات الدفع غير صالحة." }, { status: 400 });
+    }
+
     if (error instanceof Error && error.message === "ATTEMPT_NOT_FOUND") {
       return NextResponse.json({ message: "محاولة الدفع غير موجودة." }, { status: 404 });
     }
@@ -45,6 +58,7 @@ export async function POST(request: Request) {
       return NextResponse.json({ message: "لا يمكن إرسال إثبات الدفع لهذه المحاولة حالياً." }, { status: 409 });
     }
 
-    throw error;
+    console.error("Failed to submit payment proof", error);
+    return NextResponse.json({ message: "تعذر إرسال إثبات الدفع حالياً. حاول لاحقاً." }, { status: 500 });
   }
 }

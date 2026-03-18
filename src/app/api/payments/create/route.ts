@@ -9,10 +9,23 @@ interface CreatePaymentRequestBody {
 }
 
 export async function POST(request: Request) {
-  const body = (await request.json()) as CreatePaymentRequestBody;
+  let body: CreatePaymentRequestBody;
 
-  if (!body.orderId || !body.provider) {
+  try {
+    body = (await request.json()) as CreatePaymentRequestBody;
+  } catch {
+    return NextResponse.json({ message: "تعذر قراءة بيانات الدفع." }, { status: 400 });
+  }
+
+  const orderId = body.orderId?.trim();
+  const provider = body.provider;
+
+  if (!orderId || !provider) {
     return NextResponse.json({ message: "الطلب غير مكتمل." }, { status: 400 });
+  }
+
+  if (!Object.values(PaymentProvider).includes(provider)) {
+    return NextResponse.json({ message: "مزود الدفع غير صالح." }, { status: 400 });
   }
 
   const user = await getCurrentUser();
@@ -23,8 +36,8 @@ export async function POST(request: Request) {
 
   try {
     const result = await createPaymentForOrder({
-      orderId: body.orderId,
-      provider: body.provider,
+      orderId,
+      provider,
       userId: user.id,
     });
 
@@ -58,6 +71,7 @@ export async function POST(request: Request) {
       return NextResponse.json({ message: "مزود الدفع غير مدعوم حالياً." }, { status: 400 });
     }
 
-    throw error;
+    console.error("Failed to create payment", error);
+    return NextResponse.json({ message: "تعذر إنشاء محاولة الدفع حالياً. حاول لاحقاً." }, { status: 500 });
   }
 }

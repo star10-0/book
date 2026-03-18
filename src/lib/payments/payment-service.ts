@@ -112,6 +112,10 @@ export async function createPaymentForOrder(input: CreatePaymentForOrderInput) {
 }
 
 export async function submitPaymentProof(input: SubmitPaymentProofInput) {
+  if (!input.attemptId.trim() || !input.transactionReference.trim()) {
+    throw new Error("INVALID_PAYMENT_PROOF_INPUT");
+  }
+
   const attempt = await prisma.paymentAttempt.findFirst({
     where: {
       id: input.attemptId,
@@ -135,7 +139,7 @@ export async function submitPaymentProof(input: SubmitPaymentProofInput) {
   const requestPayload: Prisma.InputJsonValue = {
     ...existingPayload,
     source: "api/payments/submit-proof",
-    transactionReference: input.transactionReference,
+    transactionReference: input.transactionReference.trim(),
     proofNote: input.proofNote?.trim() || null,
     submittedAt: new Date().toISOString(),
   };

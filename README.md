@@ -222,10 +222,13 @@ openssl rand -base64 32
 
 ## Quality Checks
 
+Use these scripts regularly during development:
+
 ```bash
 npm run lint
-npm run prisma:generate
 npm run typecheck
+npm run test
+npm run prisma:generate
 ```
 
 ## Next Suggested Steps
@@ -253,6 +256,7 @@ npm install
 npm run prisma:generate
 npm run lint
 npm run typecheck
+npm run test
 npm run dev
 ```
 
