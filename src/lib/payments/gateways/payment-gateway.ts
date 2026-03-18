@@ -17,7 +17,7 @@ export interface CreatePaymentGatewayResult {
 export interface VerifyPaymentGatewayInput {
   paymentId: string;
   providerReference: string;
-  mockOutcome?: "paid" | "failed";
+  transactionReference?: string;
 }
 
 export interface VerifyPaymentGatewayResult {
@@ -29,5 +29,5 @@ export interface VerifyPaymentGatewayResult {
 export interface PaymentGateway {
   readonly provider: PaymentProvider;
   createPayment(input: CreatePaymentGatewayInput): Promise<CreatePaymentGatewayResult>;
-  verifyMock(input: VerifyPaymentGatewayInput): Promise<VerifyPaymentGatewayResult>;
+  verifyPayment(input: VerifyPaymentGatewayInput): Promise<VerifyPaymentGatewayResult>;
 }

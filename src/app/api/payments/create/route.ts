@@ -2,6 +2,7 @@ import { PaymentProvider } from "@prisma/client";
 import { NextResponse } from "next/server";
 import { getCurrentUser } from "@/lib/auth-session";
 import { createPaymentForOrder } from "@/lib/payments/payment-service";
+import { GatewayConfigurationError, GatewayRequestError } from "@/lib/payments/gateways/provider-http";
 
 interface CreatePaymentRequestBody {
   orderId?: string;
@@ -69,6 +70,14 @@ export async function POST(request: Request) {
 
     if (error instanceof Error && error.message.startsWith("No payment gateway")) {
       return NextResponse.json({ message: "مزود الدفع غير مدعوم حالياً." }, { status: 400 });
+    }
+
+    if (error instanceof GatewayConfigurationError) {
+      return NextResponse.json({ message: "إعدادات مزود الدفع غير مكتملة على الخادم." }, { status: 500 });
+    }
+
+    if (error instanceof GatewayRequestError) {
+      return NextResponse.json({ message: "تعذر إنشاء عملية الدفع لدى مزود الخدمة حالياً." }, { status: 502 });
     }
 
     console.error("Failed to create payment", error);

@@ -186,16 +186,39 @@ The seed is safely rerunnable: it uses upserts for unique records and refreshes 
 - Admin page includes early scaffolding to associate file records with books without implementing a full upload workflow yet.
 - Optional env flag: `BOOK_STORAGE_PROVIDER=local|s3|r2`.
 
-## Payment Module (Mock-ready)
+## Payment Module
 
-- Added modular payment architecture with provider interfaces and gateway placeholders.
-- New route handlers:
+- Payment providers are integrated through `PaymentGateway` implementations while API route handlers remain provider-agnostic.
+- Active route handlers:
   - `POST /api/payments/create`
-  - `POST /api/payments/verify-mock`
+  - `POST /api/payments/submit-proof`
+  - `POST /api/payments/verify-mock` (legacy endpoint name retained; now performs real provider verification)
 - Payment attempts are persisted in `PaymentAttempt` with status flow:
   - `PENDING -> SUBMITTED -> VERIFYING -> PAID | FAILED`
 - Provider-specific logic is isolated in gateway classes under `src/lib/payments/gateways`.
-- Developer integration notes: `src/lib/payments/README.md`.
+- Provider responses are logged with sensitive fields redacted.
+
+### Required Payment Provider Environment Variables
+
+Set these values only on the server (do **not** expose as `NEXT_PUBLIC_*`):
+
+```bash
+# Sham Cash
+SHAM_CASH_API_BASE_URL="https://api.shamcash.example"
+SHAM_CASH_API_KEY="replace-with-sham-cash-api-key"
+SHAM_CASH_MERCHANT_ID="replace-with-sham-cash-merchant-id"
+SHAM_CASH_CREATE_PAYMENT_PATH="/payments/create"
+SHAM_CASH_VERIFY_PAYMENT_PATH="/payments/verify"
+SHAM_CASH_TIMEOUT_MS="10000"
+
+# Syriatel Cash
+SYRIATEL_CASH_API_BASE_URL="https://api.syriatelcash.example"
+SYRIATEL_CASH_API_KEY="replace-with-syriatel-cash-api-key"
+SYRIATEL_CASH_MERCHANT_ID="replace-with-syriatel-cash-merchant-id"
+SYRIATEL_CASH_CREATE_PAYMENT_PATH="/payments/create"
+SYRIATEL_CASH_VERIFY_PAYMENT_PATH="/payments/verify"
+SYRIATEL_CASH_TIMEOUT_MS="10000"
+```
 
 
 ## Authentication
