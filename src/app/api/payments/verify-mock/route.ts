@@ -8,10 +8,22 @@ interface VerifyMockRequestBody {
 }
 
 export async function POST(request: Request) {
-  const body = (await request.json()) as VerifyMockRequestBody;
+  let body: VerifyMockRequestBody;
 
-  if (!body.attemptId) {
+  try {
+    body = (await request.json()) as VerifyMockRequestBody;
+  } catch {
+    return NextResponse.json({ message: "تعذر قراءة بيانات التحقق." }, { status: 400 });
+  }
+
+  const attemptId = body.attemptId?.trim();
+
+  if (!attemptId) {
     return NextResponse.json({ message: "معرف محاولة الدفع مطلوب." }, { status: 400 });
+  }
+
+  if (body.mockOutcome && body.mockOutcome !== "paid" && body.mockOutcome !== "failed") {
+    return NextResponse.json({ message: "قيمة mockOutcome غير صالحة." }, { status: 400 });
   }
 
   const user = await getCurrentUser();
@@ -22,7 +34,7 @@ export async function POST(request: Request) {
 
   try {
     const attempt = await verifyPaymentMock({
-      attemptId: body.attemptId,
+      attemptId,
       userId: user.id,
       mockOutcome: body.mockOutcome,
     });
@@ -45,6 +57,7 @@ export async function POST(request: Request) {
       return NextResponse.json({ message: "حالة الدفع الحالية لا تسمح بالتحقق." }, { status: 409 });
     }
 
-    throw error;
+    console.error("Failed to verify payment mock", error);
+    return NextResponse.json({ message: "تعذر التحقق من الدفع حالياً. حاول لاحقاً." }, { status: 500 });
   }
 }
