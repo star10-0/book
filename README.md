@@ -70,37 +70,41 @@ The service worker is intentionally conservative:
 
 This helps keep authenticated/session-sensitive pages fresh and reduces risk of stale personalized content.
 
-### Manual Icon Files Still Required
+### Text-only PWA Icon Source + Generation
 
-The manifest and metadata reference icon files that must be added manually later (placeholders only are currently referenced):
+This repository keeps the icon pipeline text-only by default:
 
-- `public/icons/icon-192x192.png`
-- `public/icons/icon-512x512.png`
-- `public/icons/maskable-512x512.png`
-- `public/icons/apple-touch-icon.png`
+- SVG source icon: `public/icons/source-book-icon.svg`
+- Generator script: `scripts/generate-pwa-icons.ts`
+- NPM command: `npm run icons:generate`
 
-No binary icon assets are included by default in this repository.
+Generated binary files are intentionally ignored in Git and should be generated locally when needed.
 
-### Exact Next Steps to Add Icons
+#### Prerequisite
 
-1. Create a square source logo (recommended at least `1024x1024`).
-2. Export PNG files with these exact names and sizes:
-   - `icon-192x192.png` (`192x192`)
-   - `icon-512x512.png` (`512x512`)
-   - `maskable-512x512.png` (`512x512`, with safe padding for maskable usage)
-   - `apple-touch-icon.png` (`180x180`)
-3. Place all exported files under `public/icons/`.
-4. Run checks:
+Install **ImageMagick** locally (command name `magick` or `convert`). The script uses ImageMagick to rasterize the SVG and build an `.ico` file.
 
-   ```bash
-   npm run lint
-   npm run typecheck
-   ```
+#### Generate required icons
 
-5. Start the app and verify in browser DevTools > Application:
-   - Manifest is detected
-   - Service worker is active
-   - Install prompt criteria are satisfied
+Run:
+
+```bash
+npm run icons:generate
+```
+
+This creates the following files in `public/icons/`:
+
+- `icon-192.png` (`192x192`)
+- `icon-512.png` (`512x512`)
+- `apple-touch-icon.png` (`180x180`)
+- `favicon.ico` (multi-size icon generated from the PNG outputs)
+
+After generating icons, run checks:
+
+```bash
+npm run lint
+npm run typecheck
+```
 
 ## Database Setup (Prisma + PostgreSQL)
 
