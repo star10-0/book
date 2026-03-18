@@ -1,10 +1,17 @@
+import type { Metadata } from "next";
 import { prisma } from "@/lib/prisma";
 import { SiteHeader } from "@/components/site-header";
+import { SiteFooter } from "@/components/site-footer";
 import {
   CategoriesPreviewSection,
   FeaturedBooksSection,
   HeroSection,
 } from "@/components/storefront";
+
+export const metadata: Metadata = {
+  title: "الرئيسية",
+  description: "اكتشف أحدث الكتب الرقمية العربية للشراء والاستئجار عبر تجربة قراءة حديثة وسريعة.",
+};
 
 export default async function HomePage() {
   const [featuredBooks, categories] = await Promise.all([
@@ -46,6 +53,7 @@ export default async function HomePage() {
           description: category.description ?? "مجموعة متنوعة من الكتب المختارة بعناية.",
         }))}
       />
+      <SiteFooter />
     </main>
   );
 }

@@ -1,5 +1,7 @@
+import type { Metadata } from "next";
 import type { Prisma } from "@prisma/client";
 import { SiteHeader } from "@/components/site-header";
+import { SiteFooter } from "@/components/site-footer";
 import { BooksFilters, BooksGrid } from "@/components/storefront";
 import { prisma } from "@/lib/prisma";
 
@@ -8,6 +10,11 @@ type BooksSearchParams = {
   category?: string;
   offer?: string;
   sort?: string;
+};
+
+export const metadata: Metadata = {
+  title: "الكتب",
+  description: "تصفح الكتب الرقمية المتاحة للشراء أو الاستئجار مع فلاتر بحث سهلة وسريعة.",
 };
 
 function normalizeOfferType(value?: string): "all" | "buy" | "rent" {
@@ -127,7 +134,7 @@ export default async function BooksPage({
       <SiteHeader />
       <section className="mb-6 rounded-2xl bg-white p-6 shadow-sm ring-1 ring-slate-200 sm:p-8">
         <h1 className="text-3xl font-bold text-slate-900">مكتبة الكتب</h1>
-        <p className="mt-2 text-sm leading-7 text-slate-600 sm:text-base">
+        <p className="mt-2 text-sm leading-8 text-slate-600 sm:text-base">
           تصفح الكتب الرقمية المتاحة للشراء أو الاستئجار، مع واجهة واضحة وسريعة تناسب كل الأجهزة.
         </p>
       </section>
@@ -153,6 +160,7 @@ export default async function BooksPage({
           hasActiveFilters={Boolean(search) || category !== "all" || offerType !== "all"}
         />
       </div>
+      <SiteFooter />
     </main>
   );
 }

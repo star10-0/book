@@ -1,14 +1,37 @@
+import type { Metadata } from "next";
 import { notFound } from "next/navigation";
 import { SiteHeader } from "@/components/site-header";
+import { SiteFooter } from "@/components/site-footer";
 import { BookDetailsSection, RelatedBooksSection } from "@/components/book-details";
 import { prisma } from "@/lib/prisma";
 
 type BookDetailsPageProps = {
-  params: { slug: string };
+  params: Promise<{ slug: string }>;
 };
 
+export async function generateMetadata({ params }: BookDetailsPageProps): Promise<Metadata> {
+  const { slug } = await params;
+
+  const book = await prisma.book.findFirst({
+    where: { slug, status: "PUBLISHED", format: "DIGITAL" },
+    select: { titleAr: true, descriptionAr: true },
+  });
+
+  if (!book) {
+    return {
+      title: "الكتاب غير موجود",
+      description: "تعذر العثور على هذا الكتاب في المنصة.",
+    };
+  }
+
+  return {
+    title: book.titleAr,
+    description: book.descriptionAr ?? `تصفح تفاصيل كتاب ${book.titleAr} وخيارات الشراء أو الاستئجار.`,
+  };
+}
+
 export default async function BookDetailsPage({ params }: BookDetailsPageProps) {
-  const { slug } = params;
+  const { slug } = await params;
 
   const book = await prisma.book.findFirst({
     where: {
@@ -82,6 +105,7 @@ export default async function BookDetailsPage({ params }: BookDetailsPageProps) 
           }))}
         />
       </div>
+      <SiteFooter />
     </main>
   );
 }

@@ -1,5 +1,6 @@
 import Link from "next/link";
 import { SiteHeader } from "@/components/site-header";
+import { SiteFooter } from "@/components/site-footer";
 
 export default function BookNotFound() {
   return (
@@ -7,7 +8,7 @@ export default function BookNotFound() {
       <SiteHeader />
       <section className="rounded-3xl border border-dashed border-slate-300 bg-white p-10 text-center">
         <h1 className="text-2xl font-bold text-slate-900">الكتاب غير موجود</h1>
-        <p className="mt-3 text-sm text-slate-600 sm:text-base">
+        <p className="mt-3 text-sm leading-7 text-slate-600 sm:text-base">
           قد يكون الرابط غير صحيح أو تم حذف الكتاب. يمكنك العودة إلى قائمة الكتب لاختيار عنوان آخر.
         </p>
         <Link
@@ -17,6 +18,7 @@ export default function BookNotFound() {
           العودة إلى الكتب
         </Link>
       </section>
+      <SiteFooter />
     </main>
   );
 }

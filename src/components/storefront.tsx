@@ -47,9 +47,9 @@ const defaultCover = "https://placehold.co/600x900/e2e8f0/334155?text=Book";
 
 export function HeroSection() {
   return (
-    <section className="rounded-3xl bg-gradient-to-l from-indigo-700 to-indigo-500 p-8 text-white shadow-lg sm:p-12">
+    <section className="rounded-3xl bg-gradient-to-l from-indigo-700 to-indigo-500 p-6 text-white shadow-lg sm:p-10 lg:p-12">
       <p className="text-sm font-semibold text-indigo-100">منصة عربية أولًا</p>
-      <h1 className="mt-3 text-3xl font-bold leading-tight sm:text-5xl">اكتشف كتبك الرقمية المفضلة</h1>
+      <h1 className="mt-3 text-3xl font-bold leading-tight sm:text-4xl lg:text-5xl">اكتشف كتبك الرقمية المفضلة</h1>
       <p className="mt-4 max-w-2xl text-base leading-8 text-indigo-100 sm:text-lg">
         اشترِ أو استأجر الكتب العربية بسهولة، واقرأ أينما كنت عبر تجربة حديثة تدعم الهاتف واللوحي
         وسطح المكتب.
@@ -74,43 +74,57 @@ export function HeroSection() {
 
 export function FeaturedBooksSection({ books }: { books: FeaturedBookItem[] }) {
   return (
-    <section className="mt-10 rounded-3xl bg-white p-6 shadow-sm ring-1 ring-slate-200 sm:p-8">
+    <section className="mt-8 rounded-3xl bg-white p-6 shadow-sm ring-1 ring-slate-200 sm:mt-10 sm:p-8">
       <div className="flex items-center justify-between gap-3">
         <h2 className="text-2xl font-bold text-slate-900">كتب مميزة</h2>
         <Link href="/books" className="text-sm font-semibold text-indigo-600 hover:text-indigo-700">
           عرض الكل
         </Link>
       </div>
-      <div className="mt-6 grid gap-5 sm:grid-cols-2 lg:grid-cols-3">
-        {books.map((book) => (
-          <article key={book.id} className="overflow-hidden rounded-2xl bg-slate-50 ring-1 ring-slate-200">
-            <Image src={book.coverImageUrl ?? defaultCover} alt={`غلاف كتاب ${book.title}`} width={600} height={900} className="h-56 w-full object-cover" />
-            <div className="space-y-2 p-4">
-              <h3 className="text-lg font-bold text-slate-900">{book.title}</h3>
-              <p className="text-sm text-slate-600">{book.author}</p>
-              <span className="inline-flex rounded-full bg-indigo-50 px-3 py-1 text-xs font-semibold text-indigo-700">
-                {book.category}
-              </span>
-            </div>
-          </article>
-        ))}
-      </div>
+
+      {books.length === 0 ? (
+        <p className="mt-6 rounded-2xl border border-dashed border-slate-300 bg-slate-50 p-6 text-sm text-slate-600">
+          لا توجد كتب مميزة الآن. سنضيف توصيات جديدة قريبًا.
+        </p>
+      ) : (
+        <div className="mt-6 grid gap-5 sm:grid-cols-2 lg:grid-cols-3">
+          {books.map((book) => (
+            <article key={book.id} className="overflow-hidden rounded-2xl bg-slate-50 ring-1 ring-slate-200">
+              <Image src={book.coverImageUrl ?? defaultCover} alt={`غلاف كتاب ${book.title}`} width={600} height={900} className="h-56 w-full object-cover" />
+              <div className="space-y-2 p-4">
+                <h3 className="line-clamp-2 text-lg font-bold text-slate-900">{book.title}</h3>
+                <p className="text-sm text-slate-600">{book.author}</p>
+                <span className="inline-flex rounded-full bg-indigo-50 px-3 py-1 text-xs font-semibold text-indigo-700">
+                  {book.category}
+                </span>
+              </div>
+            </article>
+          ))}
+        </div>
+      )}
     </section>
   );
 }
 
 export function CategoriesPreviewSection({ categories }: { categories: CategoryPreviewItem[] }) {
   return (
-    <section className="mt-10 rounded-3xl bg-white p-6 shadow-sm ring-1 ring-slate-200 sm:p-8">
+    <section className="mt-8 rounded-3xl bg-white p-6 shadow-sm ring-1 ring-slate-200 sm:mt-10 sm:p-8">
       <h2 className="text-2xl font-bold text-slate-900">تصنيفات شائعة</h2>
-      <div className="mt-6 grid gap-4 md:grid-cols-2 lg:grid-cols-4">
-        {categories.map((category) => (
-          <article key={category.name} className="rounded-2xl border border-slate-200 bg-slate-50 p-4">
-            <h3 className="text-base font-bold text-slate-900">{category.name}</h3>
-            <p className="mt-2 text-sm leading-6 text-slate-600">{category.description}</p>
-          </article>
-        ))}
-      </div>
+
+      {categories.length === 0 ? (
+        <p className="mt-6 rounded-2xl border border-dashed border-slate-300 bg-slate-50 p-6 text-sm text-slate-600">
+          لم تتم إضافة تصنيفات بعد. يمكنك العودة لاحقًا لاستكشاف الأقسام الجديدة.
+        </p>
+      ) : (
+        <div className="mt-6 grid gap-4 md:grid-cols-2 lg:grid-cols-4">
+          {categories.map((category) => (
+            <article key={category.name} className="rounded-2xl border border-slate-200 bg-slate-50 p-4">
+              <h3 className="text-base font-bold text-slate-900">{category.name}</h3>
+              <p className="mt-2 text-sm leading-7 text-slate-600">{category.description}</p>
+            </article>
+          ))}
+        </div>
+      )}
     </section>
   );
 }
@@ -218,7 +232,7 @@ export function BooksGrid({
         <h2 className="text-xl font-bold text-slate-900">
           {hasActiveFilters ? "لا توجد نتائج مطابقة" : "لا توجد كتب متاحة حاليًا"}
         </h2>
-        <p className="mt-2 text-sm text-slate-600">
+        <p className="mt-2 text-sm leading-7 text-slate-600">
           {hasActiveFilters
             ? "جرّب تعديل كلمات البحث أو الفلاتر للحصول على نتائج أكثر."
             : "سيتم إضافة كتب جديدة قريبًا. تفقد الصفحة لاحقًا."}

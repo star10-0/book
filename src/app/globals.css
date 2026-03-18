@@ -7,7 +7,14 @@
 }
 
 body {
-  @apply bg-background text-foreground antialiased;
+  @apply bg-slate-50 text-slate-900 antialiased;
+  font-feature-settings: "kern" 1;
+  text-rendering: optimizeLegibility;
+}
+
+html[lang="ar"] body {
+  line-height: 1.8;
+  letter-spacing: 0;
 }
 
 a {
