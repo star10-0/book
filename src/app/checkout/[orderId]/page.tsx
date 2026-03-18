@@ -3,7 +3,7 @@ import { notFound } from "next/navigation";
 import { SiteHeader } from "@/components/site-header";
 import { OrderDetailsCard } from "@/components/order-details";
 import { OrderPaymentPanel } from "@/components/order-payment-panel";
-import { getOrCreateDemoUser } from "@/lib/auth-demo-user";
+import { requireUser } from "@/lib/auth-session";
 import { prisma } from "@/lib/prisma";
 
 type CheckoutPageProps = {
@@ -11,12 +11,12 @@ type CheckoutPageProps = {
 };
 
 export default async function CheckoutPage({ params }: CheckoutPageProps) {
-  const demoUser = await getOrCreateDemoUser();
+  const user = await requireUser();
 
   const order = await prisma.order.findFirst({
     where: {
       id: params.orderId,
-      userId: demoUser.id,
+      userId: user.id,
     },
     include: {
       items: {

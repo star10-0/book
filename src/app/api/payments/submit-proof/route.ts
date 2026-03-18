@@ -1,5 +1,5 @@
 import { NextResponse } from "next/server";
-import { getOrCreateDemoUser } from "@/lib/auth-demo-user";
+import { getCurrentUser } from "@/lib/auth-session";
 import { submitPaymentProof } from "@/lib/payments/payment-service";
 
 interface SubmitPaymentProofRequestBody {
@@ -15,12 +15,16 @@ export async function POST(request: Request) {
     return NextResponse.json({ message: "بيانات إثبات الدفع غير مكتملة." }, { status: 400 });
   }
 
-  const demoUser = await getOrCreateDemoUser();
+  const user = await getCurrentUser();
+
+  if (!user) {
+    return NextResponse.json({ message: "يجب تسجيل الدخول أولاً." }, { status: 401 });
+  }
 
   try {
     const attempt = await submitPaymentProof({
       attemptId: body.attemptId,
-      userId: demoUser.id,
+      userId: user.id,
       transactionReference: body.transactionReference,
       proofNote: body.proofNote,
     });

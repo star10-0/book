@@ -1,5 +1,5 @@
 import { NextResponse } from "next/server";
-import { getOrCreateDemoUser } from "@/lib/auth-demo-user";
+import { getCurrentUser } from "@/lib/auth-session";
 import { prisma } from "@/lib/prisma";
 
 type UpdateReadingProgressBody = {
@@ -36,7 +36,11 @@ function validatePayload(payload: unknown): { data?: { progressPercent: number; 
 
 export async function PATCH(request: Request, context: { params: Promise<{ accessId: string }> }) {
   const { accessId } = await context.params;
-  const demoUser = await getOrCreateDemoUser();
+  const user = await getCurrentUser();
+
+  if (!user) {
+    return NextResponse.json({ message: "يجب تسجيل الدخول أولاً." }, { status: 401 });
+  }
 
   let body: unknown;
 
@@ -55,7 +59,7 @@ export async function PATCH(request: Request, context: { params: Promise<{ acces
   const accessGrant = await prisma.accessGrant.findFirst({
     where: {
       id: accessId,
-      userId: demoUser.id,
+      userId: user.id,
       status: "ACTIVE",
       OR: [{ expiresAt: null }, { expiresAt: { gt: new Date() } }],
     },
@@ -74,12 +78,12 @@ export async function PATCH(request: Request, context: { params: Promise<{ acces
   const progress = await prisma.readingProgress.upsert({
     where: {
       userId_bookId: {
-        userId: demoUser.id,
+        userId: user.id,
         bookId: accessGrant.bookId,
       },
     },
     create: {
-      userId: demoUser.id,
+      userId: user.id,
       bookId: accessGrant.bookId,
       progressPercent: validation.data.progressPercent,
       locator: validation.data.locator,

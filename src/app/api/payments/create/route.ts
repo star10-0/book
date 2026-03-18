@@ -1,6 +1,6 @@
 import { PaymentProvider } from "@prisma/client";
 import { NextResponse } from "next/server";
-import { getOrCreateDemoUser } from "@/lib/auth-demo-user";
+import { getCurrentUser } from "@/lib/auth-session";
 import { createPaymentForOrder } from "@/lib/payments/payment-service";
 
 interface CreatePaymentRequestBody {
@@ -15,13 +15,17 @@ export async function POST(request: Request) {
     return NextResponse.json({ message: "الطلب غير مكتمل." }, { status: 400 });
   }
 
-  const demoUser = await getOrCreateDemoUser();
+  const user = await getCurrentUser();
+
+  if (!user) {
+    return NextResponse.json({ message: "يجب تسجيل الدخول أولاً." }, { status: 401 });
+  }
 
   try {
     const result = await createPaymentForOrder({
       orderId: body.orderId,
       provider: body.provider,
-      userId: demoUser.id,
+      userId: user.id,
     });
 
     return NextResponse.json(

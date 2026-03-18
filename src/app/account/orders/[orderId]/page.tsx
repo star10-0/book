@@ -2,7 +2,7 @@ import Link from "next/link";
 import { notFound } from "next/navigation";
 import { SiteHeader } from "@/components/site-header";
 import { OrderDetailsCard } from "@/components/order-details";
-import { getOrCreateDemoUser } from "@/lib/auth-demo-user";
+import { requireUser } from "@/lib/auth-session";
 import { prisma } from "@/lib/prisma";
 
 type AccountOrderDetailsPageProps = {
@@ -10,12 +10,12 @@ type AccountOrderDetailsPageProps = {
 };
 
 export default async function AccountOrderDetailsPage({ params }: AccountOrderDetailsPageProps) {
-  const demoUser = await getOrCreateDemoUser();
+  const user = await requireUser();
 
   const order = await prisma.order.findFirst({
     where: {
       id: params.orderId,
-      userId: demoUser.id,
+      userId: user.id,
     },
     include: {
       items: {
