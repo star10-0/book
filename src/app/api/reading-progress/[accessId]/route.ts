@@ -1,15 +1,13 @@
 import { NextResponse } from "next/server";
 import { getCurrentUser } from "@/lib/auth-session";
 import { prisma } from "@/lib/prisma";
+import { normalizeProgress } from "@/lib/reader/locator";
 
 type UpdateReadingProgressBody = {
   progressPercent?: number;
   locator?: string;
 };
 
-function normalizeProgress(value: number) {
-  return Math.max(0, Math.min(100, Math.round(value * 100) / 100));
-}
 
 function validatePayload(payload: unknown): { data?: { progressPercent: number; locator: string | null }; error?: string } {
   if (!payload || typeof payload !== "object") {
