@@ -30,3 +30,9 @@ yarn-error.log*
 
 # typescript
 *.tsbuildinfo
+
+# generated PWA icon binaries (kept local only)
+/public/icons/icon-192.png
+/public/icons/icon-512.png
+/public/icons/apple-touch-icon.png
+/public/icons/favicon.ico

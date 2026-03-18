@@ -1,0 +1,22 @@
+<svg width="1024" height="1024" viewBox="0 0 1024 1024" fill="none" xmlns="http://www.w3.org/2000/svg" role="img" aria-labelledby="title desc">
+  <title id="title">Book Store Icon</title>
+  <desc id="desc">An Arabic-first bookstore icon with an open book and Arabic letter beh.</desc>
+  <defs>
+    <linearGradient id="bg" x1="128" y1="128" x2="896" y2="896" gradientUnits="userSpaceOnUse">
+      <stop stop-color="#0F172A"/>
+      <stop offset="1" stop-color="#1E293B"/>
+    </linearGradient>
+    <linearGradient id="accent" x1="248" y1="248" x2="776" y2="776" gradientUnits="userSpaceOnUse">
+      <stop stop-color="#F59E0B"/>
+      <stop offset="1" stop-color="#FB7185"/>
+    </linearGradient>
+  </defs>
+
+  <rect x="64" y="64" width="896" height="896" rx="224" fill="url(#bg)"/>
+  <path d="M260 282C336 272 412 288 472 336V736C412 688 336 672 260 682V282Z" fill="#E2E8F0"/>
+  <path d="M764 282C688 272 612 288 552 336V736C612 688 688 672 764 682V282Z" fill="#CBD5E1"/>
+  <rect x="500" y="324" width="24" height="388" rx="12" fill="#94A3B8"/>
+
+  <circle cx="512" cy="512" r="150" fill="url(#accent)"/>
+  <text x="512" y="568" text-anchor="middle" font-size="228" font-family="'Noto Naskh Arabic', 'Amiri', serif" fill="#0F172A">ب</text>
+</svg>
