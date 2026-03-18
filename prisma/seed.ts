@@ -1,4 +1,5 @@
 import { PrismaClient, BookFormat, BookStatus, CurrencyCode, OfferType, UserRole } from '@prisma/client';
+import { hashPassword } from '../src/lib/auth-password';
 
 const prisma = new PrismaClient();
 
@@ -20,33 +21,42 @@ type SeedBook = {
 };
 
 const seed = async () => {
+  const [adminPasswordHash, userPasswordHash] = await Promise.all([
+    hashPassword('AdminPass123!'),
+    hashPassword('UserPass123!'),
+  ]);
+
   const adminUser = await prisma.user.upsert({
     where: { email: 'admin@book.local' },
     update: {
       fullName: 'مدير المنصة',
       role: UserRole.ADMIN,
       isActive: true,
+      passwordHash: adminPasswordHash,
     },
     create: {
       email: 'admin@book.local',
       fullName: 'مدير المنصة',
       role: UserRole.ADMIN,
       isActive: true,
+      passwordHash: adminPasswordHash,
     },
   });
 
   const demoUser = await prisma.user.upsert({
     where: { email: 'demo@book.local' },
     update: {
-      fullName: 'قارئ تجريبي',
-      role: UserRole.CUSTOMER,
+      fullName: 'قارئ افتراضي',
+      role: UserRole.USER,
       isActive: true,
+      passwordHash: userPasswordHash,
     },
     create: {
       email: 'demo@book.local',
-      fullName: 'قارئ تجريبي',
-      role: UserRole.CUSTOMER,
+      fullName: 'قارئ افتراضي',
+      role: UserRole.USER,
       isActive: true,
+      passwordHash: userPasswordHash,
     },
   });
 

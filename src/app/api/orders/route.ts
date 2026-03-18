@@ -1,6 +1,6 @@
 import { PaymentProvider } from "@prisma/client";
 import { NextResponse } from "next/server";
-import { getOrCreateDemoUser } from "@/lib/auth-demo-user";
+import { getCurrentUser } from "@/lib/auth-session";
 import { prisma } from "@/lib/prisma";
 
 type CreateOrderRequest = {
@@ -32,8 +32,11 @@ function validateCreateOrderPayload(payload: unknown): { data?: CreateOrderReque
 }
 
 export async function POST(request: Request) {
-  // TODO(auth): Replace with authenticated user from session/cookies.
-  const demoUser = await getOrCreateDemoUser();
+  const user = await getCurrentUser();
+
+  if (!user) {
+    return NextResponse.json({ message: "يجب تسجيل الدخول أولاً." }, { status: 401 });
+  }
 
   let body: unknown;
 
@@ -78,7 +81,7 @@ export async function POST(request: Request) {
   const created = await prisma.$transaction(async (tx) => {
     const order = await tx.order.create({
       data: {
-        userId: demoUser.id,
+        userId: user.id,
         currency: offer.currency,
         subtotalCents: offer.priceCents,
         totalCents: offer.priceCents,
@@ -101,13 +104,13 @@ export async function POST(request: Request) {
 
     const payment = await tx.payment.create({
       data: {
-        userId: demoUser.id,
+        userId: user.id,
         orderId: order.id,
         provider: PaymentProvider.MANUAL,
         amountCents: order.totalCents,
         currency: order.currency,
         metadata: {
-          source: "demo-checkout",
+          source: "authenticated-checkout",
           note: "TODO(payment): replace MANUAL stub with real provider session creation.",
         },
       },

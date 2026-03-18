@@ -3,7 +3,7 @@ import Link from "next/link";
 import { notFound } from "next/navigation";
 import { ReaderShell } from "@/components/reader-shell";
 import { SiteHeader } from "@/components/site-header";
-import { getOrCreateDemoUser } from "@/lib/auth-demo-user";
+import { requireUser } from "@/lib/auth-session";
 import { formatArabicDate } from "@/lib/formatters/intl";
 import { prisma } from "@/lib/prisma";
 
@@ -19,12 +19,12 @@ function isGrantExpired(grant: { status: string; expiresAt: Date | null }) {
 
 export default async function ReaderPage({ params }: ReaderPageProps) {
   const { accessId } = await params;
-  const demoUser = await getOrCreateDemoUser();
+  const user = await requireUser();
 
   const accessGrant = await prisma.accessGrant.findFirst({
     where: {
       id: accessId,
-      userId: demoUser.id,
+      userId: user.id,
     },
     select: {
       id: true,
@@ -66,12 +66,12 @@ export default async function ReaderPage({ params }: ReaderPageProps) {
     await prisma.readingProgress.upsert({
       where: {
         userId_bookId: {
-          userId: demoUser.id,
+          userId: user.id,
           bookId: accessGrant.bookId,
         },
       },
       create: {
-        userId: demoUser.id,
+        userId: user.id,
         bookId: accessGrant.bookId,
         progressPercent: 0,
         locator: "page:1",
@@ -86,7 +86,7 @@ export default async function ReaderPage({ params }: ReaderPageProps) {
   const readingProgress = await prisma.readingProgress.findUnique({
     where: {
       userId_bookId: {
-        userId: demoUser.id,
+        userId: user.id,
         bookId: accessGrant.bookId,
       },
     },

@@ -9,6 +9,7 @@
 - Tailwind CSS
 - Prisma
 - PostgreSQL
+- Cookie-based authentication (credentials, signed server session)
 
 ## Current Scope
 
@@ -58,7 +59,10 @@
    cp .env.example .env
    ```
 
-3. Set `DATABASE_URL` in `.env` to your PostgreSQL database.
+3. Set environment variables in `.env`:
+
+   - `DATABASE_URL` (PostgreSQL connection string)
+   - `AUTH_SECRET` (long random secret for signing session cookies)
 
 4. Generate Prisma Client:
 
@@ -94,8 +98,8 @@ npm run prisma:seed
 
 The seed script creates/updates:
 
-- 1 admin user (`admin@book.local`)
-- 1 demo customer user (`demo@book.local`)
+- 1 admin user (`admin@book.local` / `AdminPass123!`)
+- 1 user account (`demo@book.local` / `UserPass123!`)
 - 3 authors
 - 5 categories
 - 8 digital books with Arabic descriptions and cover placeholders
@@ -131,6 +135,29 @@ The seed is safely rerunnable: it uses upserts for unique records and refreshes 
   - `PENDING -> SUBMITTED -> VERIFYING -> PAID | FAILED`
 - Provider-specific logic is isolated in gateway classes under `src/lib/payments/gateways`.
 - Developer integration notes: `src/lib/payments/README.md`.
+
+
+## Authentication
+
+This project now uses a production-oriented credentials flow with signed HTTP-only cookies:
+
+- Sign up: `/auth/sign-up`
+- Sign in: `/auth/sign-in`
+- Sign out: available from the main header after login
+- Protected account pages: `/account/*`
+- Protected admin pages: `/admin/*` (requires `ADMIN` role)
+
+### Required Auth Environment Variables
+
+```bash
+AUTH_SECRET="replace-with-a-long-random-secret"
+```
+
+Generate a secure value with:
+
+```bash
+openssl rand -base64 32
+```
 
 ## Quality Checks
 

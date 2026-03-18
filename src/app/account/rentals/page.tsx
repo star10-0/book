@@ -1,17 +1,17 @@
 import Link from "next/link";
 import { AccessGrantType } from "@prisma/client";
 import { SiteHeader } from "@/components/site-header";
-import { getOrCreateDemoUser } from "@/lib/auth-demo-user";
+import { requireUser } from "@/lib/auth-session";
 import { formatArabicDate } from "@/lib/formatters/intl";
 import { prisma } from "@/lib/prisma";
 
 export default async function AccountRentalsPage() {
-  const demoUser = await getOrCreateDemoUser();
+  const user = await requireUser();
   const now = new Date();
 
   const rentals = await prisma.accessGrant.findMany({
     where: {
-      userId: demoUser.id,
+      userId: user.id,
       type: AccessGrantType.RENTAL,
     },
     orderBy: [{ createdAt: "desc" }],

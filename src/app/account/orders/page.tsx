@@ -1,15 +1,15 @@
 import Link from "next/link";
 import { SiteHeader } from "@/components/site-header";
-import { getOrCreateDemoUser } from "@/lib/auth-demo-user";
+import { requireUser } from "@/lib/auth-session";
 import { formatArabicCurrency, formatArabicDate } from "@/lib/formatters/intl";
 import { orderStatusMeta } from "@/lib/orders";
 import { prisma } from "@/lib/prisma";
 
 export default async function AccountOrdersPage() {
-  const demoUser = await getOrCreateDemoUser();
+  const user = await requireUser();
 
   const orders = await prisma.order.findMany({
-    where: { userId: demoUser.id },
+    where: { userId: user.id },
     orderBy: { createdAt: "desc" },
     include: {
       items: {
@@ -33,7 +33,7 @@ export default async function AccountOrdersPage() {
       <section className="space-y-5">
         <header className="flex flex-wrap items-center justify-between gap-3">
           <h1 className="text-2xl font-bold text-slate-900">طلباتي</h1>
-          <p className="text-sm text-slate-600">عرض كل الطلبات الخاصة بالمستخدم التجريبي.</p>
+          <p className="text-sm text-slate-600">عرض كل الطلبات الخاصة بحسابك.</p>
         </header>
 
         {orders.length === 0 ? (

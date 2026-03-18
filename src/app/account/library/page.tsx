@@ -1,18 +1,18 @@
 import Link from "next/link";
 import { AccessGrantType } from "@prisma/client";
 import { SiteHeader } from "@/components/site-header";
-import { getOrCreateDemoUser } from "@/lib/auth-demo-user";
+import { requireUser } from "@/lib/auth-session";
 import { formatArabicDate } from "@/lib/formatters/intl";
 import { prisma } from "@/lib/prisma";
 
 export default async function AccountLibraryPage() {
-  const demoUser = await getOrCreateDemoUser();
+  const user = await requireUser();
   const now = new Date();
 
   const [ownedBooks, rentedBooks] = await Promise.all([
     prisma.accessGrant.findMany({
       where: {
-        userId: demoUser.id,
+        userId: user.id,
         type: AccessGrantType.PURCHASE,
         status: "ACTIVE",
       },
@@ -29,7 +29,7 @@ export default async function AccountLibraryPage() {
     }),
     prisma.accessGrant.findMany({
       where: {
-        userId: demoUser.id,
+        userId: user.id,
         type: AccessGrantType.RENTAL,
         status: "ACTIVE",
         expiresAt: { gt: now },
@@ -53,7 +53,7 @@ export default async function AccountLibraryPage() {
       <section className="space-y-6">
         <header className="space-y-2">
           <h1 className="text-2xl font-bold text-slate-900">مكتبتي</h1>
-          <p className="text-sm text-slate-600">الكتب المملوكة والكتب المستأجرة حالياً للمستخدم التجريبي.</p>
+          <p className="text-sm text-slate-600">الكتب المملوكة والكتب المستأجرة حالياً لحسابك.</p>
         </header>
 
         <div className="grid gap-4 lg:grid-cols-2">
