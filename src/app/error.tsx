@@ -1,16 +1,20 @@
 "use client";
 
+import { useEffect } from "react";
 import Link from "next/link";
 
-export default function AppError({
-  error,
-  reset,
-}: {
+type AppErrorProps = {
   error: Error & { digest?: string };
   reset: () => void;
-}) {
+};
+
+export default function AppError({ error, reset }: AppErrorProps) {
+  useEffect(() => {
+    console.error(error);
+  }, [error]);
+
   return (
-    <main className="bg-slate-50 p-4 sm:p-8">
+    <main className="bg-slate-50 p-4 sm:p-8" role="alert" aria-live="assertive">
       <section className="mx-auto max-w-2xl rounded-3xl border border-rose-200 bg-white p-8 text-center shadow-sm">
         <p className="text-sm font-semibold text-rose-700">حدث خطأ غير متوقع</p>
         <h1 className="mt-2 text-2xl font-bold text-slate-900">تعذر تحميل الصفحة الآن</h1>
