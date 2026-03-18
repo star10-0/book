@@ -174,6 +174,26 @@ If Prisma schema changed recently, also ensure your DB schema is current:
 npm run prisma:migrate
 ```
 
+
+### PostCSS/Tailwind dependency fix
+
+If `npm run dev` fails with `Cannot find module 'autoprefixer'`, ensure the CSS toolchain dependencies are installed explicitly:
+
+```bash
+npm install -D tailwindcss postcss autoprefixer
+```
+
+`postcss.config.mjs` should include both plugins:
+
+```js
+export default {
+  plugins: {
+    tailwindcss: {},
+    autoprefixer: {},
+  },
+};
+```
+
 ### Font strategy for offline/local development
 
-To avoid compile-time retries from remote Google Fonts fetches during local development, the app uses a local/system Arabic-friendly font stack (`Noto Sans Arabic`, `Noto Kufi Arabic`, `Tahoma`, `Arial`, `system-ui`) via Tailwind `font-sans`.
+To avoid Google Fonts network fetch failures during local development, the layout uses the local/system Arabic-friendly stack (`Noto Sans Arabic`, `Noto Kufi Arabic`, `Tahoma`, `Arial`, `system-ui`) via Tailwind `font-sans` instead of runtime Google font fetching.
