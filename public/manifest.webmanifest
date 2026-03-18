@@ -1,12 +1,33 @@
 {
-  "name": "Book",
+  "name": "Book | مكتبة رقمية عربية",
   "short_name": "Book",
   "lang": "ar",
   "dir": "rtl",
   "start_url": "/",
+  "scope": "/",
   "display": "standalone",
+  "orientation": "portrait",
   "background_color": "#f8fafc",
   "theme_color": "#0f172a",
-  "description": "منصة عربية لشراء واستئجار الكتب الرقمية",
-  "icons": []
+  "description": "منصة عربية لشراء واستئجار الكتب الرقمية.",
+  "icons": [
+    {
+      "src": "/icons/icon-192x192.png",
+      "sizes": "192x192",
+      "type": "image/png",
+      "purpose": "any"
+    },
+    {
+      "src": "/icons/icon-512x512.png",
+      "sizes": "512x512",
+      "type": "image/png",
+      "purpose": "any"
+    },
+    {
+      "src": "/icons/maskable-512x512.png",
+      "sizes": "512x512",
+      "type": "image/png",
+      "purpose": "maskable"
+    }
+  ]
 }

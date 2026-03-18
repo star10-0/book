@@ -21,7 +21,7 @@
 - Production-ready Prisma schema for catalog, orders, payments, access, reading progress, and book asset metadata
 - Environment template for local setup
 - Architecture ready for digital purchase/rental workflows and future physical books
-- PWA-ready foundation (manifest + service worker integration planned next)
+- PWA setup included: manifest, service worker registration, and conservative runtime caching
 
 ## Project Structure
 
@@ -44,6 +44,63 @@
 ├── .env.example
 └── package.json
 ```
+
+
+## Progressive Web App (PWA)
+
+This project now includes a text-only PWA setup (no binary icons committed):
+
+- Manifest: `public/manifest.webmanifest`
+- Service worker script: `public/sw.js`
+- Service worker registration: `src/components/pwa/sw-register.tsx` (enabled in production only)
+- Manifest + placeholder icon metadata wired in `src/app/layout.tsx`
+
+### Caching Strategy
+
+The service worker is intentionally conservative:
+
+- **Cache-first** for same-origin static build assets (e.g. `/_next/static/*`, CSS, JS, fonts).
+- **Network-first** for navigation requests with offline fallback to cached shell routes (`/` and `/books`).
+- **No service-worker caching** for dynamic or user-specific areas:
+  - `/api/*`
+  - `/account*`
+  - `/admin*`
+  - `/checkout*`
+  - `/reader*`
+
+This helps keep authenticated/session-sensitive pages fresh and reduces risk of stale personalized content.
+
+### Manual Icon Files Still Required
+
+The manifest and metadata reference icon files that must be added manually later (placeholders only are currently referenced):
+
+- `public/icons/icon-192x192.png`
+- `public/icons/icon-512x512.png`
+- `public/icons/maskable-512x512.png`
+- `public/icons/apple-touch-icon.png`
+
+No binary icon assets are included by default in this repository.
+
+### Exact Next Steps to Add Icons
+
+1. Create a square source logo (recommended at least `1024x1024`).
+2. Export PNG files with these exact names and sizes:
+   - `icon-192x192.png` (`192x192`)
+   - `icon-512x512.png` (`512x512`)
+   - `maskable-512x512.png` (`512x512`, with safe padding for maskable usage)
+   - `apple-touch-icon.png` (`180x180`)
+3. Place all exported files under `public/icons/`.
+4. Run checks:
+
+   ```bash
+   npm run lint
+   npm run typecheck
+   ```
+
+5. Start the app and verify in browser DevTools > Application:
+   - Manifest is detected
+   - Service worker is active
+   - Install prompt criteria are satisfied
 
 ## Database Setup (Prisma + PostgreSQL)
 
