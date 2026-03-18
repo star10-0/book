@@ -17,7 +17,7 @@
   - `/`
   - `/books`
   - `/admin`
-- Production-ready Prisma schema for catalog, orders, payments, access, and reading progress
+- Production-ready Prisma schema for catalog, orders, payments, access, reading progress, and book asset metadata
 - Environment template for local setup
 - Architecture ready for digital purchase/rental workflows and future physical books
 - PWA-ready foundation (manifest + service worker integration planned next)
@@ -110,6 +110,16 @@ The seed is safely rerunnable: it uses upserts for unique records and refreshes 
 - `Payment` separates transaction lifecycle from order lifecycle and keeps provider metadata extensible.
 - `AccessGrant` is the entitlement source of truth for digital access (perpetual purchase or time-boxed rental).
 - `Book.format` already supports future physical products without adding shipping tables yet.
+
+## Book Asset File Management (Scaffolding)
+
+- `BookFile` now supports metadata records for:
+  - cover images (`COVER_IMAGE` + optional dimensions/blur metadata)
+  - EPUB (`EPUB` + optional package/version metadata)
+  - PDF (`PDF` + optional version/page-count metadata)
+- Storage provider is abstracted with provider-aware fields (`LOCAL`, `S3`, `CLOUDFLARE_R2`) to prepare for future S3/R2 upload flows.
+- Admin page includes early scaffolding to associate file records with books without implementing a full upload workflow yet.
+- Optional env flag: `BOOK_STORAGE_PROVIDER=local|s3|r2`.
 
 ## Payment Module (Mock-ready)
 

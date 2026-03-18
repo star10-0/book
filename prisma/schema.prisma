@@ -24,10 +24,17 @@ enum BookFormat {
 }
 
 enum FileKind {
+  COVER_IMAGE
   EPUB
   PDF
   AUDIO
   SAMPLE
+}
+
+enum StorageProvider {
+  LOCAL
+  S3
+  CLOUDFLARE_R2
 }
 
 enum OfferType {
@@ -150,18 +157,31 @@ model Book {
 }
 
 model BookFile {
-  id         String   @id @default(cuid())
-  bookId     String
-  kind       FileKind
-  storageKey String
-  mimeType   String?
-  sizeBytes  Int?
-  checksum   String?
-  isEncrypted Boolean @default(false)
-  sortOrder  Int      @default(0)
-  createdAt  DateTime @default(now())
-  updatedAt  DateTime @updatedAt
-  book       Book     @relation(fields: [bookId], references: [id], onDelete: Cascade)
+  id                String          @id @default(cuid())
+  bookId            String
+  kind              FileKind
+  storageProvider   StorageProvider @default(LOCAL)
+  storageKey        String
+  bucket            String?
+  region            String?
+  publicUrl         String?
+  originalFileName  String?
+  mimeType          String?
+  sizeBytes         Int?
+  checksum          String?
+  metadata          Json?
+  coverWidth        Int?
+  coverHeight       Int?
+  coverBlurDataUrl  String?
+  epubVersion       String?
+  epubPackagePath   String?
+  pdfVersion        String?
+  pdfPageCount      Int?
+  isEncrypted       Boolean         @default(false)
+  sortOrder         Int             @default(0)
+  createdAt         DateTime        @default(now())
+  updatedAt         DateTime        @updatedAt
+  book              Book            @relation(fields: [bookId], references: [id], onDelete: Cascade)
 
   @@unique([bookId, kind, sortOrder])
   @@index([bookId, kind])
