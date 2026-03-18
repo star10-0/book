@@ -1,10 +1,10 @@
 import { NextResponse } from "next/server";
 import { getCurrentUser } from "@/lib/auth-session";
-import { verifyPaymentMock } from "@/lib/payments/payment-service";
+import { verifyPayment } from "@/lib/payments/payment-service";
+import { GatewayConfigurationError, GatewayRequestError } from "@/lib/payments/gateways/provider-http";
 
 interface VerifyMockRequestBody {
   attemptId?: string;
-  mockOutcome?: "paid" | "failed";
 }
 
 export async function POST(request: Request) {
@@ -22,10 +22,6 @@ export async function POST(request: Request) {
     return NextResponse.json({ message: "معرف محاولة الدفع مطلوب." }, { status: 400 });
   }
 
-  if (body.mockOutcome && body.mockOutcome !== "paid" && body.mockOutcome !== "failed") {
-    return NextResponse.json({ message: "قيمة mockOutcome غير صالحة." }, { status: 400 });
-  }
-
   const user = await getCurrentUser();
 
   if (!user) {
@@ -33,14 +29,13 @@ export async function POST(request: Request) {
   }
 
   try {
-    const attempt = await verifyPaymentMock({
+    const attempt = await verifyPayment({
       attemptId,
       userId: user.id,
-      mockOutcome: body.mockOutcome,
     });
 
     return NextResponse.json({
-      message: "تم تنفيذ التحقق التجريبي من الدفع.",
+      message: "تم التحقق من حالة الدفع لدى مزود الخدمة.",
       attempt: {
         id: attempt.id,
         status: attempt.status,
@@ -53,11 +48,23 @@ export async function POST(request: Request) {
       return NextResponse.json({ message: "محاولة الدفع غير موجودة." }, { status: 404 });
     }
 
+    if (error instanceof Error && error.message === "MISSING_PROVIDER_REFERENCE") {
+      return NextResponse.json({ message: "بيانات مزود الدفع غير مكتملة لهذه المحاولة." }, { status: 409 });
+    }
+
     if (error instanceof Error && error.message.startsWith("Invalid payment status transition")) {
       return NextResponse.json({ message: "حالة الدفع الحالية لا تسمح بالتحقق." }, { status: 409 });
     }
 
-    console.error("Failed to verify payment mock", error);
+    if (error instanceof GatewayConfigurationError) {
+      return NextResponse.json({ message: "إعدادات مزود الدفع غير مكتملة على الخادم." }, { status: 500 });
+    }
+
+    if (error instanceof GatewayRequestError) {
+      return NextResponse.json({ message: "تعذر التحقق من الدفع عبر مزود الخدمة حالياً." }, { status: 502 });
+    }
+
+    console.error("Failed to verify payment", error);
     return NextResponse.json({ message: "تعذر التحقق من الدفع حالياً. حاول لاحقاً." }, { status: 500 });
   }
 }

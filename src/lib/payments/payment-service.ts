@@ -10,10 +10,9 @@ export interface CreatePaymentForOrderInput {
   provider: PaymentProvider;
 }
 
-export interface VerifyMockPaymentInput {
+export interface VerifyPaymentInput {
   attemptId: string;
   userId: string;
-  mockOutcome?: "paid" | "failed";
 }
 
 export interface SubmitPaymentProofInput {
@@ -152,7 +151,7 @@ export async function submitPaymentProof(input: SubmitPaymentProofInput) {
   });
 }
 
-export async function verifyPaymentMock(input: VerifyMockPaymentInput) {
+export async function verifyPayment(input: VerifyPaymentInput) {
   const attempt = await prisma.paymentAttempt.findFirst({
     where: {
       id: input.attemptId,
@@ -173,10 +172,16 @@ export async function verifyPaymentMock(input: VerifyMockPaymentInput) {
   const verifyingStatus: PaymentAttemptStatus = "VERIFYING";
   ensurePaymentStatusTransition(attempt.status, verifyingStatus);
 
-  const gatewayResult = await gateway.verifyMock({
+  const transactionReference = extractTransactionReference(attempt.requestPayload);
+
+  if (!attempt.providerReference) {
+    throw new Error("MISSING_PROVIDER_REFERENCE");
+  }
+
+  const gatewayResult = await gateway.verifyPayment({
     paymentId: attempt.paymentId,
-    providerReference: attempt.providerReference ?? "",
-    mockOutcome: input.mockOutcome,
+    providerReference: attempt.providerReference,
+    transactionReference,
   });
 
   const finalAttemptStatus: PaymentAttemptStatus = gatewayResult.isPaid ? "PAID" : "FAILED";
@@ -232,4 +237,14 @@ export async function verifyPaymentMock(input: VerifyMockPaymentInput) {
 
     return finalizedAttempt;
   });
+}
+
+
+function extractTransactionReference(payload: Prisma.JsonValue | null): string | undefined {
+  if (!payload || typeof payload !== "object" || Array.isArray(payload)) {
+    return undefined;
+  }
+
+  const value = (payload as Record<string, unknown>).transactionReference;
+  return typeof value === "string" && value.trim().length > 0 ? value.trim() : undefined;
 }
