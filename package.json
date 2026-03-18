@@ -15,7 +15,8 @@
     "prisma:seed": "prisma db seed",
     "prisma:studio": "prisma studio",
     "icons:generate": "tsx scripts/generate-pwa-icons.ts",
-    "test": "tsx --test src/**/*.test.ts"
+    "test": "tsx --test src/**/*.test.ts",
+    "pretypecheck": "prisma generate"
   },
   "prisma": {
     "seed": "tsx prisma/seed.ts"

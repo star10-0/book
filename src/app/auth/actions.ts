@@ -15,10 +15,22 @@ function readField(formData: FormData, key: string) {
   return typeof value === "string" ? value.trim() : "";
 }
 
+function resolveSafeCallbackUrl(rawCallbackUrl: string) {
+  if (!rawCallbackUrl.startsWith("/")) {
+    return "/account/orders";
+  }
+
+  if (rawCallbackUrl.startsWith("//")) {
+    return "/account/orders";
+  }
+
+  return rawCallbackUrl;
+}
+
 export async function signInAction(_prevState: AuthFormState, formData: FormData): Promise<AuthFormState> {
   const email = readField(formData, "email").toLowerCase();
   const password = readField(formData, "password");
-  const callbackUrl = readField(formData, "callbackUrl") || "/account/orders";
+  const callbackUrl = resolveSafeCallbackUrl(readField(formData, "callbackUrl") || "/account/orders");
 
   if (!email || !password) {
     return { error: "يرجى إدخال البريد الإلكتروني وكلمة المرور." };

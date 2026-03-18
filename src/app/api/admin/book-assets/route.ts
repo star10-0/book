@@ -1,6 +1,7 @@
 import { FileKind } from "@prisma/client";
 import { NextResponse } from "next/server";
 
+import { requireAdmin } from "@/lib/auth-session";
 import { prisma } from "@/lib/prisma";
 import { isSupportedAdminBookAssetKind } from "@/lib/files/book-asset-metadata";
 
@@ -12,6 +13,8 @@ type AssociateBookAssetPayload = {
 };
 
 export async function GET() {
+  await requireAdmin();
+
   const assets = await prisma.bookFile.findMany({
     take: 100,
     orderBy: [{ createdAt: "desc" }],
@@ -30,7 +33,15 @@ export async function GET() {
 }
 
 export async function POST(request: Request) {
-  const payload = (await request.json()) as AssociateBookAssetPayload;
+  await requireAdmin();
+
+  let payload: AssociateBookAssetPayload;
+
+  try {
+    payload = (await request.json()) as AssociateBookAssetPayload;
+  } catch {
+    return NextResponse.json({ error: "تعذر قراءة بيانات الطلب." }, { status: 400 });
+  }
 
   if (!payload.bookId || !payload.kind || !payload.storageKey) {
     return NextResponse.json({ error: "الحقول bookId و kind و storageKey مطلوبة." }, { status: 400 });
