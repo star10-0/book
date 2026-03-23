@@ -6,7 +6,7 @@ import { usePathname } from "next/navigation";
 const navItems = [
   { href: "/admin", label: "نظرة عامة" },
   { href: "/admin/books", label: "الكتب" },
-  { href: "/admin/books/new", label: "إضافة كتاب" },
+  { href: "/admin/books/new", label: "+ إضافة كتاب", highlight: true },
   { href: "/admin/categories", label: "التصنيفات" },
   { href: "/admin/authors", label: "المؤلفون" },
   { href: "/admin/orders", label: "الطلبات" },
@@ -32,14 +32,19 @@ export function AdminSidebar() {
         <ul className="space-y-1">
           {navItems.map((item) => {
             const active = isCurrentPath(pathname, item.href);
+            const highlight = "highlight" in item && item.highlight;
 
             return (
               <li key={item.href}>
                 <Link
                   href={item.href}
                   aria-current={active ? "page" : undefined}
-                  className={`block rounded-lg px-3 py-2 text-sm font-medium focus-visible:outline-none focus-visible:ring-2 focus-visible:ring-slate-500 ${
-                    active ? "bg-slate-900 text-white" : "text-slate-700 hover:bg-slate-100"
+                  className={`block rounded-lg px-3 py-2 text-sm font-medium focus-visible:outline-none focus-visible:ring-2 ${
+                    active
+                      ? "bg-slate-900 text-white focus-visible:ring-slate-500"
+                      : highlight
+                        ? "bg-indigo-600 text-white hover:bg-indigo-500 focus-visible:ring-indigo-500"
+                        : "text-slate-700 hover:bg-slate-100 focus-visible:ring-slate-500"
                   }`}
                 >
                   {item.label}

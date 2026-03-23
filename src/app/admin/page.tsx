@@ -9,6 +9,14 @@ export default function AdminDashboardPage() {
     { label: "مدفوعات قيد المراجعة", value: "6" },
   ];
 
+  const adminSections = [
+    { href: "/admin/books", title: "الكتب", description: "عرض جميع الكتب وإدارة النشر والعروض." },
+    { href: "/admin/authors", title: "المؤلفون", description: "إضافة وتعديل بيانات المؤلفين." },
+    { href: "/admin/categories", title: "التصنيفات", description: "تنظيم التصنيفات وربطها بالكتب." },
+    { href: "/admin/orders", title: "الطلبات", description: "متابعة الطلبات وحالاتها." },
+    { href: "/admin/payments", title: "المدفوعات", description: "مراجعة محاولات الدفع وحالتها." },
+  ];
+
   return (
     <>
       <AdminPageCard>
@@ -39,6 +47,22 @@ export default function AdminDashboardPage() {
           <Link href="/admin/books/new" className="rounded-lg bg-slate-900 px-4 py-2 text-sm font-semibold text-white hover:bg-slate-700">
             رفع/إضافة كتاب جديد
           </Link>
+        </div>
+      </AdminPageCard>
+
+      <AdminPageCard>
+        <AdminPageHeader title="روابط الإدارة الأساسية" description="اختر القسم المطلوب للوصول السريع إلى المهام اليومية." />
+        <div className="grid gap-3 sm:grid-cols-2 lg:grid-cols-3">
+          {adminSections.map((section) => (
+            <Link
+              key={section.href}
+              href={section.href}
+              className="rounded-xl border border-slate-200 bg-slate-50 p-4 transition hover:border-slate-300 hover:bg-white focus-visible:outline-none focus-visible:ring-2 focus-visible:ring-slate-500"
+            >
+              <p className="text-base font-semibold text-slate-900">{section.title}</p>
+              <p className="mt-1 text-sm text-slate-600">{section.description}</p>
+            </Link>
+          ))}
         </div>
       </AdminPageCard>
     </>

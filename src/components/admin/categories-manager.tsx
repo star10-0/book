@@ -117,7 +117,11 @@ export function CategoriesManager({ categories }: CategoriesManagerProps) {
       <CreateCategoryForm />
 
       <div className="space-y-3">
-        {categories.length === 0 ? <p className="rounded-xl border border-dashed border-slate-300 p-4 text-sm text-slate-600">لا توجد تصنيفات بعد.</p> : null}
+        {categories.length === 0 ? (
+          <p className="rounded-xl border border-dashed border-slate-300 p-4 text-sm text-slate-600">
+            لا توجد تصنيفات بعد. أضف اسم تصنيف من النموذج بالأعلى ثم اضغط «إضافة التصنيف».
+          </p>
+        ) : null}
 
         {categories.map((category) => (
           <CategoryRowForm key={category.id} category={category} />

@@ -15,6 +15,7 @@ export default function AdminOrdersPage() {
         caption="جدول الطلبات"
         rows={orders}
         getRowKey={(row) => row.id}
+        emptyMessage="لا توجد طلبات حالياً. عند إنشاء طلبات من واجهة المتجر ستظهر هنا."
         columns={[
           { key: "id", title: "رقم الطلب", render: (row) => row.id },
           { key: "user", title: "المستخدم", render: (row) => row.user },
