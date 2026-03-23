@@ -28,6 +28,10 @@ function resolveSafeCallbackUrl(rawCallbackUrl: string) {
   return rawCallbackUrl;
 }
 
+function hasAuthSecretConfigured() {
+  return Boolean(process.env.AUTH_SECRET);
+}
+
 export async function signInAction(_prevState: AuthFormState, formData: FormData): Promise<AuthFormState> {
   const email = readField(formData, "email").toLowerCase();
   const password = readField(formData, "password");
@@ -47,26 +51,35 @@ export async function signInAction(_prevState: AuthFormState, formData: FormData
     return { error: "تحقق من الحقول المطلوبة ثم أعد المحاولة.", fieldErrors };
   }
 
-  const user = await prisma.user.findUnique({
-    where: { email },
-    select: {
-      id: true,
-      passwordHash: true,
-      isActive: true,
-    },
-  });
-
-  if (!user || !user.passwordHash || !user.isActive) {
-    return { error: "بيانات الدخول غير صحيحة أو الحساب غير مفعل." };
+  if (!hasAuthSecretConfigured()) {
+    return { error: "إعدادات تسجيل الدخول غير مكتملة على الخادم (AUTH_SECRET). تواصل مع مسؤول النظام." };
   }
 
-  const isValidPassword = await verifyPassword(password, user.passwordHash);
+  try {
+    const user = await prisma.user.findUnique({
+      where: { email },
+      select: {
+        id: true,
+        passwordHash: true,
+        isActive: true,
+      },
+    });
 
-  if (!isValidPassword) {
-    return { error: "بيانات الدخول غير صحيحة أو الحساب غير مفعل." };
+    if (!user || !user.passwordHash || !user.isActive) {
+      return { error: "بيانات الدخول غير صحيحة أو الحساب غير مفعل." };
+    }
+
+    const isValidPassword = await verifyPassword(password, user.passwordHash);
+
+    if (!isValidPassword) {
+      return { error: "بيانات الدخول غير صحيحة أو الحساب غير مفعل." };
+    }
+
+    await startUserSession(user.id);
+  } catch {
+    return { error: "تعذر تسجيل الدخول حاليًا بسبب خطأ داخلي. يرجى المحاولة لاحقًا." };
   }
 
-  await startUserSession(user.id);
   redirect(callbackUrl);
 }
 
@@ -93,6 +106,10 @@ export async function signUpAction(_prevState: AuthFormState, formData: FormData
 
   if (Object.keys(fieldErrors).length > 0) {
     return { error: "تحقق من الحقول المطلوبة ثم أعد المحاولة.", fieldErrors };
+  }
+
+  if (!hasAuthSecretConfigured()) {
+    return { error: "إعدادات إنشاء الحساب غير مكتملة على الخادم (AUTH_SECRET). تواصل مع مسؤول النظام." };
   }
 
   const existing = await prisma.user.findUnique({ where: { email }, select: { id: true } });
