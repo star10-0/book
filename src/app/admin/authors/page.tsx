@@ -1,25 +1,34 @@
 import { AdminPageCard, AdminPageHeader } from "@/components/admin/admin-page";
-import { AdminTable } from "@/components/admin/admin-table";
+import { AuthorsManager } from "@/components/admin/authors-manager";
+import { prisma } from "@/lib/prisma";
 
-const authors = [
-  { id: "aut_21", name: "مها العلي", booksCount: 6, status: "نشط" },
-  { id: "aut_22", name: "أحمد شحادة", booksCount: 4, status: "نشط" },
-  { id: "aut_23", name: "سارة حمود", booksCount: 2, status: "معلق" },
-];
+export default async function AdminAuthorsPage() {
+  const authors = await prisma.author.findMany({
+    select: {
+      id: true,
+      nameAr: true,
+      slug: true,
+      _count: {
+        select: {
+          books: true,
+        },
+      },
+    },
+    orderBy: {
+      nameAr: "asc",
+    },
+  });
 
-export default function AdminAuthorsPage() {
   return (
     <AdminPageCard>
-      <AdminPageHeader title="إدارة المؤلفين" description="متابعة حالة المؤلفين وعدد الكتب المرتبطة بكل مؤلف." />
-      <AdminTable
-        caption="جدول المؤلفين"
-        rows={authors}
-        getRowKey={(row) => row.id}
-        columns={[
-          { key: "name", title: "الاسم", render: (row) => row.name },
-          { key: "booksCount", title: "عدد الكتب", render: (row) => row.booksCount },
-          { key: "status", title: "الحالة", render: (row) => row.status },
-        ]}
+      <AdminPageHeader title="إدارة المؤلفين" description="إضافة وتعديل وحذف المؤلفين مع التحقق من الارتباطات بالكتب." />
+      <AuthorsManager
+        authors={authors.map((author) => ({
+          id: author.id,
+          nameAr: author.nameAr,
+          slug: author.slug,
+          booksCount: author._count.books,
+        }))}
       />
     </AdminPageCard>
   );
