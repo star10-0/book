@@ -38,7 +38,7 @@ Payment flows are isolated behind `PaymentGateway` implementations (`src/lib/pay
   - signed server sessions in HTTP-only cookies
   - protected `/account/*` and role-protected `/admin/*`
 - Catalog browsing and book details with active digital offers.
-- Authenticated order creation (`POST /api/orders`) for one digital offer at a time.
+- Authenticated offer-to-checkout flow: review selected offer on `/checkout`, create order via `POST /api/orders`, then continue on `/checkout/[orderId]` and `/orders/[orderId]/summary`.
 - Payment attempt lifecycle:
   - create payment attempt
   - submit proof/transaction reference
@@ -105,6 +105,8 @@ Payment flows are isolated behind `PaymentGateway` implementations (`src/lib/pay
    npm run prisma:seed
    npm run dev
    ```
+
+> Seed now creates only an admin account by default (`admin@book.local` / `AdminPass123!`). Create reader accounts via sign up.
 
 
 ## Book asset storage variables (server only)

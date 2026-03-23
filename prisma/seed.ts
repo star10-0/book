@@ -21,10 +21,7 @@ type SeedBook = {
 };
 
 const seed = async () => {
-  const [adminPasswordHash, userPasswordHash] = await Promise.all([
-    hashPassword('AdminPass123!'),
-    hashPassword('UserPass123!'),
-  ]);
+  const adminPasswordHash = await hashPassword('AdminPass123!');
 
   const adminUser = await prisma.user.upsert({
     where: { email: 'admin@book.local' },
@@ -40,23 +37,6 @@ const seed = async () => {
       role: UserRole.ADMIN,
       isActive: true,
       passwordHash: adminPasswordHash,
-    },
-  });
-
-  const demoUser = await prisma.user.upsert({
-    where: { email: 'demo@book.local' },
-    update: {
-      fullName: 'قارئ افتراضي',
-      role: UserRole.USER,
-      isActive: true,
-      passwordHash: userPasswordHash,
-    },
-    create: {
-      email: 'demo@book.local',
-      fullName: 'قارئ افتراضي',
-      role: UserRole.USER,
-      isActive: true,
-      passwordHash: userPasswordHash,
     },
   });
 
@@ -316,8 +296,8 @@ const seed = async () => {
     });
   }
 
-  console.log(`Seed complete: users(2), authors(${authors.length}), categories(${categories.length}), books(${books.length}).`);
-  console.log(`Admin user: ${adminUser.email} | Demo user: ${demoUser.email}`);
+  console.log(`Seed complete: users(1), authors(${authors.length}), categories(${categories.length}), books(${books.length}).`);
+  console.log(`Admin user: ${adminUser.email}`);
 };
 
 seed()

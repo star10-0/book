@@ -1,4 +1,6 @@
-import type { BookOffer } from "@prisma/client";
+import { AccessGrantType, type BookOffer } from "@prisma/client";
+
+const CUID_PATTERN = /^[a-z0-9]{8,36}$/;
 
 export interface CreateOrderRequest {
   bookId: string;
@@ -20,17 +22,24 @@ export function validateCreateOrderPayload(payload: unknown): { data?: CreateOrd
     return { error: "حقل offerId مطلوب." };
   }
 
+  const normalizedBookId = bookId.trim();
+  const normalizedOfferId = offerId.trim();
+
+  if (!isLikelyId(normalizedBookId) || !isLikelyId(normalizedOfferId)) {
+    return { error: "معرّفات الطلب غير صالحة." };
+  }
+
   return {
     data: {
-      bookId: bookId.trim(),
-      offerId: offerId.trim(),
+      bookId: normalizedBookId,
+      offerId: normalizedOfferId,
     },
   };
 }
 
 export function isOfferCurrentlyAvailable(
   offer:
-    | (Pick<BookOffer, "isActive" | "startsAt" | "endsAt"> & {
+    | (Pick<BookOffer, "isActive" | "startsAt" | "endsAt" | "type" | "rentalDays"> & {
         book: { status: string; format: string };
       })
     | null,
@@ -48,6 +57,10 @@ export function isOfferCurrentlyAvailable(
     return false;
   }
 
+  if (offer.type === "RENTAL" && (!offer.rentalDays || offer.rentalDays <= 0)) {
+    return false;
+  }
+
   if (offer.startsAt && offer.startsAt > now) {
     return false;
   }
@@ -57,4 +70,12 @@ export function isOfferCurrentlyAvailable(
   }
 
   return true;
+}
+
+export function mapOfferTypeToAccessGrantType(offerType: BookOffer["type"]): AccessGrantType {
+  return offerType === "PURCHASE" ? AccessGrantType.PURCHASE : AccessGrantType.RENTAL;
+}
+
+function isLikelyId(value: string) {
+  return CUID_PATTERN.test(value);
 }
