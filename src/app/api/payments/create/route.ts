@@ -1,8 +1,8 @@
 import { PaymentProvider } from "@prisma/client";
-import { NextResponse } from "next/server";
 import { getCurrentUser } from "@/lib/auth-session";
-import { createPaymentForOrder } from "@/lib/payments/payment-service";
 import { GatewayConfigurationError, GatewayRequestError } from "@/lib/payments/gateways/provider-http";
+import { createPaymentForOrder } from "@/lib/payments/payment-service";
+import { isSameOriginMutation, jsonNoStore, rejectCrossOriginMutation } from "@/lib/security";
 
 interface CreatePaymentRequestBody {
   orderId?: string;
@@ -10,29 +10,33 @@ interface CreatePaymentRequestBody {
 }
 
 export async function POST(request: Request) {
+  if (!isSameOriginMutation(request)) {
+    return rejectCrossOriginMutation();
+  }
+
   let body: CreatePaymentRequestBody;
 
   try {
     body = (await request.json()) as CreatePaymentRequestBody;
   } catch {
-    return NextResponse.json({ message: "تعذر قراءة بيانات الدفع." }, { status: 400 });
+    return jsonNoStore({ message: "تعذر قراءة بيانات الدفع." }, { status: 400 });
   }
 
   const orderId = body.orderId?.trim();
   const provider = body.provider;
 
   if (!orderId || !provider) {
-    return NextResponse.json({ message: "الطلب غير مكتمل." }, { status: 400 });
+    return jsonNoStore({ message: "الطلب غير مكتمل." }, { status: 400 });
   }
 
   if (!Object.values(PaymentProvider).includes(provider)) {
-    return NextResponse.json({ message: "مزود الدفع غير صالح." }, { status: 400 });
+    return jsonNoStore({ message: "مزود الدفع غير صالح." }, { status: 400 });
   }
 
   const user = await getCurrentUser();
 
   if (!user) {
-    return NextResponse.json({ message: "يجب تسجيل الدخول أولاً." }, { status: 401 });
+    return jsonNoStore({ message: "يجب تسجيل الدخول أولاً." }, { status: 401 });
   }
 
   try {
@@ -42,7 +46,7 @@ export async function POST(request: Request) {
       userId: user.id,
     });
 
-    return NextResponse.json(
+    return jsonNoStore(
       {
         message: "تم إنشاء محاولة الدفع.",
         payment: {
@@ -61,26 +65,26 @@ export async function POST(request: Request) {
     );
   } catch (error) {
     if (error instanceof Error && error.message === "ORDER_NOT_FOUND") {
-      return NextResponse.json({ message: "الطلب غير موجود." }, { status: 404 });
+      return jsonNoStore({ message: "الطلب غير موجود." }, { status: 404 });
     }
 
     if (error instanceof Error && error.message === "ORDER_NOT_PAYABLE") {
-      return NextResponse.json({ message: "لا يمكن دفع هذا الطلب حالياً." }, { status: 409 });
+      return jsonNoStore({ message: "لا يمكن دفع هذا الطلب حالياً." }, { status: 409 });
     }
 
     if (error instanceof Error && error.message.startsWith("No payment gateway")) {
-      return NextResponse.json({ message: "مزود الدفع غير مدعوم حالياً." }, { status: 400 });
+      return jsonNoStore({ message: "مزود الدفع غير مدعوم حالياً." }, { status: 400 });
     }
 
     if (error instanceof GatewayConfigurationError) {
-      return NextResponse.json({ message: "إعدادات مزود الدفع غير مكتملة على الخادم." }, { status: 500 });
+      return jsonNoStore({ message: "إعدادات مزود الدفع غير مكتملة على الخادم." }, { status: 500 });
     }
 
     if (error instanceof GatewayRequestError) {
-      return NextResponse.json({ message: "تعذر إنشاء عملية الدفع لدى مزود الخدمة حالياً." }, { status: 502 });
+      return jsonNoStore({ message: "تعذر إنشاء عملية الدفع لدى مزود الخدمة حالياً." }, { status: 502 });
     }
 
     console.error("Failed to create payment", error);
-    return NextResponse.json({ message: "تعذر إنشاء محاولة الدفع حالياً. حاول لاحقاً." }, { status: 500 });
+    return jsonNoStore({ message: "تعذر إنشاء محاولة الدفع حالياً. حاول لاحقاً." }, { status: 500 });
   }
 }

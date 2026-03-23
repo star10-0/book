@@ -63,9 +63,9 @@ const defaultCover = "https://placehold.co/600x900/e2e8f0/334155?text=Book";
 
 export function HeroSection() {
   return (
-    <section className="rounded-3xl bg-gradient-to-l from-indigo-700 to-indigo-500 p-6 text-white shadow-lg sm:p-10 lg:p-12">
+    <section className="rounded-3xl bg-gradient-to-l from-indigo-700 to-indigo-500 p-6 text-white shadow-lg sm:p-10 lg:p-12" aria-labelledby="hero-title">
       <p className="text-sm font-semibold text-indigo-100">منصة عربية أولًا</p>
-      <h1 className="mt-3 text-3xl font-bold leading-tight sm:text-4xl lg:text-5xl">اكتشف كتبك الرقمية المفضلة</h1>
+      <h1 id="hero-title" className="mt-3 text-3xl font-bold leading-tight sm:text-4xl lg:text-5xl">اكتشف كتبك الرقمية المفضلة</h1>
       <p className="mt-4 max-w-2xl text-base leading-8 text-indigo-100 sm:text-lg">
         اشترِ أو استأجر الكتب العربية بسهولة، واقرأ أينما كنت عبر تجربة حديثة تدعم الهاتف واللوحي
         وسطح المكتب.
@@ -143,7 +143,7 @@ export function RecommendedBooksSection({ books }: { books: RecommendedBookItem[
       <h2 className="text-2xl font-bold text-slate-900">مقترح لك</h2>
       <p className="mt-2 text-sm text-slate-600">كتب مختارة حسب تقييمات القرّاء وتنوّع التصنيفات.</p>
 
-      <div className="mt-5 grid gap-4 md:grid-cols-3">
+      <div className="mt-5 grid gap-4 sm:grid-cols-2 lg:grid-cols-3">
         {books.map((book) => (
           <article key={book.id} className="rounded-2xl border border-slate-200 bg-slate-50 p-4">
             <div className="flex gap-3">
@@ -155,7 +155,7 @@ export function RecommendedBooksSection({ books }: { books: RecommendedBookItem[
               </div>
             </div>
             <Link href={`/books/${book.slug}`} className="mt-3 inline-block text-sm font-semibold text-indigo-600 hover:text-indigo-700">
-              اقرأ المزيد ←
+              اقرأ المزيد
             </Link>
           </article>
         ))}

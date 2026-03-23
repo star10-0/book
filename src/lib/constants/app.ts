@@ -1,4 +1,4 @@
-export const APP_NAME = "book";
+export const APP_NAME = "Book";
 export const APP_DESCRIPTION = "منصة عربية لقراءة وشراء واستئجار الكتب الرقمية";
 
 export const DEFAULT_LOCALE = "ar-SY";

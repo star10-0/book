@@ -1,7 +1,7 @@
-import { NextResponse } from "next/server";
 import { getCurrentUser } from "@/lib/auth-session";
-import { verifyPayment } from "@/lib/payments/payment-service";
 import { GatewayConfigurationError, GatewayRequestError } from "@/lib/payments/gateways/provider-http";
+import { verifyPayment } from "@/lib/payments/payment-service";
+import { isSameOriginMutation, jsonNoStore, rejectCrossOriginMutation } from "@/lib/security";
 
 interface VerifyMockRequestBody {
   attemptId?: string;
@@ -9,29 +9,33 @@ interface VerifyMockRequestBody {
 }
 
 export async function POST(request: Request) {
+  if (!isSameOriginMutation(request)) {
+    return rejectCrossOriginMutation();
+  }
+
   let body: VerifyMockRequestBody;
 
   try {
     body = (await request.json()) as VerifyMockRequestBody;
   } catch {
-    return NextResponse.json({ message: "تعذر قراءة بيانات التحقق." }, { status: 400 });
+    return jsonNoStore({ message: "تعذر قراءة بيانات التحقق." }, { status: 400 });
   }
 
   const attemptId = body.attemptId?.trim();
   const mockOutcome = body.mockOutcome;
 
   if (!attemptId) {
-    return NextResponse.json({ message: "معرف محاولة الدفع مطلوب." }, { status: 400 });
+    return jsonNoStore({ message: "معرف محاولة الدفع مطلوب." }, { status: 400 });
   }
 
   if (mockOutcome && mockOutcome !== "paid" && mockOutcome !== "failed") {
-    return NextResponse.json({ message: "نتيجة المحاكاة غير صالحة." }, { status: 400 });
+    return jsonNoStore({ message: "نتيجة المحاكاة غير صالحة." }, { status: 400 });
   }
 
   const user = await getCurrentUser();
 
   if (!user) {
-    return NextResponse.json({ message: "يجب تسجيل الدخول أولاً." }, { status: 401 });
+    return jsonNoStore({ message: "يجب تسجيل الدخول أولاً." }, { status: 401 });
   }
 
   try {
@@ -41,7 +45,7 @@ export async function POST(request: Request) {
       mockOutcome,
     });
 
-    return NextResponse.json({
+    return jsonNoStore({
       message: "تم التحقق من حالة الدفع لدى مزود الخدمة.",
       attempt: {
         id: attempt.id,
@@ -52,26 +56,26 @@ export async function POST(request: Request) {
     });
   } catch (error) {
     if (error instanceof Error && error.message === "ATTEMPT_NOT_FOUND") {
-      return NextResponse.json({ message: "محاولة الدفع غير موجودة." }, { status: 404 });
+      return jsonNoStore({ message: "محاولة الدفع غير موجودة." }, { status: 404 });
     }
 
     if (error instanceof Error && error.message === "MISSING_PROVIDER_REFERENCE") {
-      return NextResponse.json({ message: "بيانات مزود الدفع غير مكتملة لهذه المحاولة." }, { status: 409 });
+      return jsonNoStore({ message: "بيانات مزود الدفع غير مكتملة لهذه المحاولة." }, { status: 409 });
     }
 
     if (error instanceof Error && error.message.startsWith("Invalid payment status transition")) {
-      return NextResponse.json({ message: "حالة الدفع الحالية لا تسمح بالتحقق." }, { status: 409 });
+      return jsonNoStore({ message: "حالة الدفع الحالية لا تسمح بالتحقق." }, { status: 409 });
     }
 
     if (error instanceof GatewayConfigurationError) {
-      return NextResponse.json({ message: "إعدادات مزود الدفع غير مكتملة على الخادم." }, { status: 500 });
+      return jsonNoStore({ message: "إعدادات مزود الدفع غير مكتملة على الخادم." }, { status: 500 });
     }
 
     if (error instanceof GatewayRequestError) {
-      return NextResponse.json({ message: "تعذر التحقق من الدفع عبر مزود الخدمة حالياً." }, { status: 502 });
+      return jsonNoStore({ message: "تعذر التحقق من الدفع عبر مزود الخدمة حالياً." }, { status: 502 });
     }
 
     console.error("Failed to verify payment", error);
-    return NextResponse.json({ message: "تعذر التحقق من الدفع حالياً. حاول لاحقاً." }, { status: 500 });
+    return jsonNoStore({ message: "تعذر التحقق من الدفع حالياً. حاول لاحقاً." }, { status: 500 });
   }
 }

@@ -1,5 +1,6 @@
-import type { Metadata } from "next";
+import type { Metadata, Viewport } from "next";
 import { ServiceWorkerRegister } from "@/components/pwa/sw-register";
+import { APP_DESCRIPTION, APP_NAME } from "@/lib/constants/app";
 import "./globals.css";
 
 const appTitle = "Book";
@@ -12,7 +13,14 @@ export const metadata: Metadata = {
     template: `%s | ${appTitle}`,
   },
   description: appDescription,
-  applicationName: appTitle,
+  applicationName: APP_NAME,
+  alternates: {
+    canonical: "/",
+    languages: {
+      ar: "/",
+    },
+  },
+  category: "books",
   keywords: ["كتب عربية", "كتب رقمية", "مكتبة إلكترونية", "استئجار كتب", "شراء كتب"],
   openGraph: {
     title: `${appTitle} | مكتبة رقمية عربية`,
@@ -20,6 +28,7 @@ export const metadata: Metadata = {
     locale: "ar_SY",
     type: "website",
     siteName: appTitle,
+    url: "/",
   },
   twitter: {
     card: "summary_large_image",
@@ -27,6 +36,10 @@ export const metadata: Metadata = {
     description: appDescription,
   },
   manifest: "/manifest.webmanifest",
+  robots: {
+    index: true,
+    follow: true,
+  },
   icons: {
     icon: [
       { url: "/icons/icon-192.png", sizes: "192x192", type: "image/png" },
@@ -37,6 +50,11 @@ export const metadata: Metadata = {
   },
 };
 
+export const viewport: Viewport = {
+  themeColor: "#0f172a",
+  colorScheme: "light",
+};
+
 export default function RootLayout({
   children,
 }: Readonly<{
@@ -44,9 +62,31 @@ export default function RootLayout({
 }>) {
   return (
     <html lang="ar" dir="rtl">
-      <body className="font-sans">
+      <body className="font-sans bg-slate-50 text-slate-900">
+        <a
+          href="#main-content"
+          className="sr-only focus:not-sr-only focus:fixed focus:right-4 focus:top-4 focus:z-50 focus:rounded-lg focus:bg-slate-900 focus:px-4 focus:py-2 focus:text-sm focus:font-semibold focus:text-white"
+        >
+          الانتقال إلى المحتوى الرئيسي
+        </a>
         <ServiceWorkerRegister />
-        <div className="mx-auto min-h-screen max-w-6xl px-4 py-6 sm:px-6 sm:py-8 lg:px-8">{children}</div>
+        <div className="mx-auto min-h-screen max-w-6xl px-4 py-6 sm:px-6 sm:py-8 lg:px-8">
+          <div id="main-content">{children}</div>
+        </div>
+
+        <script
+          type="application/ld+json"
+          dangerouslySetInnerHTML={{
+            __html: JSON.stringify({
+              "@context": "https://schema.org",
+              "@type": "WebSite",
+              name: APP_NAME,
+              description: APP_DESCRIPTION,
+              inLanguage: "ar",
+              url: "https://book.example",
+            }),
+          }}
+        />
       </body>
     </html>
   );
