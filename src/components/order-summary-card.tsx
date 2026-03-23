@@ -28,6 +28,8 @@ export function OrderSummaryCard({ bookId, bookTitle, offers }: OrderSummaryCard
   }
 
   const checkoutHref = selectedOffer ? `/checkout?bookId=${bookId}&offerId=${selectedOffer.id}` : "#";
+  const ctaLabel =
+    selectedOffer?.type === "PURCHASE" ? "شراء الكتاب الآن" : selectedOffer?.type === "RENTAL" ? "استئجار الكتاب الآن" : "متابعة إلى صفحة الإتمام";
 
   return (
     <section aria-label="ملخص الطلب" className="space-y-4 rounded-2xl bg-slate-50 p-4 ring-1 ring-slate-200">
@@ -75,7 +77,7 @@ export function OrderSummaryCard({ bookId, bookTitle, offers }: OrderSummaryCard
         aria-disabled={!selectedOffer}
         className="inline-flex w-full items-center justify-center rounded-xl bg-indigo-600 px-4 py-3 text-sm font-semibold text-white transition hover:bg-indigo-500 focus-visible:outline-none focus-visible:ring-2 focus-visible:ring-indigo-500 focus-visible:ring-offset-2 aria-disabled:pointer-events-none aria-disabled:bg-slate-300"
       >
-        متابعة إلى صفحة الإتمام
+        {ctaLabel}
       </Link>
     </section>
   );
