@@ -14,8 +14,24 @@ type ReaderPageProps = {
   }>;
 };
 
-function isGrantExpired(grant: { status: string; expiresAt: Date | null }) {
-  return grant.status !== "ACTIVE" || (grant.expiresAt !== null && grant.expiresAt <= new Date());
+function isExpiredRentalGrant(grant: { type: string; status: string; expiresAt: Date | null }, now: Date) {
+  if (grant.type !== "RENTAL") {
+    return false;
+  }
+
+  return grant.status === "EXPIRED" || (grant.expiresAt !== null && grant.expiresAt <= now);
+}
+
+function isActiveGrant(grant: { status: string; startsAt: Date; expiresAt: Date | null }, now: Date) {
+  if (grant.status !== "ACTIVE") {
+    return false;
+  }
+
+  if (grant.startsAt > now) {
+    return false;
+  }
+
+  return grant.expiresAt === null || grant.expiresAt > now;
 }
 
 export default async function ReaderPage({ params }: ReaderPageProps) {
@@ -29,6 +45,7 @@ export default async function ReaderPage({ params }: ReaderPageProps) {
     },
     select: {
       id: true,
+      type: true,
       status: true,
       expiresAt: true,
       startsAt: true,
@@ -53,6 +70,7 @@ export default async function ReaderPage({ params }: ReaderPageProps) {
               storageKey: true,
               isEncrypted: true,
               metadata: true,
+              pdfPageCount: true,
             },
             take: 1,
           },
@@ -65,9 +83,15 @@ export default async function ReaderPage({ params }: ReaderPageProps) {
     notFound();
   }
 
-  const expired = isGrantExpired(accessGrant);
+  const now = new Date();
+  const hasActiveGrant = isActiveGrant(accessGrant, now);
+  const isExpiredRental = isExpiredRentalGrant(accessGrant, now);
 
-  if (!expired) {
+  if (!hasActiveGrant && !isExpiredRental) {
+    notFound();
+  }
+
+  if (hasActiveGrant) {
     await prisma.readingProgress.upsert({
       where: {
         userId_bookId: {
@@ -101,13 +125,24 @@ export default async function ReaderPage({ params }: ReaderPageProps) {
     },
   });
 
-  const readerSource = accessGrant.book.files[0] as ReaderDocumentSource | undefined;
+  const bookFile = accessGrant.book.files[0];
+  const readerSource: ReaderDocumentSource | null =
+    bookFile && (bookFile.kind === "PDF" || bookFile.kind === "EPUB")
+    ? {
+        kind: bookFile.kind,
+        publicUrl: bookFile.publicUrl,
+        storageKey: bookFile.storageKey,
+        isEncrypted: bookFile.isEncrypted,
+        metadata: bookFile.metadata,
+        pageCount: bookFile.pdfPageCount,
+      }
+    : null;
 
   return (
     <main className="space-y-6" dir="rtl">
       <SiteHeader />
 
-      {expired ? (
+      {isExpiredRental ? (
         <section className="space-y-4 rounded-2xl bg-rose-50 p-6 ring-1 ring-rose-200">
           <h1 className="text-2xl font-bold text-rose-800">انتهت صلاحية الوصول</h1>
           <p className="text-sm text-rose-700">
@@ -130,13 +165,13 @@ export default async function ReaderPage({ params }: ReaderPageProps) {
           </div>
         </section>
       ) : (
-        <ReaderShell
-          accessId={accessGrant.id}
-          bookTitle={accessGrant.book.titleAr}
-          initialProgressPercent={readingProgress?.progressPercent ?? 0}
-          initialLocator={readingProgress?.locator ?? "page:1"}
-          source={readerSource ?? null}
-        />
+          <ReaderShell
+            accessId={accessGrant.id}
+            bookTitle={accessGrant.book.titleAr}
+            initialProgressPercent={readingProgress?.progressPercent ?? 0}
+            initialLocator={readingProgress?.locator ?? "page:1"}
+            source={readerSource}
+          />
       )}
     </main>
   );

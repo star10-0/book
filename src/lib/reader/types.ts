@@ -15,6 +15,7 @@ export type ReaderDocumentSource = {
   storageKey: string;
   isEncrypted: boolean;
   metadata: unknown;
+  pageCount?: number | null;
 };
 
 export type ReaderProtectionHooks = {

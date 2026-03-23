@@ -34,6 +34,7 @@ function getViewerPalette(theme: ReaderTheme) {
 export function ReaderViewport({ source, locator, theme, onLocationChange, onControlsReady }: ReaderViewportProps) {
   const palette = useMemo(() => getViewerPalette(theme), [theme]);
   const currentPage = parsePdfPageFromLocator(locator);
+  const totalPages = source?.kind === "PDF" && typeof source.pageCount === "number" && source.pageCount > 0 ? source.pageCount : null;
 
   useEffect(() => {
     if (!source?.publicUrl || source.kind !== "PDF") {
@@ -41,11 +42,25 @@ export function ReaderViewport({ source, locator, theme, onLocationChange, onCon
       return;
     }
 
+    const toProgress = (page: number) => {
+      if (!totalPages) {
+        return 0;
+      }
+
+      return Math.min(100, (Math.max(1, page) / totalPages) * 100);
+    };
+
     onControlsReady({
-      next: () => onLocationChange({ locator: toPdfLocator(currentPage + 1), progressPercent: 0 }),
-      previous: () => onLocationChange({ locator: toPdfLocator(Math.max(1, currentPage - 1)), progressPercent: 0 }),
+      next: () => {
+        const nextPage = totalPages ? Math.min(totalPages, currentPage + 1) : currentPage + 1;
+        onLocationChange({ locator: toPdfLocator(nextPage), progressPercent: toProgress(nextPage) });
+      },
+      previous: () => {
+        const prevPage = Math.max(1, currentPage - 1);
+        onLocationChange({ locator: toPdfLocator(prevPage), progressPercent: toProgress(prevPage) });
+      },
     });
-  }, [currentPage, onControlsReady, onLocationChange, source]);
+  }, [currentPage, onControlsReady, onLocationChange, source, totalPages]);
 
   if (!source?.publicUrl) {
     return (
@@ -80,7 +95,8 @@ export function ReaderViewport({ source, locator, theme, onLocationChange, onCon
         className={`h-[70vh] w-full ${palette.wrapper}`}
       />
       <div className="border-t border-dashed border-slate-300 bg-slate-50 p-3 text-xs text-slate-600 dark:border-slate-700 dark:bg-slate-900 dark:text-slate-300">
-        تمت تهيئة EPUB عبر Web Viewer URL. يمكن لاحقاً استبداله بمحرك EPUB.js مع DRM/WATERMARK hooks دون تغيير واجهة الصفحة.
+        تمت تهيئة EPUB كعرض أولي Placeholder عبر Web Viewer URL مع حفظ آخر موضع ({locator}). يمكن لاحقاً استبداله بمحرك
+        EPUB.js دون تغيير واجهة الصفحة.
       </div>
     </div>
   );
