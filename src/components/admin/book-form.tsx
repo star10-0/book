@@ -33,8 +33,8 @@ function mergeValues(initialValues: BookFormValues | undefined, stateValues: Boo
 }
 
 export function BookForm({ mode, initialValues, authors, categories, action }: BookFormProps) {
-  const title = mode === "create" ? "إضافة كتاب جديد" : "تعديل بيانات الكتاب";
-  const actionLabel = mode === "create" ? "إنشاء الكتاب" : "حفظ التعديلات";
+  const title = mode === "create" ? "إضافة كتاب جديد إلى المتجر" : "تعديل بيانات الكتاب";
+  const actionLabel = mode === "create" ? "حفظ وإضافة الكتاب" : "حفظ التعديلات";
 
   const [state, formAction, isPending] = useActionState(action, initialState);
   const values = mergeValues(initialValues, state.values);
@@ -42,8 +42,8 @@ export function BookForm({ mode, initialValues, authors, categories, action }: B
   return (
     <form action={formAction} className="space-y-5 rounded-2xl border border-slate-200 bg-white p-6 shadow-sm" noValidate>
       <div>
-        <h1 className="text-2xl font-bold text-slate-900">{title}</h1>
-        <p className="mt-2 text-sm text-slate-600">أدخل تفاصيل الكتاب والعروض الرقمية (شراء/إيجار) ثم احفظ التغييرات.</p>
+        <h1 className="text-3xl font-extrabold text-slate-900">{title}</h1>
+        <p className="mt-2 text-sm text-slate-600">أدخل تفاصيل الكتاب والعروض الرقمية (شراء/إيجار) ثم اضغط زر الحفظ بالأسفل.</p>
       </div>
 
       <AdminFormSection title="البيانات الأساسية" description="معلومات التعريف الأساسية للكتاب.">
@@ -173,7 +173,7 @@ export function BookForm({ mode, initialValues, authors, categories, action }: B
         <button
           type="submit"
           disabled={isPending}
-          className="rounded-lg bg-slate-900 px-5 py-2.5 text-sm font-semibold text-white hover:bg-slate-700 focus-visible:outline-none focus-visible:ring-2 focus-visible:ring-slate-500 disabled:cursor-not-allowed disabled:opacity-75"
+          className="rounded-lg bg-indigo-700 px-6 py-3 text-base font-bold text-white hover:bg-indigo-600 focus-visible:outline-none focus-visible:ring-2 focus-visible:ring-indigo-500 disabled:cursor-not-allowed disabled:opacity-75"
         >
           {isPending ? "جارٍ الحفظ..." : actionLabel}
         </button>

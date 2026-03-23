@@ -117,7 +117,11 @@ export function AuthorsManager({ authors }: AuthorsManagerProps) {
       <CreateAuthorForm />
 
       <div className="space-y-3">
-        {authors.length === 0 ? <p className="rounded-xl border border-dashed border-slate-300 p-4 text-sm text-slate-600">لا يوجد مؤلفون بعد.</p> : null}
+        {authors.length === 0 ? (
+          <p className="rounded-xl border border-dashed border-slate-300 p-4 text-sm text-slate-600">
+            لا يوجد مؤلفون بعد. املأ نموذج «اسم المؤلف» بالأعلى ثم اضغط «إضافة المؤلف».
+          </p>
+        ) : null}
 
         {authors.map((author) => (
           <AuthorRowForm key={author.id} author={author} />

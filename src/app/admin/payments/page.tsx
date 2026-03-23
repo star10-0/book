@@ -15,6 +15,7 @@ export default function AdminPaymentsPage() {
         caption="جدول المدفوعات"
         rows={payments}
         getRowKey={(row) => row.id}
+        emptyMessage="لا توجد محاولات دفع حالياً. ستظهر هنا تلقائياً بعد بدء عمليات الدفع."
         columns={[
           { key: "id", title: "المعرف", render: (row) => row.id },
           { key: "method", title: "بوابة الدفع", render: (row) => row.method },
