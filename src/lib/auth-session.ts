@@ -145,7 +145,7 @@ export async function requireUser(options?: { callbackUrl?: string }) {
 
   if (!user) {
     const callback = options?.callbackUrl ? `?callbackUrl=${encodeURIComponent(options.callbackUrl)}` : "";
-    redirect(`/auth/sign-in${callback}`);
+    redirect(`/login${callback}`);
   }
 
   return user;

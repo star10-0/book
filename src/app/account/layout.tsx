@@ -6,7 +6,7 @@ type AccountLayoutProps = {
 };
 
 export default async function AccountLayout({ children }: AccountLayoutProps) {
-  await requireUser({ callbackUrl: "/account/orders" });
+  await requireUser({ callbackUrl: "/account" });
 
   return children;
 }

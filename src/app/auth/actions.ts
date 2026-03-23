@@ -8,6 +8,7 @@ import { prisma } from "@/lib/prisma";
 
 export type AuthFormState = {
   error?: string;
+  fieldErrors?: Partial<Record<"fullName" | "email" | "password", string>>;
 };
 
 function readField(formData: FormData, key: string) {
@@ -17,11 +18,11 @@ function readField(formData: FormData, key: string) {
 
 function resolveSafeCallbackUrl(rawCallbackUrl: string) {
   if (!rawCallbackUrl.startsWith("/")) {
-    return "/account/orders";
+    return "/account";
   }
 
   if (rawCallbackUrl.startsWith("//")) {
-    return "/account/orders";
+    return "/account";
   }
 
   return rawCallbackUrl;
@@ -30,10 +31,20 @@ function resolveSafeCallbackUrl(rawCallbackUrl: string) {
 export async function signInAction(_prevState: AuthFormState, formData: FormData): Promise<AuthFormState> {
   const email = readField(formData, "email").toLowerCase();
   const password = readField(formData, "password");
-  const callbackUrl = resolveSafeCallbackUrl(readField(formData, "callbackUrl") || "/account/orders");
+  const callbackUrl = resolveSafeCallbackUrl(readField(formData, "callbackUrl") || "/account");
 
-  if (!email || !password) {
-    return { error: "يرجى إدخال البريد الإلكتروني وكلمة المرور." };
+  const fieldErrors: AuthFormState["fieldErrors"] = {};
+
+  if (!email) {
+    fieldErrors.email = "يرجى إدخال البريد الإلكتروني.";
+  }
+
+  if (!password) {
+    fieldErrors.password = "يرجى إدخال كلمة المرور.";
+  }
+
+  if (Object.keys(fieldErrors).length > 0) {
+    return { error: "تحقق من الحقول المطلوبة ثم أعد المحاولة.", fieldErrors };
   }
 
   const user = await prisma.user.findUnique({
@@ -64,18 +75,33 @@ export async function signUpAction(_prevState: AuthFormState, formData: FormData
   const email = readField(formData, "email").toLowerCase();
   const password = readField(formData, "password");
 
-  if (!fullName || !email || !password) {
-    return { error: "جميع الحقول مطلوبة." };
+  const fieldErrors: AuthFormState["fieldErrors"] = {};
+
+  if (!fullName) {
+    fieldErrors.fullName = "يرجى إدخال الاسم الكامل.";
   }
 
-  if (password.length < 8) {
-    return { error: "كلمة المرور يجب أن تكون 8 أحرف على الأقل." };
+  if (!email) {
+    fieldErrors.email = "يرجى إدخال البريد الإلكتروني.";
+  }
+
+  if (!password) {
+    fieldErrors.password = "يرجى إدخال كلمة المرور.";
+  } else if (password.length < 8) {
+    fieldErrors.password = "كلمة المرور يجب أن تكون 8 أحرف على الأقل.";
+  }
+
+  if (Object.keys(fieldErrors).length > 0) {
+    return { error: "تحقق من الحقول المطلوبة ثم أعد المحاولة.", fieldErrors };
   }
 
   const existing = await prisma.user.findUnique({ where: { email }, select: { id: true } });
 
   if (existing) {
-    return { error: "هذا البريد الإلكتروني مسجل بالفعل." };
+    return {
+      error: "هذا البريد الإلكتروني مسجل بالفعل.",
+      fieldErrors: { email: "هذا البريد الإلكتروني مستخدم مسبقًا." },
+    };
   }
 
   const createdUser = await prisma.user.create({
@@ -92,7 +118,7 @@ export async function signUpAction(_prevState: AuthFormState, formData: FormData
   });
 
   await startUserSession(createdUser.id);
-  redirect("/account/orders");
+  redirect("/account");
 }
 
 export async function signOutAction() {
