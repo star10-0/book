@@ -56,7 +56,7 @@ Payment flows are isolated behind `PaymentGateway` implementations (`src/lib/pay
 - Admin dashboard metrics and many admin listing pages still use mock/static data.
 - Cloud storage adapters (S3/R2) are prepared via interfaces/placeholders; local provider is active for development uploads.
 - Reader rendering engine is placeholder-oriented for now (document source wiring exists; full EPUB/PDF experience is not production-grade yet).
-- Payment provider integrations are abstracted and wired, but production readiness depends on real credentials, webhook/reconciliation strategy, and provider-specific hardening.
+- Payment provider integrations are abstracted behind gateways, and the current implementation intentionally runs in mock mode to validate end-to-end checkout/payment UX before real provider APIs are integrated.
 
 ## 🚧 Remaining before production launch
 
@@ -95,7 +95,7 @@ Payment flows are isolated behind `PaymentGateway` implementations (`src/lib/pay
 
    - `DATABASE_URL` (PostgreSQL)
    - `AUTH_SECRET` (long random secret)
-   - payment provider variables (if using Sham Cash / Syriatel Cash)
+   - payment provider variables are optional during mock mode; they will be required when real provider APIs are integrated
    - optional storage variables (for future S3/R2 providers; local is default)
 
 4. Prisma + run:
@@ -120,8 +120,10 @@ BOOK_STORAGE_PROVIDER="local"
 
 ## Payment provider variables (server only)
 
+Current gateways are placeholders and operate in **mock mode** by default, so these values are not required for local development today. Keep them ready for future real integration:
+
 ```bash
-# Sham Cash
+# Sham Cash (future real integration)
 SHAM_CASH_API_BASE_URL="https://api.shamcash.example"
 SHAM_CASH_API_KEY="replace-with-sham-cash-api-key"
 SHAM_CASH_MERCHANT_ID="replace-with-sham-cash-merchant-id"
@@ -129,7 +131,7 @@ SHAM_CASH_CREATE_PAYMENT_PATH="/payments/create"
 SHAM_CASH_VERIFY_PAYMENT_PATH="/payments/verify"
 SHAM_CASH_TIMEOUT_MS="10000"
 
-# Syriatel Cash
+# Syriatel Cash (future real integration)
 SYRIATEL_CASH_API_BASE_URL="https://api.syriatelcash.example"
 SYRIATEL_CASH_API_KEY="replace-with-syriatel-cash-api-key"
 SYRIATEL_CASH_MERCHANT_ID="replace-with-syriatel-cash-merchant-id"

@@ -112,6 +112,11 @@ export default async function AccountPage() {
                   مراجعة الإعارات
                 </Link>
               </li>
+              <li>
+                <Link href="/account/payments" className="inline-flex font-semibold text-indigo-700 hover:text-indigo-600">
+                  تتبع المدفوعات
+                </Link>
+              </li>
             </ul>
           </article>
         </section>

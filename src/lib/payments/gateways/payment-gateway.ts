@@ -18,6 +18,7 @@ export interface VerifyPaymentGatewayInput {
   paymentId: string;
   providerReference: string;
   transactionReference?: string;
+  mockOutcome?: "paid" | "failed";
 }
 
 export interface VerifyPaymentGatewayResult {

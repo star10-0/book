@@ -5,6 +5,7 @@ import { GatewayConfigurationError, GatewayRequestError } from "@/lib/payments/g
 
 interface VerifyMockRequestBody {
   attemptId?: string;
+  mockOutcome?: "paid" | "failed";
 }
 
 export async function POST(request: Request) {
@@ -17,9 +18,14 @@ export async function POST(request: Request) {
   }
 
   const attemptId = body.attemptId?.trim();
+  const mockOutcome = body.mockOutcome;
 
   if (!attemptId) {
     return NextResponse.json({ message: "معرف محاولة الدفع مطلوب." }, { status: 400 });
+  }
+
+  if (mockOutcome && mockOutcome !== "paid" && mockOutcome !== "failed") {
+    return NextResponse.json({ message: "نتيجة المحاكاة غير صالحة." }, { status: 400 });
   }
 
   const user = await getCurrentUser();
@@ -32,6 +38,7 @@ export async function POST(request: Request) {
     const attempt = await verifyPayment({
       attemptId,
       userId: user.id,
+      mockOutcome,
     });
 
     return NextResponse.json({
