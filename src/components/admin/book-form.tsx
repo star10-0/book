@@ -28,6 +28,7 @@ function mergeValues(initialValues: BookFormValues | undefined, stateValues: Boo
     buyOfferEnabled: stateValues?.buyOfferEnabled ?? initialValues?.buyOfferEnabled ?? "enabled",
     rentOfferEnabled: stateValues?.rentOfferEnabled ?? initialValues?.rentOfferEnabled ?? "enabled",
     description: stateValues?.description ?? initialValues?.description ?? "",
+    metadata: stateValues?.metadata ?? initialValues?.metadata ?? "",
   };
 }
 
@@ -152,6 +153,16 @@ export function BookForm({ mode, initialValues, authors, categories, action }: B
         <div className="md:col-span-2 space-y-2">
           <AdminTextArea label="وصف مختصر" name="description" defaultValue={values.description} placeholder="ملخص الكتاب وما يميّزه" />
           {state.fieldErrors?.description ? <p className="text-sm font-medium text-rose-700">{state.fieldErrors.description}</p> : null}
+        </div>
+
+        <div className="md:col-span-2 space-y-2">
+          <AdminTextArea
+            label="Metadata (JSON)"
+            name="metadata"
+            defaultValue={values.metadata}
+            placeholder={'{"language":"ar","pages":220,"publisher":"دار المعرفة"}'}
+          />
+          {state.fieldErrors?.metadata ? <p className="text-sm font-medium text-rose-700">{state.fieldErrors.metadata}</p> : null}
         </div>
       </AdminFormSection>
 

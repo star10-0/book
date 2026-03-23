@@ -3,6 +3,7 @@
 import { BookStatus, CurrencyCode, OfferType } from "@prisma/client";
 import { revalidatePath } from "next/cache";
 import { redirect } from "next/navigation";
+import { requireAdmin } from "@/lib/auth-session";
 import { prisma } from "@/lib/prisma";
 
 const BOOK_SLUG_PATTERN = /^[a-z0-9]+(?:-[a-z0-9]+)*$/;
@@ -19,6 +20,7 @@ export type BookFormValues = {
   buyOfferEnabled?: string;
   rentOfferEnabled?: string;
   description?: string;
+  metadata?: string;
 };
 
 export type BookFormState = {
@@ -78,7 +80,20 @@ function buildValues(formData: FormData): BookFormValues {
     buyOfferEnabled: readField(formData, "buyOfferEnabled") || "disabled",
     rentOfferEnabled: readField(formData, "rentOfferEnabled") || "disabled",
     description: readField(formData, "description"),
+    metadata: readField(formData, "metadata"),
   };
+}
+
+function parseMetadata(value: string) {
+  if (!value) {
+    return null;
+  }
+
+  try {
+    return JSON.parse(value);
+  } catch {
+    return undefined;
+  }
 }
 
 async function validateBookForm(values: BookFormValues, bookId?: string) {
@@ -151,6 +166,11 @@ async function validateBookForm(values: BookFormValues, bookId?: string) {
     fieldErrors.description = "الوصف يجب ألا يتجاوز 2000 حرف.";
   }
 
+  const metadata = parseMetadata(values.metadata ?? "");
+  if (metadata === undefined) {
+    fieldErrors.metadata = "صيغة metadata غير صحيحة. أدخل JSON صالحًا.";
+  }
+
   if (Object.keys(fieldErrors).length > 0 || !status) {
     return {
       ok: false as const,
@@ -166,10 +186,13 @@ async function validateBookForm(values: BookFormValues, bookId?: string) {
     purchasePriceCents,
     rentalPriceCents,
     rentalDays,
+    metadata,
   };
 }
 
 export async function createBookAction(_prevState: BookFormState, formData: FormData): Promise<BookFormState> {
+  await requireAdmin({ callbackUrl: "/admin/books/new" });
+
   const values = buildValues(formData);
   const validation = await validateBookForm(values);
 
@@ -186,6 +209,7 @@ export async function createBookAction(_prevState: BookFormState, formData: Form
       titleAr: values.titleAr!,
       slug: values.slug!,
       descriptionAr: values.description || null,
+      metadata: validation.metadata,
       status: validation.status,
       authorId: values.authorId!,
       categoryId: values.categoryId!,
@@ -220,6 +244,8 @@ export async function createBookAction(_prevState: BookFormState, formData: Form
 }
 
 export async function updateBookAction(bookId: string, _prevState: BookFormState, formData: FormData): Promise<BookFormState> {
+  await requireAdmin({ callbackUrl: `/admin/books/${bookId}/edit` });
+
   const values = buildValues(formData);
   const validation = await validateBookForm(values, bookId);
 
@@ -237,6 +263,7 @@ export async function updateBookAction(bookId: string, _prevState: BookFormState
       titleAr: values.titleAr!,
       slug: values.slug!,
       descriptionAr: values.description || null,
+      metadata: validation.metadata,
       status: validation.status,
       authorId: values.authorId!,
       categoryId: values.categoryId!,
@@ -278,6 +305,8 @@ export async function updateBookAction(bookId: string, _prevState: BookFormState
 }
 
 export async function deleteBookAction(formData: FormData) {
+  await requireAdmin({ callbackUrl: "/admin/books" });
+
   const bookId = formData.get("bookId");
 
   if (typeof bookId !== "string" || !bookId) {
@@ -290,6 +319,8 @@ export async function deleteBookAction(formData: FormData) {
 }
 
 export async function publishBookAction(formData: FormData) {
+  await requireAdmin({ callbackUrl: "/admin/books" });
+
   const bookId = formData.get("bookId");
 
   if (typeof bookId !== "string" || !bookId) {
@@ -302,6 +333,8 @@ export async function publishBookAction(formData: FormData) {
 }
 
 export async function unpublishBookAction(formData: FormData) {
+  await requireAdmin({ callbackUrl: "/admin/books" });
+
   const bookId = formData.get("bookId");
 
   if (typeof bookId !== "string" || !bookId) {
