@@ -106,7 +106,9 @@ Payment flows are isolated behind `PaymentGateway` implementations (`src/lib/pay
 3. Configure environment variables:
 
    - `DATABASE_URL` (PostgreSQL)
-   - `AUTH_SECRET` (long random secret)
+   - `AUTH_SECRET` (long random secret used for session signing)
+   - `NEXTAUTH_SECRET` (set this to the same value as `AUTH_SECRET` for compatibility with hosting tooling)
+   - `NEXTAUTH_URL` (for local development: `http://localhost:3000`)
    - payment provider variables are optional during mock mode; they will be required when real provider APIs are integrated
    - optional storage variables (for future S3/R2 providers; local is default)
 

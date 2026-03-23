@@ -1,17 +1,31 @@
 import type { NextConfig } from "next";
 
-const contentSecurityPolicy = [
-  "default-src 'self'",
-  "script-src 'self' 'unsafe-inline'",
-  "style-src 'self' 'unsafe-inline'",
-  "img-src 'self' data: https://placehold.co",
-  "font-src 'self' data:",
-  "connect-src 'self'",
-  "frame-ancestors 'none'",
-  "base-uri 'self'",
-  "form-action 'self'",
-  "object-src 'none'",
-].join("; ");
+function buildContentSecurityPolicy() {
+  const isDevelopment = process.env.NODE_ENV === "development";
+
+  const scriptSrc = ["'self'", "'unsafe-inline'"];
+  const connectSrc = ["'self'"];
+
+  if (isDevelopment) {
+    scriptSrc.push("'unsafe-eval'");
+    connectSrc.push("ws:", "http:", "https:");
+  }
+
+  return [
+    "default-src 'self'",
+    `script-src ${scriptSrc.join(" ")}`,
+    "style-src 'self' 'unsafe-inline'",
+    "img-src 'self' data: https://placehold.co",
+    "font-src 'self' data:",
+    `connect-src ${connectSrc.join(" ")}`,
+    "frame-ancestors 'none'",
+    "base-uri 'self'",
+    "form-action 'self'",
+    "object-src 'none'",
+  ].join("; ");
+}
+
+const contentSecurityPolicy = buildContentSecurityPolicy();
 
 const nextConfig: NextConfig = {
   reactStrictMode: true,
