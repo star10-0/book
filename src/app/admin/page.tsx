@@ -1,3 +1,5 @@
+import { AdminPageCard, AdminPageHeader } from "@/components/admin/admin-page";
+
 export default function AdminDashboardPage() {
   const metrics = [
     { label: "إجمالي الكتب", value: "128" },
@@ -8,12 +10,12 @@ export default function AdminDashboardPage() {
 
   return (
     <>
-      <section className="rounded-2xl border border-slate-200 bg-white p-6 shadow-sm">
-        <h2 className="text-lg font-semibold text-slate-900">نظرة عامة</h2>
-        <p className="mt-2 text-sm text-slate-600">
-          لوحة إدارية مبدئية لإدارة الكتب والعروض والطلبات. جميع الإجراءات حاليا على شكل واجهات تمهيدية.
-        </p>
-      </section>
+      <AdminPageCard>
+        <AdminPageHeader
+          title="نظرة عامة"
+          description="لوحة إدارية مبدئية لإدارة الكتب والعروض والطلبات. جميع الإجراءات حالياً بواجهات تمهيدية قابلة للتطوير."
+        />
+      </AdminPageCard>
 
       <section className="grid gap-4 sm:grid-cols-2 xl:grid-cols-4">
         {metrics.map((metric) => (

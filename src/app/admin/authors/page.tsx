@@ -1,24 +1,26 @@
+import { AdminPageCard, AdminPageHeader } from "@/components/admin/admin-page";
 import { AdminTable } from "@/components/admin/admin-table";
 
 const authors = [
-  { name: "مها العلي", booksCount: 6, status: "نشط" },
-  { name: "أحمد شحادة", booksCount: 4, status: "نشط" },
-  { name: "سارة حمود", booksCount: 2, status: "معلق" },
+  { id: "aut_21", name: "مها العلي", booksCount: 6, status: "نشط" },
+  { id: "aut_22", name: "أحمد شحادة", booksCount: 4, status: "نشط" },
+  { id: "aut_23", name: "سارة حمود", booksCount: 2, status: "معلق" },
 ];
 
 export default function AdminAuthorsPage() {
   return (
-    <section className="space-y-4 rounded-2xl border border-slate-200 bg-white p-6 shadow-sm">
-      <h2 className="text-lg font-semibold text-slate-900">إدارة المؤلفين</h2>
+    <AdminPageCard>
+      <AdminPageHeader title="إدارة المؤلفين" description="متابعة حالة المؤلفين وعدد الكتب المرتبطة بكل مؤلف." />
       <AdminTable
         caption="جدول المؤلفين"
         rows={authors}
+        getRowKey={(row) => row.id}
         columns={[
           { key: "name", title: "الاسم", render: (row) => row.name },
           { key: "booksCount", title: "عدد الكتب", render: (row) => row.booksCount },
           { key: "status", title: "الحالة", render: (row) => row.status },
         ]}
       />
-    </section>
+    </AdminPageCard>
   );
 }

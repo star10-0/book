@@ -1,3 +1,4 @@
+import { AdminPageCard, AdminPageHeader } from "@/components/admin/admin-page";
 import { AdminTable } from "@/components/admin/admin-table";
 
 const payments = [
@@ -8,11 +9,12 @@ const payments = [
 
 export default function AdminPaymentsPage() {
   return (
-    <section className="space-y-4 rounded-2xl border border-slate-200 bg-white p-6 shadow-sm">
-      <h2 className="text-lg font-semibold text-slate-900">إدارة المدفوعات</h2>
+    <AdminPageCard>
+      <AdminPageHeader title="إدارة المدفوعات" description="مراجعة محاولات الدفع وحالتها عبر مزودي الدفع الحاليين والمستقبليين." />
       <AdminTable
         caption="جدول المدفوعات"
         rows={payments}
+        getRowKey={(row) => row.id}
         columns={[
           { key: "id", title: "المعرف", render: (row) => row.id },
           { key: "method", title: "بوابة الدفع", render: (row) => row.method },
@@ -20,6 +22,6 @@ export default function AdminPaymentsPage() {
           { key: "status", title: "الحالة", render: (row) => row.status },
         ]}
       />
-    </section>
+    </AdminPageCard>
   );
 }
