@@ -1,7 +1,11 @@
 import { PaymentProvider } from "@prisma/client";
 import { NextResponse } from "next/server";
 import { getCurrentUser } from "@/lib/auth-session";
-import { validateCreateOrderPayload, isOfferCurrentlyAvailable } from "@/lib/orders/create-order";
+import {
+  isOfferCurrentlyAvailable,
+  mapOfferTypeToAccessGrantType,
+  validateCreateOrderPayload,
+} from "@/lib/orders/create-order";
 import { prisma } from "@/lib/prisma";
 
 export async function POST(request: Request) {
@@ -47,6 +51,48 @@ export async function POST(request: Request) {
 
     if (!offer || !isOfferCurrentlyAvailable(offer, now)) {
       return NextResponse.json({ message: "العرض المحدد غير متاح حالياً." }, { status: 404 });
+    }
+
+    const [activeGrant, existingPendingOrder] = await Promise.all([
+      prisma.accessGrant.findFirst({
+        where: {
+          userId: user.id,
+          bookId: offer.bookId,
+          type: mapOfferTypeToAccessGrantType(offer.type),
+          status: "ACTIVE",
+          OR: [{ expiresAt: null }, { expiresAt: { gt: now } }],
+        },
+        select: { id: true },
+      }),
+      prisma.order.findFirst({
+        where: {
+          userId: user.id,
+          status: "PENDING",
+          items: {
+            some: {
+              offerId: offer.id,
+              bookId: offer.bookId,
+            },
+          },
+        },
+        select: { id: true },
+      }),
+    ]);
+
+    if (activeGrant) {
+      return NextResponse.json({ message: "تملك وصولاً نشطاً لهذا العرض بالفعل." }, { status: 409 });
+    }
+
+    if (existingPendingOrder) {
+      return NextResponse.json(
+        {
+          message: "لديك طلب معلّق لهذا العرض مسبقاً.",
+          order: { id: existingPendingOrder.id },
+          checkoutUrl: `/checkout/${existingPendingOrder.id}`,
+          summaryUrl: `/orders/${existingPendingOrder.id}/summary`,
+        },
+        { status: 200 },
+      );
     }
 
     const created = await prisma.$transaction(async (tx) => {
@@ -111,6 +157,8 @@ export async function POST(request: Request) {
           status: created.payment.status,
           provider: created.payment.provider,
         },
+        checkoutUrl: `/checkout/${created.order.id}`,
+        summaryUrl: `/orders/${created.order.id}/summary`,
       },
       { status: 201 },
     );

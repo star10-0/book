@@ -40,9 +40,14 @@ export default async function CheckoutPage({ params }: CheckoutPageProps) {
       <SiteHeader />
       <div className="mb-4 flex flex-wrap items-center justify-between gap-2">
         <h1 className="text-2xl font-bold text-slate-900">إتمام الطلب</h1>
-        <Link href="/account/orders" className="text-sm font-semibold text-indigo-700 hover:text-indigo-600">
-          العودة إلى طلباتي
-        </Link>
+        <div className="flex flex-wrap gap-4 text-sm font-semibold">
+          <Link href={`/orders/${order.id}/summary`} className="text-indigo-700 hover:text-indigo-600">
+            ملخص الطلب
+          </Link>
+          <Link href="/account/orders" className="text-indigo-700 hover:text-indigo-600">
+            العودة إلى طلباتي
+          </Link>
+        </div>
       </div>
 
       <div className="grid gap-5 lg:grid-cols-[minmax(0,1fr)_minmax(0,1fr)] lg:items-start">

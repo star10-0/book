@@ -13,13 +13,6 @@ type OrderSummaryCardProps = {
   offers: CheckoutOffer[];
 };
 
-type ApiSuccess = {
-  message: string;
-  order: {
-    id: string;
-  };
-};
-
 const offerLabelByType: Record<OfferType, string> = {
   PURCHASE: "شراء رقمي",
   RENTAL: "استئجار رقمي",
@@ -27,77 +20,14 @@ const offerLabelByType: Record<OfferType, string> = {
 
 export function OrderSummaryCard({ bookId, bookTitle, offers }: OrderSummaryCardProps) {
   const [selectedOfferId, setSelectedOfferId] = useState<string>(offers[0]?.id ?? "");
-  const [isSubmitting, setIsSubmitting] = useState(false);
-  const [error, setError] = useState<string | null>(null);
-  const [successOrderId, setSuccessOrderId] = useState<string | null>(null);
 
   const selectedOffer = useMemo(() => offers.find((offer) => offer.id === selectedOfferId) ?? null, [offers, selectedOfferId]);
-
-  async function handleCreateOrder() {
-    if (!selectedOfferId) {
-      setError("يرجى اختيار عرض قبل إنشاء الطلب.");
-      return;
-    }
-
-    setIsSubmitting(true);
-    setError(null);
-
-    try {
-      const response = await fetch("/api/orders", {
-        method: "POST",
-        headers: { "Content-Type": "application/json" },
-        body: JSON.stringify({
-          bookId,
-          offerId: selectedOfferId,
-        }),
-      });
-
-      const payload = (await response.json()) as ApiSuccess | { message?: string };
-
-      if (!response.ok || !("order" in payload)) {
-        setError(payload.message ?? "تعذر إنشاء الطلب. حاول مجددًا.");
-        return;
-      }
-
-      setSuccessOrderId(payload.order.id);
-    } catch {
-      setError("حدث خطأ غير متوقع أثناء إنشاء الطلب.");
-    } finally {
-      setIsSubmitting(false);
-    }
-  }
 
   if (offers.length === 0) {
     return null;
   }
 
-  if (successOrderId) {
-    return (
-      <section className="rounded-2xl border border-emerald-200 bg-emerald-50 p-4" aria-live="polite">
-        <h2 className="text-lg font-bold text-emerald-800">تم إنشاء طلبك بنجاح</h2>
-        <p className="mt-2 text-sm text-emerald-700">
-          رقم الطلب: <span className="font-semibold">{successOrderId}</span>
-        </p>
-        <p className="mt-1 text-sm text-emerald-700">
-          تم حفظ الطلب بالحالة المعلقة بانتظار ربط بوابة الدفع الفعلية.
-        </p>
-        <div className="mt-3 flex flex-wrap gap-2">
-          <Link
-            href={`/checkout/${successOrderId}`}
-            className="rounded-lg bg-emerald-700 px-3 py-2 text-sm font-semibold text-white hover:bg-emerald-600"
-          >
-            المتابعة إلى الدفع
-          </Link>
-          <Link
-            href={`/account/orders/${successOrderId}`}
-            className="rounded-lg border border-emerald-300 px-3 py-2 text-sm font-semibold text-emerald-800 hover:bg-emerald-100"
-          >
-            عرض تفاصيل الطلب
-          </Link>
-        </div>
-      </section>
-    );
-  }
+  const checkoutHref = selectedOffer ? `/checkout?bookId=${bookId}&offerId=${selectedOffer.id}` : "#";
 
   return (
     <section aria-label="ملخص الطلب" className="space-y-4 rounded-2xl bg-slate-50 p-4 ring-1 ring-slate-200">
@@ -140,16 +70,13 @@ export function OrderSummaryCard({ bookId, bookTitle, offers }: OrderSummaryCard
         </div>
       </dl>
 
-      {error ? <p className="text-sm font-semibold text-rose-600">{error}</p> : null}
-
-      <button
-        type="button"
-        disabled={isSubmitting || !selectedOffer}
-        onClick={handleCreateOrder}
-        className="w-full rounded-xl bg-indigo-600 px-4 py-3 text-sm font-semibold text-white transition hover:bg-indigo-500 focus-visible:outline-none focus-visible:ring-2 focus-visible:ring-indigo-500 focus-visible:ring-offset-2 disabled:cursor-not-allowed disabled:bg-slate-300"
+      <Link
+        href={checkoutHref}
+        aria-disabled={!selectedOffer}
+        className="inline-flex w-full items-center justify-center rounded-xl bg-indigo-600 px-4 py-3 text-sm font-semibold text-white transition hover:bg-indigo-500 focus-visible:outline-none focus-visible:ring-2 focus-visible:ring-indigo-500 focus-visible:ring-offset-2 aria-disabled:pointer-events-none aria-disabled:bg-slate-300"
       >
-        {isSubmitting ? "جاري إنشاء الطلب..." : "تأكيد الطلب"}
-      </button>
+        متابعة إلى صفحة الإتمام
+      </Link>
     </section>
   );
 }
