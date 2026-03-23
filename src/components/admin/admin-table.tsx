@@ -10,9 +10,11 @@ type AdminTableProps<T> = {
   caption: string;
   columns: Column<T>[];
   rows: T[];
+  getRowKey?: (row: T, index: number) => string;
+  emptyMessage?: string;
 };
 
-export function AdminTable<T>({ caption, columns, rows }: AdminTableProps<T>) {
+export function AdminTable<T>({ caption, columns, rows, getRowKey, emptyMessage }: AdminTableProps<T>) {
   return (
     <div className="overflow-x-auto rounded-xl border border-slate-200 bg-white">
       <table className="min-w-full text-right text-sm">
@@ -27,8 +29,16 @@ export function AdminTable<T>({ caption, columns, rows }: AdminTableProps<T>) {
           </tr>
         </thead>
         <tbody>
+          {rows.length === 0 ? (
+            <tr className="border-t border-slate-200">
+              <td colSpan={columns.length} className="px-4 py-8 text-center text-slate-500">
+                {emptyMessage ?? "لا توجد بيانات حالياً."}
+              </td>
+            </tr>
+          ) : null}
+
           {rows.map((row, index) => (
-            <tr key={index} className="border-t border-slate-200 text-slate-700">
+            <tr key={getRowKey ? getRowKey(row, index) : index} className="border-t border-slate-200 text-slate-700">
               {columns.map((column) => (
                 <td key={column.key} className="px-4 py-3 align-top">
                   {column.render(row)}

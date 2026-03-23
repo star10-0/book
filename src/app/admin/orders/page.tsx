@@ -1,3 +1,4 @@
+import { AdminPageCard, AdminPageHeader } from "@/components/admin/admin-page";
 import { AdminTable } from "@/components/admin/admin-table";
 
 const orders = [
@@ -8,11 +9,12 @@ const orders = [
 
 export default function AdminOrdersPage() {
   return (
-    <section className="space-y-4 rounded-2xl border border-slate-200 bg-white p-6 shadow-sm">
-      <h2 className="text-lg font-semibold text-slate-900">إدارة الطلبات</h2>
+    <AdminPageCard>
+      <AdminPageHeader title="إدارة الطلبات" description="متابعة الطلبات وحالاتها المالية بشكل سريع." />
       <AdminTable
         caption="جدول الطلبات"
         rows={orders}
+        getRowKey={(row) => row.id}
         columns={[
           { key: "id", title: "رقم الطلب", render: (row) => row.id },
           { key: "user", title: "المستخدم", render: (row) => row.user },
@@ -20,6 +22,6 @@ export default function AdminOrdersPage() {
           { key: "status", title: "الحالة", render: (row) => row.status },
         ]}
       />
-    </section>
+    </AdminPageCard>
   );
 }

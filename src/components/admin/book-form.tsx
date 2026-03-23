@@ -30,7 +30,7 @@ export function BookForm({ mode, initialValues }: BookFormProps) {
       <div>
         <h1 className="text-2xl font-bold text-slate-900">{title}</h1>
         <p className="mt-2 text-sm text-slate-600">
-          هذه الواجهة مبدئية لإدارة محتوى الكتب والعروض. سيتم ربط الحفظ الفعلي بواجهات API لاحقًا.
+          هذه الواجهة تمهيدية لإدارة محتوى الكتب والعروض. سيتم ربط الحفظ الفعلي بواجهات API لاحقًا.
         </p>
       </div>
 
@@ -86,7 +86,7 @@ export function BookForm({ mode, initialValues }: BookFormProps) {
 
       <div className="flex flex-wrap items-center gap-3">
         <button
-          type="button"
+          type="submit"
           className="rounded-lg bg-slate-900 px-5 py-2.5 text-sm font-semibold text-white hover:bg-slate-700 focus-visible:outline-none focus-visible:ring-2 focus-visible:ring-slate-500"
         >
           {actionLabel}
