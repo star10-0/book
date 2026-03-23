@@ -1,4 +1,5 @@
 import type { ReactNode } from "react";
+import Link from "next/link";
 
 type Column<T> = {
   key: string;
@@ -12,9 +13,13 @@ type AdminTableProps<T> = {
   rows: T[];
   getRowKey?: (row: T, index: number) => string;
   emptyMessage?: string;
+  emptyAction?: {
+    href: string;
+    label: string;
+  };
 };
 
-export function AdminTable<T>({ caption, columns, rows, getRowKey, emptyMessage }: AdminTableProps<T>) {
+export function AdminTable<T>({ caption, columns, rows, getRowKey, emptyMessage, emptyAction }: AdminTableProps<T>) {
   return (
     <div className="overflow-x-auto rounded-xl border border-slate-200 bg-white">
       <table className="min-w-full text-right text-sm">
@@ -31,8 +36,18 @@ export function AdminTable<T>({ caption, columns, rows, getRowKey, emptyMessage 
         <tbody>
           {rows.length === 0 ? (
             <tr className="border-t border-slate-200">
-              <td colSpan={columns.length} className="px-4 py-8 text-center text-slate-500">
-                {emptyMessage ?? "لا توجد بيانات حالياً."}
+              <td colSpan={columns.length} className="px-4 py-8 text-center">
+                <div className="space-y-3">
+                  <p className="text-slate-500">{emptyMessage ?? "لا توجد بيانات حالياً."}</p>
+                  {emptyAction ? (
+                    <Link
+                      href={emptyAction.href}
+                      className="inline-flex rounded-lg bg-slate-900 px-4 py-2 text-sm font-semibold text-white hover:bg-slate-700 focus-visible:outline-none focus-visible:ring-2 focus-visible:ring-slate-500"
+                    >
+                      {emptyAction.label}
+                    </Link>
+                  ) : null}
+                </div>
               </td>
             </tr>
           ) : null}

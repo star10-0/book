@@ -43,12 +43,22 @@ export default async function AdminBooksPage() {
         description="إدارة كاملة للكتب مع حالة النشر وعروض الشراء والإيجار الرقمية."
         action={{ href: "/admin/books/new", label: "إضافة كتاب" }}
       />
+      <div className="rounded-xl border border-indigo-200 bg-indigo-50 p-4">
+        <p className="text-sm font-medium text-indigo-900">لبدء إضافة كتاب جديد، اضغط زر «إضافة كتاب» ثم أكمل نموذج البيانات.</p>
+        <Link
+          href="/admin/books/new"
+          className="mt-3 inline-flex rounded-lg bg-indigo-700 px-4 py-2 text-sm font-semibold text-white hover:bg-indigo-600 focus-visible:outline-none focus-visible:ring-2 focus-visible:ring-indigo-500"
+        >
+          + إضافة كتاب الآن
+        </Link>
+      </div>
 
       <AdminTable
         caption="جدول الكتب"
         rows={books}
         getRowKey={(row) => row.id}
-        emptyMessage="لا توجد كتب بعد."
+        emptyMessage="لا توجد كتب بعد. ابدأ بإضافة أول كتاب ليظهر هنا."
+        emptyAction={{ href: "/admin/books/new", label: "إضافة أول كتاب" }}
         columns={[
           { key: "title", title: "الكتاب", render: (row) => row.titleAr },
           { key: "author", title: "المؤلف", render: (row) => row.author.nameAr },
