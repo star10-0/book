@@ -65,10 +65,10 @@ export default async function AccountOrdersPage() {
 
                   <div className="mt-4 flex gap-2">
                     <Link
-                      href={`/account/orders/${order.id}`}
+                      href={`/orders/${order.id}/summary`}
                       className="inline-flex flex-1 items-center justify-center rounded-lg border border-slate-300 px-3 py-2 text-sm font-semibold text-slate-800 hover:bg-slate-100"
                     >
-                      تفاصيل الطلب
+                      ملخص الطلب
                     </Link>
                     <Link
                       href={`/checkout/${order.id}`}

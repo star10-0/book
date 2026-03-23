@@ -43,21 +43,25 @@ export function ReaderShell({ accessId, bookTitle, initialProgressPercent, initi
       setIsSaving(true);
       setError(null);
 
-      const response = await fetch(`/api/reading-progress/${accessId}`, {
-        method: "PATCH",
-        headers: {
-          "Content-Type": "application/json",
-        },
-        body: JSON.stringify({
-          progressPercent: nextProgress,
-          locator: nextLocator,
-        }),
-      });
+      try {
+        const response = await fetch(`/api/reading-progress/${accessId}`, {
+          method: "PATCH",
+          headers: {
+            "Content-Type": "application/json",
+          },
+          body: JSON.stringify({
+            progressPercent: nextProgress,
+            locator: nextLocator,
+          }),
+        });
 
-      if (!response.ok) {
+        if (!response.ok) {
+          setError("تعذر حفظ التقدم. حاول مرة أخرى.");
+        } else {
+          lastSavedRef.current = progressKey;
+        }
+      } catch {
         setError("تعذر حفظ التقدم. حاول مرة أخرى.");
-      } else {
-        lastSavedRef.current = progressKey;
       }
 
       setIsSaving(false);

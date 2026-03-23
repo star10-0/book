@@ -5,6 +5,15 @@ import { requireUser } from "@/lib/auth-session";
 import { formatArabicDate } from "@/lib/formatters/intl";
 import { prisma } from "@/lib/prisma";
 
+function getRemainingDays(expiresAt: Date | null) {
+  if (!expiresAt) {
+    return null;
+  }
+
+  const diffMs = expiresAt.getTime() - Date.now();
+  return Math.max(0, Math.ceil(diffMs / (24 * 60 * 60 * 1000)));
+}
+
 export default async function AccountRentalsPage() {
   const user = await requireUser();
   const now = new Date();
@@ -43,6 +52,7 @@ export default async function AccountRentalsPage() {
           <ul className="grid gap-4 sm:grid-cols-2">
             {rentals.map((rental) => {
               const isActive = rental.status === "ACTIVE" && (!rental.expiresAt || rental.expiresAt > now);
+              const remainingDays = getRemainingDays(rental.expiresAt);
 
               return (
                 <li key={rental.id} className="rounded-2xl bg-white p-4 shadow-sm ring-1 ring-slate-200">
@@ -57,10 +67,13 @@ export default async function AccountRentalsPage() {
                     </span>
                   </div>
 
-                  <p className="mt-2 text-sm text-slate-600">بدأت في {formatArabicDate(rental.startsAt)}</p>
-                  <p className="mt-1 text-sm text-slate-600">
-                    تنتهي في {rental.expiresAt ? formatArabicDate(rental.expiresAt) : "غير محدد"}
+                  <p className="mt-2 text-sm text-slate-600">بدأت في {formatArabicDate(rental.startsAt, { timeStyle: "short" })}</p>
+                  <p className="mt-1 text-sm font-semibold text-amber-700">
+                    تاريخ الانتهاء: {rental.expiresAt ? formatArabicDate(rental.expiresAt, { timeStyle: "short" }) : "غير محدد"}
                   </p>
+                  {remainingDays !== null ? (
+                    <p className="mt-1 text-xs text-slate-500">المدة المتبقية: {remainingDays} يوم</p>
+                  ) : null}
 
                   <Link href={`/books/${rental.book.slug}`} className="mt-4 inline-flex text-sm font-semibold text-indigo-700 hover:text-indigo-600">
                     فتح صفحة الكتاب

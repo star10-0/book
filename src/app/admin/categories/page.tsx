@@ -1,24 +1,35 @@
-import { AdminTable } from "@/components/admin/admin-table";
+import { AdminPageCard, AdminPageHeader } from "@/components/admin/admin-page";
+import { CategoriesManager } from "@/components/admin/categories-manager";
+import { prisma } from "@/lib/prisma";
 
-const categories = [
-  { name: "روايات", booksCount: 42, status: "نشط" },
-  { name: "تطوير ذات", booksCount: 28, status: "نشط" },
-  { name: "تاريخ", booksCount: 11, status: "قيد المراجعة" },
-];
+export default async function AdminCategoriesPage() {
+  const categories = await prisma.category.findMany({
+    select: {
+      id: true,
+      nameAr: true,
+      slug: true,
+      _count: {
+        select: {
+          books: true,
+        },
+      },
+    },
+    orderBy: {
+      nameAr: "asc",
+    },
+  });
 
-export default function AdminCategoriesPage() {
   return (
-    <section className="space-y-4 rounded-2xl border border-slate-200 bg-white p-6 shadow-sm">
-      <h2 className="text-lg font-semibold text-slate-900">إدارة التصنيفات</h2>
-      <AdminTable
-        caption="جدول التصنيفات"
-        rows={categories}
-        columns={[
-          { key: "name", title: "التصنيف", render: (row) => row.name },
-          { key: "booksCount", title: "عدد الكتب", render: (row) => row.booksCount },
-          { key: "status", title: "الحالة", render: (row) => row.status },
-        ]}
+    <AdminPageCard>
+      <AdminPageHeader title="إدارة التصنيفات" description="إضافة وتعديل وحذف التصنيفات مع مراعاة الكتب المرتبطة." />
+      <CategoriesManager
+        categories={categories.map((category) => ({
+          id: category.id,
+          nameAr: category.nameAr,
+          slug: category.slug,
+          booksCount: category._count.books,
+        }))}
       />
-    </section>
+    </AdminPageCard>
   );
 }

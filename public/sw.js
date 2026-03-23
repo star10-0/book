@@ -1,8 +1,8 @@
-const SW_VERSION = "book-v1";
+const SW_VERSION = "book-v2";
 const STATIC_CACHE = `${SW_VERSION}-static`;
 const SHELL_CACHE = `${SW_VERSION}-shell`;
 
-const APP_SHELL_ROUTES = ["/", "/books"];
+const APP_SHELL_ROUTES = ["/", "/books", "/offline"];
 const STATIC_FILE_PATTERNS = [
   /\/(_next\/static)\//,
   /\.(?:css|js|mjs|woff2?|ttf|otf)$/i,
@@ -42,7 +42,11 @@ self.addEventListener("fetch", (event) => {
 
   const path = url.pathname;
   const isApi = path.startsWith("/api/");
-  const isUserOrAdminPage = path.startsWith("/account") || path.startsWith("/admin") || path.startsWith("/checkout") || path.startsWith("/reader");
+  const isUserOrAdminPage =
+    path.startsWith("/account") ||
+    path.startsWith("/admin") ||
+    path.startsWith("/checkout") ||
+    path.startsWith("/reader");
 
   if (isApi || isUserOrAdminPage) {
     return;
@@ -86,10 +90,15 @@ async function networkFirstNavigation(request) {
     }
 
     return networkResponse;
-  } catch (error) {
+  } catch {
     const exactMatch = await cache.match(request);
     if (exactMatch) {
       return exactMatch;
+    }
+
+    const offlinePage = await cache.match("/offline");
+    if (offlinePage) {
+      return offlinePage;
     }
 
     return cache.match("/");

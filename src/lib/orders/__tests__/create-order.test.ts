@@ -3,22 +3,26 @@ import assert from "node:assert/strict";
 import { isOfferCurrentlyAvailable, validateCreateOrderPayload } from "@/lib/orders/create-order";
 
 test("validateCreateOrderPayload trims valid ids", () => {
-  const result = validateCreateOrderPayload({ bookId: " b1 ", offerId: " o1 " });
+  const result = validateCreateOrderPayload({ bookId: " cly0000000000000000000001 ", offerId: " cly0000000000000000000002 " });
 
   assert.deepEqual(result, {
     data: {
-      bookId: "b1",
-      offerId: "o1",
+      bookId: "cly0000000000000000000001",
+      offerId: "cly0000000000000000000002",
     },
   });
 });
 
-test("validateCreateOrderPayload rejects missing fields", () => {
-  assert.equal(validateCreateOrderPayload({ bookId: "", offerId: "o1" }).error, "حقل bookId مطلوب.");
-  assert.equal(validateCreateOrderPayload({ bookId: "b1", offerId: "" }).error, "حقل offerId مطلوب.");
+test("validateCreateOrderPayload rejects missing and malformed fields", () => {
+  assert.equal(validateCreateOrderPayload({ bookId: "", offerId: "cly0000000000000000000002" }).error, "حقل bookId مطلوب.");
+  assert.equal(validateCreateOrderPayload({ bookId: "cly0000000000000000000001", offerId: "" }).error, "حقل offerId مطلوب.");
+  assert.equal(
+    validateCreateOrderPayload({ bookId: "not-valid-id", offerId: "cly0000000000000000000002" }).error,
+    "معرّفات الطلب غير صالحة.",
+  );
 });
 
-test("isOfferCurrentlyAvailable validates status, format and schedule", () => {
+test("isOfferCurrentlyAvailable validates status, format, rental settings and schedule", () => {
   const now = new Date("2026-01-01T12:00:00.000Z");
 
   const available = isOfferCurrentlyAvailable(
@@ -26,6 +30,8 @@ test("isOfferCurrentlyAvailable validates status, format and schedule", () => {
       isActive: true,
       startsAt: new Date("2025-12-31T00:00:00.000Z"),
       endsAt: new Date("2026-01-02T00:00:00.000Z"),
+      type: "RENTAL",
+      rentalDays: 7,
       book: { status: "PUBLISHED", format: "DIGITAL" },
     },
     now,
@@ -36,6 +42,8 @@ test("isOfferCurrentlyAvailable validates status, format and schedule", () => {
       isActive: true,
       startsAt: new Date("2026-01-02T00:00:00.000Z"),
       endsAt: null,
+      type: "PURCHASE",
+      rentalDays: null,
       book: { status: "PUBLISHED", format: "DIGITAL" },
     },
     now,
@@ -46,7 +54,21 @@ test("isOfferCurrentlyAvailable validates status, format and schedule", () => {
       isActive: true,
       startsAt: null,
       endsAt: null,
+      type: "PURCHASE",
+      rentalDays: null,
       book: { status: "DRAFT", format: "DIGITAL" },
+    },
+    now,
+  );
+
+  const invalidRental = isOfferCurrentlyAvailable(
+    {
+      isActive: true,
+      startsAt: null,
+      endsAt: null,
+      type: "RENTAL",
+      rentalDays: null,
+      book: { status: "PUBLISHED", format: "DIGITAL" },
     },
     now,
   );
@@ -54,4 +76,5 @@ test("isOfferCurrentlyAvailable validates status, format and schedule", () => {
   assert.equal(available, true);
   assert.equal(unavailableFuture, false);
   assert.equal(unavailableBook, false);
+  assert.equal(invalidRental, false);
 });

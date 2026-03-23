@@ -13,6 +13,7 @@ export interface CreatePaymentForOrderInput {
 export interface VerifyPaymentInput {
   attemptId: string;
   userId: string;
+  mockOutcome?: "paid" | "failed";
 }
 
 export interface SubmitPaymentProofInput {
@@ -182,6 +183,7 @@ export async function verifyPayment(input: VerifyPaymentInput) {
     paymentId: attempt.paymentId,
     providerReference: attempt.providerReference,
     transactionReference,
+    mockOutcome: input.mockOutcome,
   });
 
   const finalAttemptStatus: PaymentAttemptStatus = gatewayResult.isPaid ? "PAID" : "FAILED";

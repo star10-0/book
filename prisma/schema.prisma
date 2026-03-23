@@ -99,6 +99,8 @@ model User {
   paymentAttempts   PaymentAttempt[]
   accessGrants      AccessGrant[]
   readingProgresses ReadingProgress[]
+  wishlistItems     WishlistItem[]
+  reviews           BookReview[]
   createdAt         DateTime          @default(now())
   updatedAt         DateTime          @updatedAt
 
@@ -148,6 +150,8 @@ model Book {
   orderItems       OrderItem[]
   accessGrants     AccessGrant[]
   readingProgress  ReadingProgress[]
+  wishlistItems    WishlistItem[]
+  reviews          BookReview[]
   createdAt        DateTime          @default(now())
   updatedAt        DateTime          @updatedAt
 
@@ -205,6 +209,35 @@ model BookOffer {
 
   @@index([bookId, type, isActive])
   @@index([startsAt, endsAt])
+}
+
+
+model WishlistItem {
+  id        String   @id @default(cuid())
+  userId    String
+  bookId    String
+  createdAt DateTime @default(now())
+  user      User     @relation(fields: [userId], references: [id], onDelete: Cascade)
+  book      Book     @relation(fields: [bookId], references: [id], onDelete: Cascade)
+
+  @@unique([userId, bookId])
+  @@index([userId, createdAt])
+  @@index([bookId])
+}
+
+model BookReview {
+  id        String   @id @default(cuid())
+  userId    String
+  bookId    String
+  rating    Int
+  comment   String?
+  createdAt DateTime @default(now())
+  updatedAt DateTime @updatedAt
+  user      User     @relation(fields: [userId], references: [id], onDelete: Cascade)
+  book      Book     @relation(fields: [bookId], references: [id], onDelete: Cascade)
+
+  @@unique([userId, bookId])
+  @@index([bookId, createdAt])
 }
 
 model Order {

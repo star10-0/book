@@ -1,95 +1,170 @@
+"use client";
+
 import Link from "next/link";
-
+import { useActionState } from "react";
+import type { BookFormState, BookFormValues } from "@/app/admin/books/actions";
 import { AdminFormSection, AdminInput, AdminSelect, AdminTextArea } from "@/components/admin/form-fields";
-
-type BookFormValues = {
-  titleAr?: string;
-  slug?: string;
-  author?: string;
-  category?: string;
-  purchasePrice?: string;
-  rentalPrice?: string;
-  rentalDays?: string;
-  publicationStatus?: string;
-  buyOfferEnabled?: string;
-  rentOfferEnabled?: string;
-  description?: string;
-};
 
 type BookFormProps = {
   mode: "create" | "edit";
   initialValues?: BookFormValues;
+  authors: { id: string; nameAr: string }[];
+  categories: { id: string; nameAr: string }[];
+  action: (state: BookFormState, formData: FormData) => Promise<BookFormState>;
 };
 
-export function BookForm({ mode, initialValues }: BookFormProps) {
+const initialState: BookFormState = {};
+
+function mergeValues(initialValues: BookFormValues | undefined, stateValues: BookFormValues | undefined): BookFormValues {
+  return {
+    titleAr: stateValues?.titleAr ?? initialValues?.titleAr ?? "",
+    slug: stateValues?.slug ?? initialValues?.slug ?? "",
+    authorId: stateValues?.authorId ?? initialValues?.authorId ?? "",
+    categoryId: stateValues?.categoryId ?? initialValues?.categoryId ?? "",
+    purchasePrice: stateValues?.purchasePrice ?? initialValues?.purchasePrice ?? "",
+    rentalPrice: stateValues?.rentalPrice ?? initialValues?.rentalPrice ?? "",
+    rentalDays: stateValues?.rentalDays ?? initialValues?.rentalDays ?? "14",
+    publicationStatus: stateValues?.publicationStatus ?? initialValues?.publicationStatus ?? "draft",
+    buyOfferEnabled: stateValues?.buyOfferEnabled ?? initialValues?.buyOfferEnabled ?? "enabled",
+    rentOfferEnabled: stateValues?.rentOfferEnabled ?? initialValues?.rentOfferEnabled ?? "enabled",
+    description: stateValues?.description ?? initialValues?.description ?? "",
+  };
+}
+
+export function BookForm({ mode, initialValues, authors, categories, action }: BookFormProps) {
   const title = mode === "create" ? "إضافة كتاب جديد" : "تعديل بيانات الكتاب";
   const actionLabel = mode === "create" ? "إنشاء الكتاب" : "حفظ التعديلات";
 
+  const [state, formAction, isPending] = useActionState(action, initialState);
+  const values = mergeValues(initialValues, state.values);
+
   return (
-    <form className="space-y-5 rounded-2xl border border-slate-200 bg-white p-6 shadow-sm">
+    <form action={formAction} className="space-y-5 rounded-2xl border border-slate-200 bg-white p-6 shadow-sm" noValidate>
       <div>
         <h1 className="text-2xl font-bold text-slate-900">{title}</h1>
-        <p className="mt-2 text-sm text-slate-600">
-          هذه الواجهة مبدئية لإدارة محتوى الكتب والعروض. سيتم ربط الحفظ الفعلي بواجهات API لاحقًا.
-        </p>
+        <p className="mt-2 text-sm text-slate-600">أدخل تفاصيل الكتاب والعروض الرقمية (شراء/إيجار) ثم احفظ التغييرات.</p>
       </div>
 
       <AdminFormSection title="البيانات الأساسية" description="معلومات التعريف الأساسية للكتاب.">
-        <AdminInput label="عنوان الكتاب" name="titleAr" defaultValue={initialValues?.titleAr} placeholder="مثال: فن القراءة" />
-        <AdminInput label="Slug" name="slug" defaultValue={initialValues?.slug} placeholder="fan-al-qiraa" />
-        <AdminInput label="المؤلف" name="author" defaultValue={initialValues?.author} placeholder="اسم المؤلف" />
-        <AdminInput label="التصنيف" name="category" defaultValue={initialValues?.category} placeholder="رواية، تطوير ذات..." />
+        <div className="space-y-2">
+          <AdminInput label="عنوان الكتاب" name="titleAr" defaultValue={values.titleAr} placeholder="مثال: فن القراءة" />
+          {state.fieldErrors?.titleAr ? <p className="text-sm font-medium text-rose-700">{state.fieldErrors.titleAr}</p> : null}
+        </div>
+
+        <div className="space-y-2">
+          <AdminInput label="Slug" name="slug" defaultValue={values.slug} placeholder="fan-al-qiraa" />
+          {state.fieldErrors?.slug ? <p className="text-sm font-medium text-rose-700">{state.fieldErrors.slug}</p> : null}
+        </div>
+
+        <label className="flex flex-col gap-2 text-sm font-medium text-slate-700">
+          المؤلف
+          <select
+            name="authorId"
+            defaultValue={values.authorId}
+            className="rounded-lg border border-slate-300 bg-white px-3 py-2 focus:border-slate-500 focus:outline-none"
+          >
+            <option value="">اختر المؤلف</option>
+            {authors.map((author) => (
+              <option key={author.id} value={author.id}>
+                {author.nameAr}
+              </option>
+            ))}
+          </select>
+          {state.fieldErrors?.authorId ? <p className="text-sm font-medium text-rose-700">{state.fieldErrors.authorId}</p> : null}
+        </label>
+
+        <label className="flex flex-col gap-2 text-sm font-medium text-slate-700">
+          التصنيف
+          <select
+            name="categoryId"
+            defaultValue={values.categoryId}
+            className="rounded-lg border border-slate-300 bg-white px-3 py-2 focus:border-slate-500 focus:outline-none"
+          >
+            <option value="">اختر التصنيف</option>
+            {categories.map((category) => (
+              <option key={category.id} value={category.id}>
+                {category.nameAr}
+              </option>
+            ))}
+          </select>
+          {state.fieldErrors?.categoryId ? <p className="text-sm font-medium text-rose-700">{state.fieldErrors.categoryId}</p> : null}
+        </label>
       </AdminFormSection>
 
       <AdminFormSection title="الأسعار والعروض" description="إدارة سعر الشراء والإيجار وتفعيل العرض لكل منهما.">
-        <AdminInput label="سعر الشراء (ل.س)" name="purchasePrice" defaultValue={initialValues?.purchasePrice} type="number" />
-        <AdminInput label="سعر الإيجار (ل.س)" name="rentalPrice" defaultValue={initialValues?.rentalPrice} type="number" />
-        <AdminInput label="مدة الإيجار بالأيام" name="rentalDays" defaultValue={initialValues?.rentalDays} type="number" />
-        <AdminSelect
-          label="تفعيل عرض الشراء"
-          name="buyOfferEnabled"
-          defaultValue={initialValues?.buyOfferEnabled ?? "enabled"}
-          options={[
-            { value: "enabled", label: "مفعل" },
-            { value: "disabled", label: "متوقف" },
-          ]}
-        />
-        <AdminSelect
-          label="تفعيل عرض الإيجار"
-          name="rentOfferEnabled"
-          defaultValue={initialValues?.rentOfferEnabled ?? "enabled"}
-          options={[
-            { value: "enabled", label: "مفعل" },
-            { value: "disabled", label: "متوقف" },
-          ]}
-        />
+        <div className="space-y-2">
+          <AdminInput label="سعر الشراء (ل.س)" name="purchasePrice" defaultValue={values.purchasePrice} type="number" />
+          {state.fieldErrors?.purchasePrice ? <p className="text-sm font-medium text-rose-700">{state.fieldErrors.purchasePrice}</p> : null}
+        </div>
+
+        <div className="space-y-2">
+          <AdminInput label="سعر الإيجار (ل.س)" name="rentalPrice" defaultValue={values.rentalPrice} type="number" />
+          {state.fieldErrors?.rentalPrice ? <p className="text-sm font-medium text-rose-700">{state.fieldErrors.rentalPrice}</p> : null}
+        </div>
+
+        <div className="space-y-2">
+          <AdminInput label="مدة الإيجار بالأيام" name="rentalDays" defaultValue={values.rentalDays} type="number" />
+          {state.fieldErrors?.rentalDays ? <p className="text-sm font-medium text-rose-700">{state.fieldErrors.rentalDays}</p> : null}
+        </div>
+
+        <div className="space-y-2">
+          <AdminSelect
+            label="تفعيل عرض الشراء"
+            name="buyOfferEnabled"
+            defaultValue={values.buyOfferEnabled}
+            options={[
+              { value: "enabled", label: "مفعل" },
+              { value: "disabled", label: "متوقف" },
+            ]}
+          />
+          {state.fieldErrors?.buyOfferEnabled ? <p className="text-sm font-medium text-rose-700">{state.fieldErrors.buyOfferEnabled}</p> : null}
+        </div>
+
+        <div className="space-y-2">
+          <AdminSelect
+            label="تفعيل عرض الإيجار"
+            name="rentOfferEnabled"
+            defaultValue={values.rentOfferEnabled}
+            options={[
+              { value: "enabled", label: "مفعل" },
+              { value: "disabled", label: "متوقف" },
+            ]}
+          />
+          {state.fieldErrors?.rentOfferEnabled ? <p className="text-sm font-medium text-rose-700">{state.fieldErrors.rentOfferEnabled}</p> : null}
+        </div>
       </AdminFormSection>
 
       <AdminFormSection title="النشر" description="التحكم بحالة النشر وظهور الكتاب في المتجر.">
-        <AdminSelect
-          label="حالة النشر"
-          name="publicationStatus"
-          defaultValue={initialValues?.publicationStatus ?? "draft"}
-          options={[
-            { value: "draft", label: "مسودة" },
-            { value: "published", label: "منشور" },
-            { value: "archived", label: "مؤرشف" },
-          ]}
-        />
-        <AdminTextArea
-          label="وصف مختصر"
-          name="description"
-          defaultValue={initialValues?.description}
-          placeholder="ملخص الكتاب وما يميّزه"
-        />
+        <div className="space-y-2">
+          <AdminSelect
+            label="حالة النشر"
+            name="publicationStatus"
+            defaultValue={values.publicationStatus}
+            options={[
+              { value: "draft", label: "مسودة" },
+              { value: "published", label: "منشور" },
+              { value: "archived", label: "مؤرشف" },
+            ]}
+          />
+          {state.fieldErrors?.publicationStatus ? <p className="text-sm font-medium text-rose-700">{state.fieldErrors.publicationStatus}</p> : null}
+        </div>
+
+        <div className="md:col-span-2 space-y-2">
+          <AdminTextArea label="وصف مختصر" name="description" defaultValue={values.description} placeholder="ملخص الكتاب وما يميّزه" />
+          {state.fieldErrors?.description ? <p className="text-sm font-medium text-rose-700">{state.fieldErrors.description}</p> : null}
+        </div>
       </AdminFormSection>
+
+      {state.error ? <p className="text-sm font-semibold text-rose-700">{state.error}</p> : null}
+      {state.success ? <p className="text-sm font-semibold text-emerald-700">{state.success}</p> : null}
 
       <div className="flex flex-wrap items-center gap-3">
         <button
-          type="button"
-          className="rounded-lg bg-slate-900 px-5 py-2.5 text-sm font-semibold text-white hover:bg-slate-700 focus-visible:outline-none focus-visible:ring-2 focus-visible:ring-slate-500"
+          type="submit"
+          disabled={isPending}
+          className="rounded-lg bg-slate-900 px-5 py-2.5 text-sm font-semibold text-white hover:bg-slate-700 focus-visible:outline-none focus-visible:ring-2 focus-visible:ring-slate-500 disabled:cursor-not-allowed disabled:opacity-75"
         >
-          {actionLabel}
+          {isPending ? "جارٍ الحفظ..." : actionLabel}
         </button>
         <Link
           href="/admin/books"

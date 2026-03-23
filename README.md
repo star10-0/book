@@ -1,6 +1,6 @@
 # Book — Arabic-first PWA Bookstore
 
-`Book` is an Arabic-first digital bookstore built with Next.js App Router. The current implementation supports catalog browsing, authenticated checkout for digital offers, payment-attempt lifecycle management through pluggable gateways, user library access, and a basic reader flow.
+`Book` is an Arabic-first digital bookstore built with Next.js App Router. The current implementation supports catalog browsing, authenticated checkout for digital offers, payment-attempt lifecycle management through pluggable gateways, user library access, and a baseline reader flow.
 
 ## Stack
 
@@ -28,17 +28,17 @@
 
 Payment flows are isolated behind `PaymentGateway` implementations (`src/lib/payments/gateways/*`). Route handlers call the shared `payment-service` so provider-specific logic stays out of endpoints.
 
-## Feature status
+## Launch-readiness status
 
-## ✅ Complete (implemented)
+### ✅ Complete (implemented)
 
-- Arabic-first RTL layout and responsive storefront/account/admin shells.
+- Arabic-first RTL layout with improved keyboard navigation and mobile-friendly navigation controls.
 - Credentials auth flow:
   - sign up / sign in / sign out
   - signed server sessions in HTTP-only cookies
   - protected `/account/*` and role-protected `/admin/*`
 - Catalog browsing and book details with active digital offers.
-- Authenticated order creation (`POST /api/orders`) for one digital offer at a time.
+- Authenticated offer-to-checkout flow: review selected offer on `/checkout`, create order via `POST /api/orders`, then continue on `/checkout/[orderId]` and `/orders/[orderId]/summary`.
 - Payment attempt lifecycle:
   - create payment attempt
   - submit proof/transaction reference
@@ -46,36 +46,48 @@ Payment flows are isolated behind `PaymentGateway` implementations (`src/lib/pay
 - Access grant issuance on paid orders (purchase and rental logic).
 - Library pages and reader access page tied to active grants.
 - Reading progress persistence (`PATCH /api/reading-progress/[accessId]`).
-- PWA baseline:
-  - `manifest.webmanifest`
-  - service worker registration in production
-  - conservative static/shell caching strategy.
+- PWA improvements:
+  - installable manifest with app shortcuts and maskable icons
+  - production-only service worker registration
+  - offline fallback page (`/offline`) with navigation fallback in the service worker
+- Metadata/SEO improvements:
+  - enriched root metadata + canonical and robots directives
+  - generated `robots.txt` and `sitemap.xml`
+  - basic JSON-LD website schema.
+- Practical security hardening:
+  - stricter HTTP security headers in `next.config.ts` (CSP, HSTS, COOP/CORP)
+  - same-origin guard for state-changing payment/order endpoints
+  - no-store cache policy for sensitive API JSON responses.
 
-## 🧪 Mocked / scaffolded
+### 🧪 Mocked / scaffolded
 
 - Admin dashboard metrics and many admin listing pages still use mock/static data.
-- Admin book-asset association endpoint is intentionally scaffolded (validation + `501` response; no upload/persist workflow yet).
+- Cloud storage adapters (S3/R2) are prepared via interfaces/placeholders; local provider is active for development uploads.
 - Reader rendering engine is placeholder-oriented for now (document source wiring exists; full EPUB/PDF experience is not production-grade yet).
-- Payment provider integrations are abstracted and wired, but production readiness depends on real credentials, webhook/reconciliation strategy, and provider-specific hardening.
+- Payment provider integrations are abstracted behind gateways, and the current implementation intentionally runs in mock mode to validate end-to-end checkout/payment UX before real provider APIs are integrated.
 
-## 🚧 Remaining before production launch
+### 🚧 Remaining before production launch
 
-1. **Harden payment reliability**
-   - webhook/callback verification flow
-   - idempotency keys + duplicate-submission protection
-   - reconciliation jobs for delayed provider states.
-2. **Complete admin data management**
-   - replace mock admin datasets with database-backed queries/actions
-   - implement secure upload pipeline for book assets (local/S3/R2) with audit trails.
-3. **Strengthen security posture**
-   - add CSRF protection for state-changing cookie-auth endpoints
-   - add rate limiting on auth/payment endpoints
-   - add structured security logging and alerting.
-4. **Reader productionization**
+1. **Payment reliability + compliance**
+   - webhook/callback signature verification
+   - idempotency keys + duplicate submission protection
+   - provider reconciliation jobs and dispute workflows.
+2. **Security maturity**
+   - robust CSRF token strategy for all state-changing mutations (especially any non-JSON form posts)
+   - rate limiting + bot protection on auth/payment endpoints
+   - centralized audit/security logging, alerting, and incident runbooks.
+3. **Reader productionization**
    - robust EPUB/PDF rendering controls
-   - DRM/encryption strategy and signed file delivery.
-5. **Operational readiness**
-   - error monitoring, tracing, backups, migration rollout policy, and staging smoke tests.
+   - DRM/encryption strategy and signed URL delivery
+   - richer offline reading/content rights behavior.
+4. **Admin and operations**
+   - replace remaining mock admin datasets with database-backed management
+   - backups, restore drills, migration rollback policy, staging smoke tests
+   - uptime monitoring, tracing, and error tracking integration.
+5. **SEO/content operations**
+   - real production domain + social share images
+   - schema.org coverage for `Book` details pages
+   - analytics and search console configuration.
 
 ## Environment setup
 
@@ -95,7 +107,8 @@ Payment flows are isolated behind `PaymentGateway` implementations (`src/lib/pay
 
    - `DATABASE_URL` (PostgreSQL)
    - `AUTH_SECRET` (long random secret)
-   - payment provider variables (if using Sham Cash / Syriatel Cash)
+   - payment provider variables are optional during mock mode; they will be required when real provider APIs are integrated
+   - optional storage variables (for future S3/R2 providers; local is default)
 
 4. Prisma + run:
 
@@ -105,10 +118,23 @@ Payment flows are isolated behind `PaymentGateway` implementations (`src/lib/pay
    npm run dev
    ```
 
-## Payment provider variables (server only)
+> Seed now creates only an admin account by default (`admin@book.local` / `AdminPass123!`). Create reader accounts via sign up.
+
+## Book asset storage variables (server only)
 
 ```bash
-# Sham Cash
+# Active provider: local | s3 | r2
+BOOK_STORAGE_PROVIDER="local"
+```
+
+> Local mode stores uploads under `public/uploads/books/*` and serves them as normal static files.
+
+## Payment provider variables (server only)
+
+Current gateways are placeholders and operate in **mock mode** by default, so these values are not required for local development today. Keep them ready for future real integration:
+
+```bash
+# Sham Cash (future real integration)
 SHAM_CASH_API_BASE_URL="https://api.shamcash.example"
 SHAM_CASH_API_KEY="replace-with-sham-cash-api-key"
 SHAM_CASH_MERCHANT_ID="replace-with-sham-cash-merchant-id"
@@ -116,7 +142,7 @@ SHAM_CASH_CREATE_PAYMENT_PATH="/payments/create"
 SHAM_CASH_VERIFY_PAYMENT_PATH="/payments/verify"
 SHAM_CASH_TIMEOUT_MS="10000"
 
-# Syriatel Cash
+# Syriatel Cash (future real integration)
 SYRIATEL_CASH_API_BASE_URL="https://api.syriatelcash.example"
 SYRIATEL_CASH_API_KEY="replace-with-syriatel-cash-api-key"
 SYRIATEL_CASH_MERCHANT_ID="replace-with-syriatel-cash-merchant-id"
@@ -130,6 +156,7 @@ SYRIATEL_CASH_TIMEOUT_MS="10000"
 - Manifest: `public/manifest.webmanifest`
 - Service worker: `public/sw.js`
 - Registration component: `src/components/pwa/sw-register.tsx` (production only)
+- Offline route: `src/app/offline/page.tsx`
 - Icon source: `public/icons/source-book-icon.svg`
 - Generate icons:
 
@@ -147,4 +174,4 @@ npm run typecheck
 npm run test
 ```
 
-> `typecheck` now auto-runs `prisma generate` first to keep Prisma types synchronized.
+> `typecheck` auto-runs `prisma generate` first to keep Prisma types synchronized.

@@ -2,7 +2,8 @@ import type { Metadata } from "next";
 import type { Prisma } from "@prisma/client";
 import { SiteHeader } from "@/components/site-header";
 import { SiteFooter } from "@/components/site-footer";
-import { BooksFilters, BooksGrid } from "@/components/storefront";
+import { BooksFilters, BooksGrid, RecommendedBooksSection } from "@/components/storefront";
+import { getCurrentUser } from "@/lib/auth-session";
 import { prisma } from "@/lib/prisma";
 
 type BooksSearchParams = {
@@ -25,12 +26,27 @@ function normalizeOfferType(value?: string): "all" | "buy" | "rent" {
   return "all";
 }
 
-function normalizeSort(value?: string): "newest" | "title" | "price_asc" {
-  if (value === "title" || value === "price_asc") {
+function normalizeSort(value?: string): "newest" | "title" | "price_asc" | "price_desc" | "rating" {
+  if (value === "title" || value === "price_asc" || value === "price_desc" || value === "rating") {
     return value;
   }
 
   return "newest";
+}
+
+function buildSearchWhere(search: string): Prisma.BookWhereInput {
+  if (!search) {
+    return {};
+  }
+
+  return {
+    OR: [
+      { titleAr: { contains: search, mode: "insensitive" } },
+      { titleEn: { contains: search, mode: "insensitive" } },
+      { author: { nameAr: { contains: search, mode: "insensitive" } } },
+      { author: { nameEn: { contains: search, mode: "insensitive" } } },
+    ],
+  };
 }
 
 export default async function BooksPage({
@@ -38,23 +54,17 @@ export default async function BooksPage({
 }: {
   searchParams?: Promise<BooksSearchParams>;
 }) {
+  const user = await getCurrentUser();
   const params = (await searchParams) ?? {};
   const search = params.q?.trim() ?? "";
   const category = params.category?.trim() || "all";
   const offerType = normalizeOfferType(params.offer);
   const sort = normalizeSort(params.sort);
 
-  const whereClause: Prisma.BookWhereInput = {
+  const baseWhere: Prisma.BookWhereInput = {
     status: "PUBLISHED",
     format: "DIGITAL",
-    ...(search
-      ? {
-          titleAr: {
-            contains: search,
-            mode: "insensitive",
-          },
-        }
-      : {}),
+    ...buildSearchWhere(search),
     ...(category !== "all"
       ? {
           category: {
@@ -80,54 +90,133 @@ export default async function BooksPage({
         }),
   };
 
-  const categories = await prisma.category.findMany({
-    where: {
-      books: {
-        some: {
-          status: "PUBLISHED",
-          format: "DIGITAL",
+  const [categories, books, wishlistItems, topRatedBooks] = await Promise.all([
+    prisma.category.findMany({
+      where: {
+        books: {
+          some: {
+            status: "PUBLISHED",
+            format: "DIGITAL",
+          },
         },
       },
-    },
-    orderBy: { nameAr: "asc" },
-    select: {
-      slug: true,
-      nameAr: true,
-    },
-  });
-
-  const books = await prisma.book.findMany({
-    where: whereClause,
-    orderBy: sort === "title" ? { titleAr: "asc" } : { createdAt: "desc" },
-    include: {
-      author: { select: { nameAr: true } },
-      category: { select: { nameAr: true } },
-      offers: {
-        where: {
-          isActive: true,
-          ...(offerType !== "all" ? { type: offerType === "buy" ? "PURCHASE" : "RENTAL" } : {}),
+      orderBy: { nameAr: "asc" },
+      select: {
+        slug: true,
+        nameAr: true,
+      },
+    }),
+    prisma.book.findMany({
+      where: baseWhere,
+      orderBy: sort === "title" ? { titleAr: "asc" } : { createdAt: "desc" },
+      include: {
+        author: { select: { nameAr: true } },
+        category: { select: { nameAr: true } },
+        offers: {
+          where: {
+            isActive: true,
+            ...(offerType !== "all" ? { type: offerType === "buy" ? "PURCHASE" : "RENTAL" } : {}),
+          },
+          orderBy: { priceCents: "asc" },
+          select: {
+            id: true,
+            type: true,
+            priceCents: true,
+            currency: true,
+            rentalDays: true,
+          },
         },
-        orderBy: { priceCents: "asc" },
-        select: {
-          id: true,
-          type: true,
-          priceCents: true,
-          currency: true,
-          rentalDays: true,
+        reviews: {
+          select: {
+            rating: true,
+          },
         },
       },
-    },
-  });
-
-  const sortedBooks =
-    sort === "price_asc"
-      ? [...books].sort((a, b) => {
-          const aMin = Math.min(...a.offers.map((offer) => offer.priceCents));
-          const bMin = Math.min(...b.offers.map((offer) => offer.priceCents));
-
-          return aMin - bMin;
+    }),
+    user
+      ? prisma.wishlistItem.findMany({
+          where: { userId: user.id },
+          select: { bookId: true },
         })
-      : books;
+      : Promise.resolve([]),
+    prisma.book.findMany({
+      where: {
+        status: "PUBLISHED",
+        format: "DIGITAL",
+        offers: {
+          some: { isActive: true },
+        },
+      },
+      include: {
+        author: { select: { nameAr: true } },
+        reviews: { select: { rating: true } },
+      },
+      take: 12,
+      orderBy: { createdAt: "desc" },
+    }),
+  ]);
+
+  const wishlistIds = new Set(wishlistItems.map((item) => item.bookId));
+
+  const enrichedBooks = books.map((book) => {
+    const reviewsCount = book.reviews.length;
+    const averageRating = reviewsCount > 0 ? book.reviews.reduce((sum, review) => sum + review.rating, 0) / reviewsCount : 0;
+
+    return {
+      ...book,
+      averageRating,
+      reviewsCount,
+    };
+  });
+
+  const sortedBooks = [...enrichedBooks].sort((a, b) => {
+    if (sort === "price_asc" || sort === "price_desc") {
+      const aMin = Math.min(...a.offers.map((offer) => offer.priceCents));
+      const bMin = Math.min(...b.offers.map((offer) => offer.priceCents));
+      return sort === "price_asc" ? aMin - bMin : bMin - aMin;
+    }
+
+    if (sort === "rating") {
+      if (b.averageRating === a.averageRating) {
+        return b.reviewsCount - a.reviewsCount;
+      }
+
+      return b.averageRating - a.averageRating;
+    }
+
+    return 0;
+  });
+
+  const recommended = [...topRatedBooks]
+    .map((book) => {
+      const reviewsCount = book.reviews.length;
+      const averageRating = reviewsCount > 0 ? book.reviews.reduce((sum, review) => sum + review.rating, 0) / reviewsCount : 0;
+
+      return {
+        ...book,
+        averageRating,
+        reviewsCount,
+      };
+    })
+    .sort((a, b) => {
+      if (b.averageRating === a.averageRating) {
+        return b.reviewsCount - a.reviewsCount;
+      }
+
+      return b.averageRating - a.averageRating;
+    })
+    .slice(0, 3)
+    .map((book, index) => ({
+      id: book.id,
+      slug: book.slug,
+      title: book.titleAr,
+      author: book.author.nameAr,
+      coverImageUrl: book.coverImageUrl,
+      reason:
+        book.reviewsCount > 0
+          ? `تقييم ${book.averageRating.toFixed(1)} من ${book.reviewsCount} مراجعة`
+          : `اختيار حديث ضمن المنصة #${index + 1}`,
+    }));
 
   return (
     <main>
@@ -135,7 +224,7 @@ export default async function BooksPage({
       <section className="mb-6 rounded-2xl bg-white p-6 shadow-sm ring-1 ring-slate-200 sm:p-8">
         <h1 className="text-3xl font-bold text-slate-900">مكتبة الكتب</h1>
         <p className="mt-2 text-sm leading-8 text-slate-600 sm:text-base">
-          تصفح الكتب الرقمية المتاحة للشراء أو الاستئجار، مع واجهة واضحة وسريعة تناسب كل الأجهزة.
+          ابحث بالعنوان أو اسم الكاتب، واستخدم الفلاتر الذكية للشراء أو الاستئجار مع ترتيب يناسبك.
         </p>
       </section>
 
@@ -147,6 +236,9 @@ export default async function BooksPage({
           offerType={offerType}
           sort={sort}
         />
+
+        <RecommendedBooksSection books={recommended} />
+
         <BooksGrid
           books={sortedBooks.map((book) => ({
             id: book.id,
@@ -156,6 +248,9 @@ export default async function BooksPage({
             category: book.category.nameAr,
             coverImageUrl: book.coverImageUrl,
             offers: book.offers,
+            averageRating: book.averageRating,
+            reviewsCount: book.reviewsCount,
+            isWishlisted: wishlistIds.has(book.id),
           }))}
           hasActiveFilters={Boolean(search) || category !== "all" || offerType !== "all"}
         />
