@@ -1,6 +1,6 @@
-import { NextResponse } from "next/server";
 import { getCurrentUser } from "@/lib/auth-session";
 import { submitPaymentProof } from "@/lib/payments/payment-service";
+import { isSameOriginMutation, jsonNoStore, rejectCrossOriginMutation } from "@/lib/security";
 
 interface SubmitPaymentProofRequestBody {
   attemptId?: string;
@@ -9,25 +9,29 @@ interface SubmitPaymentProofRequestBody {
 }
 
 export async function POST(request: Request) {
+  if (!isSameOriginMutation(request)) {
+    return rejectCrossOriginMutation();
+  }
+
   let body: SubmitPaymentProofRequestBody;
 
   try {
     body = (await request.json()) as SubmitPaymentProofRequestBody;
   } catch {
-    return NextResponse.json({ message: "تعذر قراءة بيانات إثبات الدفع." }, { status: 400 });
+    return jsonNoStore({ message: "تعذر قراءة بيانات إثبات الدفع." }, { status: 400 });
   }
 
   const attemptId = body.attemptId?.trim();
   const transactionReference = body.transactionReference?.trim();
 
   if (!attemptId || !transactionReference) {
-    return NextResponse.json({ message: "بيانات إثبات الدفع غير مكتملة." }, { status: 400 });
+    return jsonNoStore({ message: "بيانات إثبات الدفع غير مكتملة." }, { status: 400 });
   }
 
   const user = await getCurrentUser();
 
   if (!user) {
-    return NextResponse.json({ message: "يجب تسجيل الدخول أولاً." }, { status: 401 });
+    return jsonNoStore({ message: "يجب تسجيل الدخول أولاً." }, { status: 401 });
   }
 
   try {
@@ -38,7 +42,7 @@ export async function POST(request: Request) {
       proofNote: body.proofNote,
     });
 
-    return NextResponse.json({
+    return jsonNoStore({
       message: "تم إرسال مرجع الدفع بنجاح.",
       attempt: {
         id: attempt.id,
@@ -47,18 +51,18 @@ export async function POST(request: Request) {
     });
   } catch (error) {
     if (error instanceof Error && error.message === "INVALID_PAYMENT_PROOF_INPUT") {
-      return NextResponse.json({ message: "بيانات إثبات الدفع غير صالحة." }, { status: 400 });
+      return jsonNoStore({ message: "بيانات إثبات الدفع غير صالحة." }, { status: 400 });
     }
 
     if (error instanceof Error && error.message === "ATTEMPT_NOT_FOUND") {
-      return NextResponse.json({ message: "محاولة الدفع غير موجودة." }, { status: 404 });
+      return jsonNoStore({ message: "محاولة الدفع غير موجودة." }, { status: 404 });
     }
 
     if (error instanceof Error && error.message === "ATTEMPT_NOT_SUBMITTABLE") {
-      return NextResponse.json({ message: "لا يمكن إرسال إثبات الدفع لهذه المحاولة حالياً." }, { status: 409 });
+      return jsonNoStore({ message: "لا يمكن إرسال إثبات الدفع لهذه المحاولة حالياً." }, { status: 409 });
     }
 
     console.error("Failed to submit payment proof", error);
-    return NextResponse.json({ message: "تعذر إرسال إثبات الدفع حالياً. حاول لاحقاً." }, { status: 500 });
+    return jsonNoStore({ message: "تعذر إرسال إثبات الدفع حالياً. حاول لاحقاً." }, { status: 500 });
   }
 }

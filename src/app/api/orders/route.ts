@@ -1,5 +1,4 @@
 import { PaymentProvider } from "@prisma/client";
-import { NextResponse } from "next/server";
 import { getCurrentUser } from "@/lib/auth-session";
 import {
   isOfferCurrentlyAvailable,
@@ -7,12 +6,17 @@ import {
   validateCreateOrderPayload,
 } from "@/lib/orders/create-order";
 import { prisma } from "@/lib/prisma";
+import { isSameOriginMutation, jsonNoStore, rejectCrossOriginMutation } from "@/lib/security";
 
 export async function POST(request: Request) {
+  if (!isSameOriginMutation(request)) {
+    return rejectCrossOriginMutation();
+  }
+
   const user = await getCurrentUser();
 
   if (!user) {
-    return NextResponse.json({ message: "يجب تسجيل الدخول أولاً." }, { status: 401 });
+    return jsonNoStore({ message: "يجب تسجيل الدخول أولاً." }, { status: 401 });
   }
 
   let body: unknown;
@@ -20,13 +24,13 @@ export async function POST(request: Request) {
   try {
     body = await request.json();
   } catch {
-    return NextResponse.json({ message: "تعذر قراءة بيانات الطلب." }, { status: 400 });
+    return jsonNoStore({ message: "تعذر قراءة بيانات الطلب." }, { status: 400 });
   }
 
   const validation = validateCreateOrderPayload(body);
 
   if (validation.error || !validation.data) {
-    return NextResponse.json({ message: validation.error ?? "بيانات الطلب غير صالحة." }, { status: 400 });
+    return jsonNoStore({ message: validation.error ?? "بيانات الطلب غير صالحة." }, { status: 400 });
   }
 
   try {
@@ -50,7 +54,7 @@ export async function POST(request: Request) {
     });
 
     if (!offer || !isOfferCurrentlyAvailable(offer, now)) {
-      return NextResponse.json({ message: "العرض المحدد غير متاح حالياً." }, { status: 404 });
+      return jsonNoStore({ message: "العرض المحدد غير متاح حالياً." }, { status: 404 });
     }
 
     const [activeGrant, existingPendingOrder] = await Promise.all([
@@ -80,11 +84,11 @@ export async function POST(request: Request) {
     ]);
 
     if (activeGrant) {
-      return NextResponse.json({ message: "تملك وصولاً نشطاً لهذا العرض بالفعل." }, { status: 409 });
+      return jsonNoStore({ message: "تملك وصولاً نشطاً لهذا العرض بالفعل." }, { status: 409 });
     }
 
     if (existingPendingOrder) {
-      return NextResponse.json(
+      return jsonNoStore(
         {
           message: "لديك طلب معلّق لهذا العرض مسبقاً.",
           order: { id: existingPendingOrder.id },
@@ -136,7 +140,7 @@ export async function POST(request: Request) {
       return { order, payment };
     });
 
-    return NextResponse.json(
+    return jsonNoStore(
       {
         message: "تم إنشاء الطلب بنجاح.",
         order: {
@@ -164,6 +168,6 @@ export async function POST(request: Request) {
     );
   } catch (error) {
     console.error("Failed to create order", error);
-    return NextResponse.json({ message: "حدث خطأ أثناء إنشاء الطلب. يرجى المحاولة لاحقاً." }, { status: 500 });
+    return jsonNoStore({ message: "حدث خطأ أثناء إنشاء الطلب. يرجى المحاولة لاحقاً." }, { status: 500 });
   }
 }

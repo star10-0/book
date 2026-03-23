@@ -1,6 +1,6 @@
 # Book — Arabic-first PWA Bookstore
 
-`Book` is an Arabic-first digital bookstore built with Next.js App Router. The current implementation supports catalog browsing, authenticated checkout for digital offers, payment-attempt lifecycle management through pluggable gateways, user library access, and a basic reader flow.
+`Book` is an Arabic-first digital bookstore built with Next.js App Router. The current implementation supports catalog browsing, authenticated checkout for digital offers, payment-attempt lifecycle management through pluggable gateways, user library access, and a baseline reader flow.
 
 ## Stack
 
@@ -28,11 +28,11 @@
 
 Payment flows are isolated behind `PaymentGateway` implementations (`src/lib/payments/gateways/*`). Route handlers call the shared `payment-service` so provider-specific logic stays out of endpoints.
 
-## Feature status
+## Launch-readiness status
 
-## ✅ Complete (implemented)
+### ✅ Complete (implemented)
 
-- Arabic-first RTL layout and responsive storefront/account/admin shells.
+- Arabic-first RTL layout with improved keyboard navigation and mobile-friendly navigation controls.
 - Credentials auth flow:
   - sign up / sign in / sign out
   - signed server sessions in HTTP-only cookies
@@ -46,36 +46,48 @@ Payment flows are isolated behind `PaymentGateway` implementations (`src/lib/pay
 - Access grant issuance on paid orders (purchase and rental logic).
 - Library pages and reader access page tied to active grants.
 - Reading progress persistence (`PATCH /api/reading-progress/[accessId]`).
-- PWA baseline:
-  - `manifest.webmanifest`
-  - service worker registration in production
-  - conservative static/shell caching strategy.
+- PWA improvements:
+  - installable manifest with app shortcuts and maskable icons
+  - production-only service worker registration
+  - offline fallback page (`/offline`) with navigation fallback in the service worker
+- Metadata/SEO improvements:
+  - enriched root metadata + canonical and robots directives
+  - generated `robots.txt` and `sitemap.xml`
+  - basic JSON-LD website schema.
+- Practical security hardening:
+  - stricter HTTP security headers in `next.config.ts` (CSP, HSTS, COOP/CORP)
+  - same-origin guard for state-changing payment/order endpoints
+  - no-store cache policy for sensitive API JSON responses.
 
-## 🧪 Mocked / scaffolded
+### 🧪 Mocked / scaffolded
 
 - Admin dashboard metrics and many admin listing pages still use mock/static data.
 - Cloud storage adapters (S3/R2) are prepared via interfaces/placeholders; local provider is active for development uploads.
 - Reader rendering engine is placeholder-oriented for now (document source wiring exists; full EPUB/PDF experience is not production-grade yet).
 - Payment provider integrations are abstracted behind gateways, and the current implementation intentionally runs in mock mode to validate end-to-end checkout/payment UX before real provider APIs are integrated.
 
-## 🚧 Remaining before production launch
+### 🚧 Remaining before production launch
 
-1. **Harden payment reliability**
-   - webhook/callback verification flow
-   - idempotency keys + duplicate-submission protection
-   - reconciliation jobs for delayed provider states.
-2. **Complete admin data management**
-   - replace mock admin datasets with database-backed queries/actions
-   - add richer asset processing/auditing (checksums, preview generation, extraction metadata).
-3. **Strengthen security posture**
-   - add CSRF protection for state-changing cookie-auth endpoints
-   - add rate limiting on auth/payment endpoints
-   - add structured security logging and alerting.
-4. **Reader productionization**
+1. **Payment reliability + compliance**
+   - webhook/callback signature verification
+   - idempotency keys + duplicate submission protection
+   - provider reconciliation jobs and dispute workflows.
+2. **Security maturity**
+   - robust CSRF token strategy for all state-changing mutations (especially any non-JSON form posts)
+   - rate limiting + bot protection on auth/payment endpoints
+   - centralized audit/security logging, alerting, and incident runbooks.
+3. **Reader productionization**
    - robust EPUB/PDF rendering controls
-   - DRM/encryption strategy and signed file delivery.
-5. **Operational readiness**
-   - error monitoring, tracing, backups, migration rollout policy, and staging smoke tests.
+   - DRM/encryption strategy and signed URL delivery
+   - richer offline reading/content rights behavior.
+4. **Admin and operations**
+   - replace remaining mock admin datasets with database-backed management
+   - backups, restore drills, migration rollback policy, staging smoke tests
+   - uptime monitoring, tracing, and error tracking integration.
+5. **SEO/content operations**
+   - real production domain + social share images
+   - schema.org coverage for `Book` details pages
+   - analytics and search console configuration.
 
 ## Environment setup
 
@@ -107,7 +119,6 @@ Payment flows are isolated behind `PaymentGateway` implementations (`src/lib/pay
    ```
 
 > Seed now creates only an admin account by default (`admin@book.local` / `AdminPass123!`). Create reader accounts via sign up.
-
 
 ## Book asset storage variables (server only)
 
@@ -145,6 +156,7 @@ SYRIATEL_CASH_TIMEOUT_MS="10000"
 - Manifest: `public/manifest.webmanifest`
 - Service worker: `public/sw.js`
 - Registration component: `src/components/pwa/sw-register.tsx` (production only)
+- Offline route: `src/app/offline/page.tsx`
 - Icon source: `public/icons/source-book-icon.svg`
 - Generate icons:
 
@@ -162,4 +174,4 @@ npm run typecheck
 npm run test
 ```
 
-> `typecheck` now auto-runs `prisma generate` first to keep Prisma types synchronized.
+> `typecheck` auto-runs `prisma generate` first to keep Prisma types synchronized.
