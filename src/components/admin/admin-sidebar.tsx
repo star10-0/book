@@ -6,6 +6,7 @@ import { usePathname } from "next/navigation";
 const navItems = [
   { href: "/admin", label: "نظرة عامة" },
   { href: "/admin/books", label: "الكتب" },
+  { href: "/admin/books/new", label: "إضافة كتاب" },
   { href: "/admin/categories", label: "التصنيفات" },
   { href: "/admin/authors", label: "المؤلفون" },
   { href: "/admin/orders", label: "الطلبات" },

@@ -22,6 +22,7 @@ type BookDetailsProps = {
     description: string | null;
     coverImageUrl: string | null;
     publicationDate: Date | null;
+    metadata: unknown;
   };
   offers: Pick<BookOffer, "id" | "type" | "priceCents" | "currency" | "rentalDays">[];
   averageRating: number;
@@ -111,7 +112,7 @@ export function BookDetailsSection({
 
           <WishlistSection bookId={book.id} slug={book.slug} isLoggedIn={isLoggedIn} isWishlisted={isWishlisted} />
 
-          <BookMetadata publicationDate={book.publicationDate} />
+          <BookMetadata publicationDate={book.publicationDate} metadata={book.metadata} />
 
           <BookOffers offers={offers} />
 
@@ -167,10 +168,17 @@ function WishlistSection({
   );
 }
 
-function BookMetadata({ publicationDate }: { publicationDate: Date | null }) {
+function BookMetadata({ publicationDate, metadata }: { publicationDate: Date | null; metadata: unknown }) {
+  const metadataObject = metadata && typeof metadata === "object" && !Array.isArray(metadata) ? (metadata as Record<string, unknown>) : null;
+  const pagesValue = metadataObject?.pages;
+  const languageValue = metadataObject?.language;
+  const publisherValue = metadataObject?.publisher;
+
   const metadataItems = [
     { label: "اللغة", value: "العربية" },
-    { label: "عدد الصفحات", value: null as string | null },
+    { label: "اللغة (metadata)", value: typeof languageValue === "string" ? languageValue : null },
+    { label: "عدد الصفحات", value: typeof pagesValue === "number" || typeof pagesValue === "string" ? String(pagesValue) : null },
+    { label: "الناشر", value: typeof publisherValue === "string" ? publisherValue : null },
     {
       label: "سنة النشر",
       value: publicationDate ? String(publicationDate.getFullYear()) : null,

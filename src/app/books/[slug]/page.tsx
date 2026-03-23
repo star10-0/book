@@ -125,6 +125,7 @@ export default async function BookDetailsPage({ params }: BookDetailsPageProps) 
             description: book.descriptionAr,
             coverImageUrl: book.coverImageUrl,
             publicationDate: book.publicationDate,
+            metadata: book.metadata,
           }}
           offers={book.offers}
           averageRating={averageRating}

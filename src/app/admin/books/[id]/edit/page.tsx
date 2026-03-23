@@ -67,6 +67,7 @@ export default async function EditAdminBookPage({ params }: EditBookPageProps) {
     buyOfferEnabled: purchaseOffer?.isActive ? "enabled" : "disabled",
     rentOfferEnabled: rentalOffer?.isActive ? "enabled" : "disabled",
     description: book.descriptionAr ?? "",
+    metadata: book.metadata ? JSON.stringify(book.metadata, null, 2) : "",
   };
 
   return (

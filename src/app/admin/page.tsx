@@ -1,4 +1,5 @@
 import { AdminPageCard, AdminPageHeader } from "@/components/admin/admin-page";
+import Link from "next/link";
 
 export default function AdminDashboardPage() {
   const metrics = [
@@ -25,6 +26,21 @@ export default function AdminDashboardPage() {
           </article>
         ))}
       </section>
+
+      <AdminPageCard>
+        <AdminPageHeader title="إجراءات سريعة" description="الوصول المباشر لتدفق رفع الكتب وإدارة عروض البيع/الإيجار." />
+        <div className="flex flex-wrap gap-3">
+          <Link
+            href="/admin/books"
+            className="rounded-lg border border-slate-300 px-4 py-2 text-sm font-semibold text-slate-700 hover:bg-slate-100"
+          >
+            إدارة الكتب
+          </Link>
+          <Link href="/admin/books/new" className="rounded-lg bg-slate-900 px-4 py-2 text-sm font-semibold text-white hover:bg-slate-700">
+            رفع/إضافة كتاب جديد
+          </Link>
+        </div>
+      </AdminPageCard>
     </>
   );
 }

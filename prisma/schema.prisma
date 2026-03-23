@@ -137,6 +137,7 @@ model Book {
   titleEn          String?
   descriptionAr    String?
   descriptionEn    String?
+  metadata         Json?
   coverImageUrl    String?
   status           BookStatus        @default(DRAFT)
   format           BookFormat        @default(DIGITAL)

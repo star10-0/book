@@ -16,7 +16,6 @@ const accountLinks = [
   { href: "/account/orders", label: "طلباتي" },
   { href: "/account/library", label: "مكتبتي" },
   { href: "/account/rentals", label: "إعاراتي" },
-  { href: "/admin", label: "الإدارة" },
 ];
 
 export async function SiteHeader() {
@@ -76,7 +75,10 @@ export async function SiteHeader() {
           {user ? <li aria-hidden className="mx-1 h-4 w-px bg-slate-300" /> : null}
 
           {user
-            ? accountLinks.map((link) => (
+            ? [
+                ...accountLinks,
+                ...(user.role === "ADMIN" ? [{ href: "/admin", label: "الإدارة" }] : []),
+              ].map((link) => (
                 <li key={link.href}>
                   <Link
                     href={link.href}
