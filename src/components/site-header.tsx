@@ -11,6 +11,8 @@ const primaryLinks = [
 ];
 
 const accountLinks = [
+  { href: "/account", label: "الحساب" },
+  { href: "/account/profile", label: "الملف الشخصي" },
   { href: "/account/orders", label: "طلباتي" },
   { href: "/account/library", label: "مكتبتي" },
   { href: "/account/rentals", label: "إعاراتي" },
@@ -43,13 +45,13 @@ export async function SiteHeader() {
         ) : (
           <div className="flex flex-wrap items-center gap-2">
             <Link
-              href="/auth/sign-in"
+              href="/login"
               className="rounded-lg border border-slate-300 px-3 py-2 text-sm font-semibold text-slate-700 hover:bg-slate-100 focus-visible:outline-none focus-visible:ring-2 focus-visible:ring-slate-400"
             >
               تسجيل الدخول
             </Link>
             <Link
-              href="/auth/sign-up"
+              href="/register"
               className="rounded-lg bg-indigo-600 px-3 py-2 text-sm font-semibold text-white hover:bg-indigo-500 focus-visible:outline-none focus-visible:ring-2 focus-visible:ring-indigo-300"
             >
               إنشاء حساب
