@@ -79,6 +79,36 @@ export async function grantAccessForPaidOrder(
       throw new Error("INVALID_RENTAL_DAYS");
     }
 
+    const existingActiveRentalForBook = await tx.accessGrant.findFirst({
+      where: {
+        userId: input.userId,
+        bookId: item.bookId,
+        type: AccessGrantType.RENTAL,
+        status: AccessGrantStatus.ACTIVE,
+        OR: [{ expiresAt: null }, { expiresAt: { gt: grantedAt } }],
+      },
+      select: {
+        id: true,
+        expiresAt: true,
+      },
+    });
+
+    if (existingActiveRentalForBook) {
+      const rentalBaseDate =
+        existingActiveRentalForBook.expiresAt && existingActiveRentalForBook.expiresAt > grantedAt
+          ? existingActiveRentalForBook.expiresAt
+          : grantedAt;
+
+      await tx.accessGrant.update({
+        where: { id: existingActiveRentalForBook.id },
+        data: {
+          expiresAt: addDays(rentalBaseDate, item.rentalDays),
+        },
+      });
+
+      continue;
+    }
+
     await tx.accessGrant.create({
       data: {
         userId: input.userId,
