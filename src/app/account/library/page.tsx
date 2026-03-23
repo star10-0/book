@@ -5,6 +5,11 @@ import { requireUser } from "@/lib/auth-session";
 import { formatArabicDate } from "@/lib/formatters/intl";
 import { prisma } from "@/lib/prisma";
 
+function getRemainingDays(expiresAt: Date) {
+  const diffMs = expiresAt.getTime() - Date.now();
+  return Math.max(0, Math.ceil(diffMs / (24 * 60 * 60 * 1000)));
+}
+
 export default async function AccountLibraryPage() {
   const user = await requireUser();
   const now = new Date();
@@ -85,9 +90,12 @@ export default async function AccountLibraryPage() {
                 {rentedBooks.map((grant) => (
                   <li key={grant.id} className="rounded-xl border border-slate-200 p-3">
                     <p className="font-semibold text-slate-900">{grant.book.titleAr}</p>
-                    <p className="mt-1 text-xs text-slate-500">
-                      ينتهي الاستئجار في {grant.expiresAt ? formatArabicDate(grant.expiresAt) : "غير محدد"}
+                    <p className="mt-1 text-sm font-semibold text-amber-700">
+                      تاريخ الانتهاء: {grant.expiresAt ? formatArabicDate(grant.expiresAt, { timeStyle: "short" }) : "غير محدد"}
                     </p>
+                    {grant.expiresAt ? (
+                      <p className="mt-1 text-xs text-slate-500">متبقي {getRemainingDays(grant.expiresAt)} يوم</p>
+                    ) : null}
                     <Link href={`/reader/${grant.id}`} className="mt-3 inline-flex text-sm font-semibold text-indigo-700 hover:text-indigo-600">
                       فتح القارئ
                     </Link>
