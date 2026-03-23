@@ -54,7 +54,7 @@ Payment flows are isolated behind `PaymentGateway` implementations (`src/lib/pay
 ## 🧪 Mocked / scaffolded
 
 - Admin dashboard metrics and many admin listing pages still use mock/static data.
-- Admin book-asset association endpoint is intentionally scaffolded (validation + `501` response; no upload/persist workflow yet).
+- Cloud storage adapters (S3/R2) are prepared via interfaces/placeholders; local provider is active for development uploads.
 - Reader rendering engine is placeholder-oriented for now (document source wiring exists; full EPUB/PDF experience is not production-grade yet).
 - Payment provider integrations are abstracted and wired, but production readiness depends on real credentials, webhook/reconciliation strategy, and provider-specific hardening.
 
@@ -66,7 +66,7 @@ Payment flows are isolated behind `PaymentGateway` implementations (`src/lib/pay
    - reconciliation jobs for delayed provider states.
 2. **Complete admin data management**
    - replace mock admin datasets with database-backed queries/actions
-   - implement secure upload pipeline for book assets (local/S3/R2) with audit trails.
+   - add richer asset processing/auditing (checksums, preview generation, extraction metadata).
 3. **Strengthen security posture**
    - add CSRF protection for state-changing cookie-auth endpoints
    - add rate limiting on auth/payment endpoints
@@ -96,6 +96,7 @@ Payment flows are isolated behind `PaymentGateway` implementations (`src/lib/pay
    - `DATABASE_URL` (PostgreSQL)
    - `AUTH_SECRET` (long random secret)
    - payment provider variables (if using Sham Cash / Syriatel Cash)
+   - optional storage variables (for future S3/R2 providers; local is default)
 
 4. Prisma + run:
 
@@ -104,6 +105,16 @@ Payment flows are isolated behind `PaymentGateway` implementations (`src/lib/pay
    npm run prisma:seed
    npm run dev
    ```
+
+
+## Book asset storage variables (server only)
+
+```bash
+# Active provider: local | s3 | r2
+BOOK_STORAGE_PROVIDER="local"
+```
+
+> Local mode stores uploads under `public/uploads/books/*` and serves them as normal static files.
 
 ## Payment provider variables (server only)
 
