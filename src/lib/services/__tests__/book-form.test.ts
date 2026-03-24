@@ -40,9 +40,14 @@ test("buildBookOfferWrites preserves purchase and rental semantics", () => {
   assert.equal(rental?.rentalDays, 14);
 });
 
-test("parseContentAccessPolicy prioritizes preview then download then read", () => {
+test("parseContentAccessPolicy prioritizes paid-only then preview then download then read", () => {
+  assert.equal(
+    parseContentAccessPolicy({ paidOnlyMode: "enabled", previewOnly: "enabled", allowDownloading: "enabled", allowReadingOnSite: "enabled" }),
+    "PAID_ONLY",
+  );
   assert.equal(parseContentAccessPolicy({ previewOnly: "enabled", allowDownloading: "enabled", allowReadingOnSite: "enabled" }), "PREVIEW_ONLY");
   assert.equal(parseContentAccessPolicy({ allowDownloading: "enabled", allowReadingOnSite: "enabled" }), "PUBLIC_DOWNLOAD");
   assert.equal(parseContentAccessPolicy({ allowReadingOnSite: "enabled" }), "PUBLIC_READ");
+  assert.equal(parseContentAccessPolicy({ paidOnlyMode: "disabled" }), "PAID_ONLY");
   assert.equal(parseContentAccessPolicy({}), "PAID_ONLY");
 });

@@ -81,6 +81,7 @@ function buildBookValues(formData: FormData): StudioBookFormValues {
     allowReadingOnSite: readField(formData, "allowReadingOnSite"),
     allowDownloading: readField(formData, "allowDownloading"),
     previewOnly: readField(formData, "previewOnly"),
+    paidOnlyMode: readField(formData, "paidOnlyMode"),
     description: readField(formData, "description"),
     metadata: readField(formData, "metadata"),
     metadataLanguage: readField(formData, "metadataLanguage"),
