@@ -32,11 +32,16 @@ Payment flows are isolated behind `PaymentGateway` implementations (`src/lib/pay
 
 ### ✅ Complete (implemented)
 
+- Creator-first publishing flow:
+  - any authenticated user can activate writer mode from profile (`ابدأ ككاتب`)
+  - dedicated creator dashboard under `/studio` for books/orders/payments/profile
+  - book ownership enforced through `Book.creatorId` so creators manage only their own books
+  - public creator pages available at `/creators/[slug]`
 - Arabic-first RTL layout with improved keyboard navigation and mobile-friendly navigation controls.
 - Credentials auth flow:
   - sign up / sign in / sign out
   - signed server sessions in HTTP-only cookies
-  - protected `/account/*` and role-protected `/admin/*`
+  - protected `/account/*`, creator-protected `/studio/*`, and role-protected `/admin/*`
 - Catalog browsing and book details with active digital offers.
 - Authenticated offer-to-checkout flow: review selected offer on `/checkout`, create order via `POST /api/orders`, then continue on `/checkout/[orderId]` and `/orders/[orderId]/summary`.
 - Payment attempt lifecycle:
