@@ -34,6 +34,20 @@ const nextConfig: NextConfig = {
   async headers() {
     return [
       {
+        source: "/api/books/assets/:path*",
+        headers: [
+          { key: "X-Frame-Options", value: "SAMEORIGIN" },
+          { key: "Content-Security-Policy", value: uploadFrameContentSecurityPolicy },
+        ],
+      },
+      {
+        source: "/uploads/books/:path*",
+        headers: [
+          { key: "X-Frame-Options", value: "SAMEORIGIN" },
+          { key: "Content-Security-Policy", value: uploadFrameContentSecurityPolicy },
+        ],
+      },
+      {
         source: "/:path*",
         headers: [
           { key: "X-Frame-Options", value: "DENY" },
@@ -44,13 +58,6 @@ const nextConfig: NextConfig = {
           { key: "Cross-Origin-Opener-Policy", value: "same-origin" },
           { key: "Cross-Origin-Resource-Policy", value: "same-origin" },
           { key: "Strict-Transport-Security", value: "max-age=63072000; includeSubDomains; preload" },
-        ],
-      },
-      {
-        source: "/uploads/books/:path*",
-        headers: [
-          { key: "X-Frame-Options", value: "SAMEORIGIN" },
-          { key: "Content-Security-Policy", value: uploadFrameContentSecurityPolicy },
         ],
       },
     ];
