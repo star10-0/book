@@ -337,6 +337,7 @@ model Payment {
   @@index([userId, createdAt])
   @@index([orderId, status])
   @@index([provider, providerRef])
+  @@unique([provider, providerRef])
 }
 
 model PaymentAttempt {
@@ -362,6 +363,7 @@ model PaymentAttempt {
   @@index([paymentId, createdAt])
   @@index([orderId, status])
   @@index([provider, providerReference])
+  @@unique([provider, providerReference])
 }
 
 model AccessGrant {

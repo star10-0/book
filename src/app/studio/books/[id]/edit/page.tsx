@@ -7,6 +7,7 @@ import { BookForm } from "@/components/admin/book-form";
 import { BookTextContentForm } from "@/components/studio/book-text-content-form";
 import { requireCreator } from "@/lib/auth-session";
 import { prisma } from "@/lib/prisma";
+import { buildBookInitialValues } from "@/lib/services/book-form";
 
 type EditStudioBookPageProps = {
   params: Promise<{ id: string }>;
@@ -67,30 +68,16 @@ export default async function EditStudioBookPage({ params, searchParams }: EditS
     notFound();
   }
 
-  const purchaseOffer = book.offers.find((offer) => offer.type === "PURCHASE");
-  const rentalOffer = book.offers.find((offer) => offer.type === "RENTAL");
-  const metadata = book.metadata && typeof book.metadata === "object" && !Array.isArray(book.metadata) ? book.metadata : null;
-
-  const initialValues: StudioBookFormValues = {
+  const initialValues: StudioBookFormValues = buildBookInitialValues({
     titleAr: book.titleAr,
     slug: book.slug,
     categoryId: book.categoryId,
-    purchasePrice: purchaseOffer ? String(purchaseOffer.priceCents / 100) : "",
-    rentalPrice: rentalOffer ? String(rentalOffer.priceCents / 100) : "",
-    rentalDays: rentalOffer?.rentalDays ? String(rentalOffer.rentalDays) : "14",
-    publicationStatus: book.status.toLowerCase(),
-    buyOfferEnabled: purchaseOffer?.isActive ? "enabled" : "disabled",
-    rentOfferEnabled: rentalOffer?.isActive ? "enabled" : "disabled",
-    allowReadingOnSite:
-      book.contentAccessPolicy === "PUBLIC_READ" || book.contentAccessPolicy === "PUBLIC_DOWNLOAD" ? "enabled" : "disabled",
-    allowDownloading: book.contentAccessPolicy === "PUBLIC_DOWNLOAD" ? "enabled" : "disabled",
-    previewOnly: book.contentAccessPolicy === "PREVIEW_ONLY" ? "enabled" : "disabled",
-    description: book.descriptionAr ?? "",
-    metadata: book.metadata ? JSON.stringify(book.metadata, null, 2) : "",
-    metadataLanguage: typeof metadata?.language === "string" ? metadata.language : "",
-    metadataPages: typeof metadata?.pages === "number" ? String(metadata.pages) : "",
-    metadataPublisher: typeof metadata?.publisher === "string" ? metadata.publisher : "",
-  };
+    status: book.status,
+    contentAccessPolicy: book.contentAccessPolicy,
+    descriptionAr: book.descriptionAr,
+    metadata: book.metadata,
+    offers: book.offers,
+  });
 
   const contentStatuses = buildContentStatuses(files, Boolean(book.textContent?.trim()));
 

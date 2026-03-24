@@ -1,33 +1,22 @@
 "use server";
 
-import { BookStatus, ContentAccessPolicy, CurrencyCode, OfferType, Prisma } from "@prisma/client";
+import { BookStatus, OfferType, Prisma } from "@prisma/client";
 import { revalidatePath } from "next/cache";
 import { redirect } from "next/navigation";
 import { requireAdmin } from "@/lib/auth-session";
 import { prisma } from "@/lib/prisma";
+import {
+  BOOK_SLUG_PATTERN,
+  buildBookOfferWrites,
+  parseBookOffers,
+  parseContentAccessPolicy,
+  parseMetadata,
+  parseStatus,
+  readField,
+  type SharedBookFormValues,
+} from "@/lib/services/book-form";
 
-const BOOK_SLUG_PATTERN = /^[a-z0-9]+(?:-[a-z0-9]+)*$/;
-
-export type BookFormValues = {
-  titleAr?: string;
-  slug?: string;
-  authorId?: string;
-  categoryId?: string;
-  purchasePrice?: string;
-  rentalPrice?: string;
-  rentalDays?: string;
-  publicationStatus?: string;
-  buyOfferEnabled?: string;
-  rentOfferEnabled?: string;
-  allowReadingOnSite?: string;
-  allowDownloading?: string;
-  previewOnly?: string;
-  description?: string;
-  metadata?: string;
-  metadataLanguage?: string;
-  metadataPages?: string;
-  metadataPublisher?: string;
-};
+export type BookFormValues = SharedBookFormValues;
 
 export type BookFormState = {
   error?: string;
@@ -35,45 +24,6 @@ export type BookFormState = {
   fieldErrors?: Partial<Record<keyof BookFormValues, string>>;
   values?: BookFormValues;
 };
-
-function readField(formData: FormData, key: keyof BookFormValues) {
-  const value = formData.get(key);
-  return typeof value === "string" ? value.trim() : "";
-}
-
-function parseStatus(value: string) {
-  if (value === "draft") return BookStatus.DRAFT;
-  if (value === "pending_review") return BookStatus.PENDING_REVIEW;
-  if (value === "published") return BookStatus.PUBLISHED;
-  if (value === "rejected") return BookStatus.REJECTED;
-  if (value === "archived") return BookStatus.ARCHIVED;
-  return null;
-}
-
-function parseOfferPrice(value: string) {
-  if (!value) return null;
-  const parsed = Number(value);
-
-  if (!Number.isFinite(parsed) || parsed <= 0) {
-    return null;
-  }
-
-  return Math.round(parsed * 100);
-}
-
-function parseRentalDays(value: string) {
-  if (!value) {
-    return null;
-  }
-
-  const days = Number(value);
-
-  if (!Number.isInteger(days) || days < 1 || days > 365) {
-    return null;
-  }
-
-  return days;
-}
 
 function buildValues(formData: FormData): BookFormValues {
   return {
@@ -96,65 +46,6 @@ function buildValues(formData: FormData): BookFormValues {
     metadataPages: readField(formData, "metadataPages"),
     metadataPublisher: readField(formData, "metadataPublisher"),
   };
-}
-
-function parseContentAccessPolicy(values: BookFormValues) {
-  const previewOnly = values.previewOnly === "enabled";
-  const allowDownloading = values.allowDownloading === "enabled";
-  const allowReadingOnSite = values.allowReadingOnSite === "enabled";
-
-  if (previewOnly) {
-    return ContentAccessPolicy.PREVIEW_ONLY;
-  }
-
-  if (allowDownloading) {
-    return ContentAccessPolicy.PUBLIC_DOWNLOAD;
-  }
-
-  if (allowReadingOnSite) {
-    return ContentAccessPolicy.PUBLIC_READ;
-  }
-
-  return ContentAccessPolicy.PAID_ONLY;
-}
-
-function parseMetadata(values: BookFormValues) {
-  const baseValue = values.metadata ?? "";
-  let metadata: Record<string, Prisma.InputJsonValue> = {};
-
-  if (baseValue) {
-    try {
-      const parsed = JSON.parse(baseValue);
-
-      if (!parsed || Array.isArray(parsed) || typeof parsed !== "object") {
-        return undefined;
-      }
-
-      metadata = parsed as Record<string, Prisma.InputJsonValue>;
-    } catch {
-      return undefined;
-    }
-  }
-
-  if (values.metadataLanguage) {
-    metadata.language = values.metadataLanguage;
-  }
-
-  if (values.metadataPublisher) {
-    metadata.publisher = values.metadataPublisher;
-  }
-
-  if (values.metadataPages) {
-    const pages = Number(values.metadataPages);
-
-    if (!Number.isInteger(pages) || pages <= 0) {
-      return "invalid-pages" as const;
-    }
-
-    metadata.pages = pages;
-  }
-
-  return Object.keys(metadata).length > 0 ? (metadata as Prisma.InputJsonObject) : null;
 }
 
 async function validateBookForm(values: BookFormValues, bookId?: string) {
@@ -200,26 +91,23 @@ async function validateBookForm(values: BookFormValues, bookId?: string) {
     fieldErrors.publicationStatus = "حالة النشر غير صحيحة.";
   }
 
-  const buyEnabled = values.buyOfferEnabled === "enabled";
-  const rentEnabled = values.rentOfferEnabled === "enabled";
+  const offerValues = parseBookOffers(values);
+  const { buyEnabled, rentEnabled } = offerValues;
 
   if (!buyEnabled && !rentEnabled) {
     fieldErrors.buyOfferEnabled = "فعّل عرض شراء أو إيجار واحد على الأقل.";
     fieldErrors.rentOfferEnabled = "فعّل عرض شراء أو إيجار واحد على الأقل.";
   }
 
-  const purchasePriceCents = parseOfferPrice(values.purchasePrice ?? "");
-  if (buyEnabled && purchasePriceCents === null) {
+  if (buyEnabled && offerValues.purchasePriceCents === null) {
     fieldErrors.purchasePrice = "أدخل سعر شراء صالحًا أكبر من الصفر.";
   }
 
-  const rentalPriceCents = parseOfferPrice(values.rentalPrice ?? "");
-  if (rentEnabled && rentalPriceCents === null) {
+  if (rentEnabled && offerValues.rentalPriceCents === null) {
     fieldErrors.rentalPrice = "أدخل سعر إيجار صالحًا أكبر من الصفر.";
   }
 
-  const rentalDays = parseRentalDays(values.rentalDays ?? "");
-  if (rentEnabled && rentalDays === null) {
+  if (rentEnabled && offerValues.rentalDays === null) {
     fieldErrors.rentalDays = "مدة الإيجار يجب أن تكون رقمًا صحيحًا بين 1 و365 يومًا.";
   }
 
@@ -228,9 +116,9 @@ async function validateBookForm(values: BookFormValues, bookId?: string) {
   }
 
   const metadata = parseMetadata(values);
-  if (metadata === undefined) {
+  if (!metadata.ok && metadata.error === "invalid-json") {
     fieldErrors.metadata = "صيغة metadata غير صحيحة. أدخل JSON صالحًا.";
-  } else if (metadata === "invalid-pages") {
+  } else if (!metadata.ok && metadata.error === "invalid-pages") {
     fieldErrors.metadataPages = "عدد الصفحات يجب أن يكون رقمًا صحيحًا أكبر من الصفر.";
   }
 
@@ -246,11 +134,11 @@ async function validateBookForm(values: BookFormValues, bookId?: string) {
     status,
     buyEnabled,
     rentEnabled,
-    purchasePriceCents,
-    rentalPriceCents,
-    rentalDays,
+    purchasePriceCents: offerValues.purchasePriceCents,
+    rentalPriceCents: offerValues.rentalPriceCents,
+    rentalDays: offerValues.rentalDays,
     contentAccessPolicy: parseContentAccessPolicy(values),
-    metadata: metadata && metadata !== "invalid-pages" ? metadata : undefined,
+    metadata: metadata.ok ? (metadata.data ?? Prisma.JsonNull) : undefined,
   };
 }
 
@@ -279,25 +167,13 @@ export async function createBookAction(_prevState: BookFormState, formData: Form
       authorId: values.authorId!,
       categoryId: values.categoryId!,
       offers: {
-        create: [
-          validation.buyEnabled
-            ? {
-                type: OfferType.PURCHASE,
-                priceCents: validation.purchasePriceCents!,
-                currency: CurrencyCode.SYP,
-                isActive: true,
-              }
-            : undefined,
-          validation.rentEnabled
-            ? {
-                type: OfferType.RENTAL,
-                priceCents: validation.rentalPriceCents!,
-                rentalDays: validation.rentalDays!,
-                currency: CurrencyCode.SYP,
-                isActive: true,
-              }
-            : undefined,
-        ].filter((value): value is NonNullable<typeof value> => Boolean(value)),
+        create: buildBookOfferWrites({
+          buyEnabled: validation.buyEnabled,
+          rentEnabled: validation.rentEnabled,
+          purchasePriceCents: validation.purchasePriceCents,
+          rentalPriceCents: validation.rentalPriceCents,
+          rentalDays: validation.rentalDays,
+        }),
       },
     },
     select: { id: true },
@@ -372,25 +248,13 @@ export async function updateBookAction(bookId: string, _prevState: BookFormState
         deleteMany: {
           type: { in: [OfferType.PURCHASE, OfferType.RENTAL] },
         },
-        create: [
-          validation.buyEnabled
-            ? {
-                type: OfferType.PURCHASE,
-                priceCents: validation.purchasePriceCents!,
-                currency: CurrencyCode.SYP,
-                isActive: true,
-              }
-            : undefined,
-          validation.rentEnabled
-            ? {
-                type: OfferType.RENTAL,
-                priceCents: validation.rentalPriceCents!,
-                rentalDays: validation.rentalDays!,
-                currency: CurrencyCode.SYP,
-                isActive: true,
-              }
-            : undefined,
-        ].filter((value): value is NonNullable<typeof value> => Boolean(value)),
+        create: buildBookOfferWrites({
+          buyEnabled: validation.buyEnabled,
+          rentEnabled: validation.rentEnabled,
+          purchasePriceCents: validation.purchasePriceCents,
+          rentalPriceCents: validation.rentalPriceCents,
+          rentalDays: validation.rentalDays,
+        }),
       },
     },
   });

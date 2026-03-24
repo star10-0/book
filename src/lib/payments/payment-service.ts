@@ -4,6 +4,7 @@ import { resolvePaymentGateway } from "@/lib/payments/gateways";
 import { isMockPaymentVerificationEnabled } from "@/lib/payments/mock-mode";
 import { ensurePaymentStatusTransition } from "@/lib/payments/status-flow";
 import { grantAccessForPaidOrder } from "@/lib/access-grants";
+import { isNonNegativeInteger } from "@/lib/services/invariants";
 
 export interface CreatePaymentForOrderInput {
   orderId: string;
@@ -45,6 +46,10 @@ export async function createPaymentForOrder(input: CreatePaymentForOrderInput) {
 
   if (order.status !== OrderStatus.PENDING) {
     throw new Error("ORDER_NOT_PAYABLE");
+  }
+
+  if (!isNonNegativeInteger(order.totalCents)) {
+    throw new Error("INVALID_ORDER_TOTAL");
   }
 
   const gateway = resolvePaymentGateway(input.provider);
@@ -108,6 +113,19 @@ export async function createPaymentForOrder(input: CreatePaymentForOrderInput) {
     });
 
     ensurePaymentStatusTransition(attempt.status, "SUBMITTED");
+
+    const conflictingAttempt = await tx.paymentAttempt.findFirst({
+      where: {
+        provider: input.provider,
+        providerReference: gatewayResponse.providerReference,
+        id: { not: attempt.id },
+      },
+      select: { id: true },
+    });
+
+    if (conflictingAttempt) {
+      throw new Error("DUPLICATE_PROVIDER_REFERENCE");
+    }
 
     const submittedAttempt = await tx.paymentAttempt.update({
       where: { id: attempt.id },
