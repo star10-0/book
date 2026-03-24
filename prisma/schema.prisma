@@ -9,12 +9,15 @@ datasource db {
 
 enum UserRole {
   USER
+  CREATOR
   ADMIN
 }
 
 enum BookStatus {
   DRAFT
+  PENDING_REVIEW
   PUBLISHED
+  REJECTED
   ARCHIVED
 }
 
@@ -101,10 +104,27 @@ model User {
   readingProgresses ReadingProgress[]
   wishlistItems     WishlistItem[]
   reviews           BookReview[]
+  creatorProfile    CreatorProfile?
+  createdBooks      Book[]            @relation("BookCreator")
   createdAt         DateTime          @default(now())
   updatedAt         DateTime          @updatedAt
 
   @@index([role])
+}
+
+model CreatorProfile {
+  id          String   @id @default(cuid())
+  userId       String   @unique
+  slug         String   @unique
+  displayName  String
+  bio          String?
+  avatarUrl    String?
+  coverUrl     String?
+  authorId     String?  @unique
+  user         User     @relation(fields: [userId], references: [id], onDelete: Cascade)
+  author       Author?  @relation(fields: [authorId], references: [id], onDelete: SetNull)
+  createdAt    DateTime @default(now())
+  updatedAt    DateTime @updatedAt
 }
 
 model Author {
@@ -115,6 +135,7 @@ model Author {
   bioAr     String?
   bioEn     String?
   books     Book[]
+  creatorProfile CreatorProfile?
   createdAt DateTime @default(now())
   updatedAt DateTime @updatedAt
 }
@@ -144,8 +165,10 @@ model Book {
   publicationDate  DateTime?
   authorId         String
   categoryId       String
+  creatorId        String?
   author           Author            @relation(fields: [authorId], references: [id], onDelete: Restrict)
   category         Category          @relation(fields: [categoryId], references: [id], onDelete: Restrict)
+  creator          User?             @relation("BookCreator", fields: [creatorId], references: [id], onDelete: SetNull)
   files            BookFile[]
   offers           BookOffer[]
   orderItems       OrderItem[]
@@ -160,6 +183,7 @@ model Book {
   @@index([format])
   @@index([authorId])
   @@index([categoryId])
+  @@index([creatorId])
 }
 
 model BookFile {

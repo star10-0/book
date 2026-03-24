@@ -5,17 +5,21 @@ import { useActionState } from "react";
 import type { BookFormState, BookFormValues } from "@/app/admin/books/actions";
 import { AdminFormSection, AdminInput, AdminSelect, AdminTextArea } from "@/components/admin/form-fields";
 
+type BaseBookValues = BookFormValues;
+
 type BookFormProps = {
   mode: "create" | "edit";
-  initialValues?: BookFormValues;
+  initialValues?: BaseBookValues;
   authors: { id: string; nameAr: string }[];
   categories: { id: string; nameAr: string }[];
+  hideAuthorField?: boolean;
+  backHref?: string;
   action: (state: BookFormState, formData: FormData) => Promise<BookFormState>;
 };
 
 const initialState: BookFormState = {};
 
-function mergeValues(initialValues: BookFormValues | undefined, stateValues: BookFormValues | undefined): BookFormValues {
+function mergeValues(initialValues: BaseBookValues | undefined, stateValues: BaseBookValues | undefined): BaseBookValues {
   return {
     titleAr: stateValues?.titleAr ?? initialValues?.titleAr ?? "",
     slug: stateValues?.slug ?? initialValues?.slug ?? "",
@@ -32,7 +36,7 @@ function mergeValues(initialValues: BookFormValues | undefined, stateValues: Boo
   };
 }
 
-export function BookForm({ mode, initialValues, authors, categories, action }: BookFormProps) {
+export function BookForm({ mode, initialValues, authors, categories, hideAuthorField = false, backHref = "/admin/books", action }: BookFormProps) {
   const title = mode === "create" ? "إضافة كتاب جديد إلى المتجر" : "تعديل بيانات الكتاب";
   const actionLabel = mode === "create" ? "حفظ وإضافة الكتاب" : "حفظ التعديلات";
 
@@ -57,22 +61,24 @@ export function BookForm({ mode, initialValues, authors, categories, action }: B
           {state.fieldErrors?.slug ? <p className="text-sm font-medium text-rose-700">{state.fieldErrors.slug}</p> : null}
         </div>
 
-        <label className="flex flex-col gap-2 text-sm font-medium text-slate-700">
-          المؤلف
-          <select
-            name="authorId"
-            defaultValue={values.authorId}
-            className="rounded-lg border border-slate-300 bg-white px-3 py-2 focus:border-slate-500 focus:outline-none"
-          >
-            <option value="">اختر المؤلف</option>
-            {authors.map((author) => (
-              <option key={author.id} value={author.id}>
-                {author.nameAr}
-              </option>
-            ))}
-          </select>
-          {state.fieldErrors?.authorId ? <p className="text-sm font-medium text-rose-700">{state.fieldErrors.authorId}</p> : null}
-        </label>
+        {!hideAuthorField ? (
+          <label className="flex flex-col gap-2 text-sm font-medium text-slate-700">
+            المؤلف
+            <select
+              name="authorId"
+              defaultValue={values.authorId}
+              className="rounded-lg border border-slate-300 bg-white px-3 py-2 focus:border-slate-500 focus:outline-none"
+            >
+              <option value="">اختر المؤلف</option>
+              {authors.map((author) => (
+                <option key={author.id} value={author.id}>
+                  {author.nameAr}
+                </option>
+              ))}
+            </select>
+            {state.fieldErrors?.authorId ? <p className="text-sm font-medium text-rose-700">{state.fieldErrors.authorId}</p> : null}
+          </label>
+        ) : null}
 
         <label className="flex flex-col gap-2 text-sm font-medium text-slate-700">
           التصنيف
@@ -143,7 +149,9 @@ export function BookForm({ mode, initialValues, authors, categories, action }: B
             defaultValue={values.publicationStatus}
             options={[
               { value: "draft", label: "مسودة" },
+              { value: "pending_review", label: "بانتظار المراجعة" },
               { value: "published", label: "منشور" },
+              { value: "rejected", label: "مرفوض" },
               { value: "archived", label: "مؤرشف" },
             ]}
           />
@@ -160,7 +168,7 @@ export function BookForm({ mode, initialValues, authors, categories, action }: B
             label="Metadata (JSON)"
             name="metadata"
             defaultValue={values.metadata}
-            placeholder={'{"language":"ar","pages":220,"publisher":"دار المعرفة"}'}
+            placeholder='{"language":"ar","pages":220,"publisher":"دار المعرفة"}'
           />
           {state.fieldErrors?.metadata ? <p className="text-sm font-medium text-rose-700">{state.fieldErrors.metadata}</p> : null}
         </div>
@@ -178,7 +186,7 @@ export function BookForm({ mode, initialValues, authors, categories, action }: B
           {isPending ? "جارٍ الحفظ..." : actionLabel}
         </button>
         <Link
-          href="/admin/books"
+          href={backHref}
           className="rounded-lg border border-slate-300 px-5 py-2.5 text-sm font-semibold text-slate-700 hover:bg-slate-100 focus-visible:outline-none focus-visible:ring-2 focus-visible:ring-slate-500"
         >
           إلغاء

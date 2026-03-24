@@ -17,6 +17,7 @@ type BookAssetItem = {
 type BookFileManagerProps = {
   bookId: string;
   initialAssets: BookAssetItem[];
+  apiBasePath?: string;
 };
 
 const kindCards: { kind: FileKind; label: string; help: string; accept: string }[] = [
@@ -41,7 +42,7 @@ function formatSize(size: number | null) {
   return `${(size / (1024 * 1024)).toFixed(1)} م.ب`;
 }
 
-export function BookFileManager({ bookId, initialAssets }: BookFileManagerProps) {
+export function BookFileManager({ bookId, initialAssets, apiBasePath = "/api/admin/book-assets" }: BookFileManagerProps) {
   const [assets, setAssets] = useState(initialAssets);
   const [busyKind, setBusyKind] = useState<FileKind | null>(null);
   const [message, setMessage] = useState<string | null>(null);
@@ -52,7 +53,7 @@ export function BookFileManager({ bookId, initialAssets }: BookFileManagerProps)
   }, [assets]);
 
   const refreshAssets = async () => {
-    const response = await fetch(`/api/admin/book-assets?bookId=${bookId}`, { method: "GET" });
+    const response = await fetch(`${apiBasePath}?bookId=${bookId}`, { method: "GET" });
     const payload = (await response.json()) as { items?: BookAssetItem[]; error?: string };
 
     if (!response.ok || !payload.items) {
@@ -77,7 +78,7 @@ export function BookFileManager({ bookId, initialAssets }: BookFileManagerProps)
       formData.set("kind", kind);
       formData.set("file", file);
 
-      const response = await fetch("/api/admin/book-assets", {
+      const response = await fetch(apiBasePath, {
         method: "POST",
         body: formData,
       });
@@ -102,7 +103,7 @@ export function BookFileManager({ bookId, initialAssets }: BookFileManagerProps)
     setMessage(null);
 
     try {
-      const response = await fetch(`/api/admin/book-assets?assetId=${assetId}`, {
+      const response = await fetch(`${apiBasePath}?assetId=${assetId}`, {
         method: "DELETE",
       });
 

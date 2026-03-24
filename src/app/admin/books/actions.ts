@@ -37,7 +37,9 @@ function readField(formData: FormData, key: keyof BookFormValues) {
 
 function parseStatus(value: string) {
   if (value === "draft") return BookStatus.DRAFT;
+  if (value === "pending_review") return BookStatus.PENDING_REVIEW;
   if (value === "published") return BookStatus.PUBLISHED;
+  if (value === "rejected") return BookStatus.REJECTED;
   if (value === "archived") return BookStatus.ARCHIVED;
   return null;
 }

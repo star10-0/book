@@ -77,6 +77,7 @@ export async function SiteHeader() {
           {user
             ? [
                 ...accountLinks,
+                ...(user.role === "CREATOR" || user.role === "ADMIN" ? [{ href: "/studio", label: "لوحة الكاتب" }] : [{ href: "/account/profile", label: "ابدأ ككاتب" }]),
                 ...(user.role === "ADMIN" ? [{ href: "/admin", label: "الإدارة" }] : []),
               ].map((link) => (
                 <li key={link.href}>

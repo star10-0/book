@@ -125,6 +125,12 @@ export async function getCurrentUser() {
       fullName: true,
       role: true,
       isActive: true,
+      creatorProfile: {
+        select: {
+          slug: true,
+          displayName: true,
+        },
+      },
     },
   });
 
@@ -137,6 +143,7 @@ export async function getCurrentUser() {
     email: user.email,
     name: user.fullName,
     role: user.role,
+    creatorProfile: user.creatorProfile,
   };
 }
 
@@ -156,6 +163,16 @@ export async function requireAdmin(options?: { callbackUrl?: string }) {
 
   if (user.role !== UserRole.ADMIN) {
     redirect("/");
+  }
+
+  return user;
+}
+
+export async function requireCreator(options?: { callbackUrl?: string }) {
+  const user = await requireUser(options);
+
+  if (user.role !== UserRole.CREATOR && user.role !== UserRole.ADMIN) {
+    redirect("/account/profile");
   }
 
   return user;
