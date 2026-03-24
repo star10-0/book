@@ -77,7 +77,13 @@ export async function SiteHeader() {
           {user
             ? [
                 ...accountLinks,
-                ...(user.role === "CREATOR" || user.role === "ADMIN" ? [{ href: "/studio", label: "لوحة الكاتب" }] : [{ href: "/account/profile", label: "ابدأ ككاتب" }]),
+                ...(user.role === "CREATOR" || user.role === "ADMIN"
+                  ? [
+                      { href: "/studio", label: "لوحة الكاتب" },
+                      { href: "/studio/books/new", label: "أضف كتابًا" },
+                      { href: "/studio/profile", label: "ملف الكاتب" },
+                    ]
+                  : [{ href: "/studio", label: "لوحة الكاتب" }]),
                 ...(user.role === "ADMIN" ? [{ href: "/admin", label: "الإدارة" }] : []),
               ].map((link) => (
                 <li key={link.href}>

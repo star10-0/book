@@ -1,13 +1,28 @@
 import Link from "next/link";
-import { requireCreator } from "@/lib/auth-session";
+import { BecomeCreatorForm } from "@/components/studio/become-creator-form";
+import { requireUser } from "@/lib/auth-session";
 import { prisma } from "@/lib/prisma";
 
 export default async function StudioDashboardPage() {
-  const user = await requireCreator({ callbackUrl: "/studio" });
+  const user = await requireUser({ callbackUrl: "/studio" });
+
+  if (user.role !== "CREATOR" && user.role !== "ADMIN") {
+    return (
+      <section className="rounded-2xl border border-indigo-200 bg-white p-5 shadow-sm">
+        <h2 className="text-lg font-bold text-slate-900">لوحة الكاتب</h2>
+        <p className="mt-2 text-sm text-slate-700">
+          للوصول إلى إدارة الكتب والنشر، فعّل حساب الكاتب أولًا من النموذج التالي.
+        </p>
+        <BecomeCreatorForm suggestedName={user.name ?? user.email.split("@")[0]} />
+      </section>
+    );
+  }
 
   const [booksCount, publishedCount, ordersCount] = await Promise.all([
     prisma.book.count({ where: user.role === "ADMIN" ? {} : { creatorId: user.id } }),
-    prisma.book.count({ where: user.role === "ADMIN" ? { status: "PUBLISHED" } : { creatorId: user.id, status: "PUBLISHED" } }),
+    prisma.book.count({
+      where: user.role === "ADMIN" ? { status: "PUBLISHED" } : { creatorId: user.id, status: "PUBLISHED" },
+    }),
     prisma.orderItem.count({ where: user.role === "ADMIN" ? {} : { book: { creatorId: user.id } } }),
   ]);
 
@@ -18,10 +33,10 @@ export default async function StudioDashboardPage() {
         <p className="mt-2 text-sm text-slate-600">من هنا يمكنك نشر كتبك، إدارة عروض البيع/الإيجار، ومتابعة الطلبات.</p>
         <div className="mt-4 flex flex-wrap gap-2">
           <Link href="/studio/books/new" className="rounded-lg bg-indigo-700 px-4 py-2 text-sm font-semibold text-white hover:bg-indigo-600">
-            إضافة كتاب جديد
+            أضف كتابًا
           </Link>
           <Link href="/studio/profile" className="rounded-lg border border-slate-300 px-4 py-2 text-sm font-semibold text-slate-800 hover:bg-slate-100">
-            تعديل الملف العام
+            ملف الكاتب
           </Link>
         </div>
       </section>

@@ -36,7 +36,7 @@ export default async function StudioBooksPage() {
       <div className="mb-4 flex flex-wrap items-center justify-between gap-2">
         <h2 className="text-lg font-bold text-slate-900">كتبي</h2>
         <Link href="/studio/books/new" className="rounded-lg bg-indigo-700 px-4 py-2 text-sm font-semibold text-white hover:bg-indigo-600">
-          + إضافة كتاب
+          أضف كتابًا
         </Link>
       </div>
 

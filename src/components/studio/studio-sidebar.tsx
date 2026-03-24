@@ -6,10 +6,15 @@ import { usePathname } from "next/navigation";
 const navItems = [
   { href: "/studio", label: "نظرة عامة" },
   { href: "/studio/books", label: "كتبي" },
-  { href: "/studio/books/new", label: "+ كتاب جديد", highlight: true },
+  { href: "/studio/books/new", label: "أضف كتابًا", highlight: true },
   { href: "/studio/orders", label: "الطلبات" },
   { href: "/studio/payments", label: "المدفوعات" },
-  { href: "/studio/profile", label: "الملف العام" },
+  { href: "/studio/profile", label: "ملف الكاتب" },
+];
+
+const onboardingItems = [
+  { href: "/studio", label: "لوحة الكاتب" },
+  { href: "/account/profile", label: "تفعيل ملف الكاتب" },
 ];
 
 function isCurrentPath(pathname: string, href: string) {
@@ -20,15 +25,20 @@ function isCurrentPath(pathname: string, href: string) {
   return pathname.startsWith(`${href}/`) || pathname === href;
 }
 
-export function StudioSidebar() {
+type StudioSidebarProps = {
+  isCreator: boolean;
+};
+
+export function StudioSidebar({ isCreator }: StudioSidebarProps) {
   const pathname = usePathname();
+  const visibleItems = isCreator ? navItems : onboardingItems;
 
   return (
     <aside className="rounded-2xl border border-slate-200 bg-white p-4 shadow-sm">
       <h2 className="mb-3 text-sm font-semibold text-slate-500">لوحة الكاتب</h2>
       <nav aria-label="روابط لوحة الكاتب">
         <ul className="space-y-1">
-          {navItems.map((item) => {
+          {visibleItems.map((item) => {
             const active = isCurrentPath(pathname, item.href);
             const highlight = "highlight" in item && item.highlight;
 
