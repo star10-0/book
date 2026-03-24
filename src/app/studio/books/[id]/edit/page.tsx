@@ -17,9 +17,10 @@ function buildContentStatuses(files: { kind: FileKind }[], hasTextContent: boole
   const kinds = new Set(files.map((file) => file.kind));
 
   return [
-    kinds.has(FileKind.PDF) ? "PDF مرفوع" : "لا يوجد محتوى مرفوع بعد",
-    kinds.has(FileKind.EPUB) ? "EPUB مرفوع" : "لا يوجد محتوى مرفوع بعد",
-    hasTextContent ? "محتوى نصي محفوظ" : "لا يوجد محتوى مرفوع بعد",
+    kinds.has(FileKind.COVER_IMAGE) ? "تم رفع الغلاف" : "لا يوجد غلاف مرفوع",
+    kinds.has(FileKind.PDF) ? "PDF مرفوع" : "لا يوجد PDF مرفوع",
+    kinds.has(FileKind.EPUB) ? "EPUB مرفوع" : "لا يوجد EPUB مرفوع",
+    hasTextContent ? "المحتوى النصي محفوظ" : "لا يوجد محتوى نصي محفوظ",
   ];
 }
 
@@ -89,7 +90,7 @@ export default async function EditStudioBookPage({ params, searchParams }: EditS
     <div className="space-y-4">
       {query?.focus === "content" ? (
         <section className="rounded-2xl border border-indigo-200 bg-indigo-50 p-4 text-sm font-semibold text-indigo-800">
-          ✅ تم إنشاء الكتاب. الخطوة التالية: أضف المحتوى الآن عبر رفع PDF/EPUB أو كتابة نص الكتاب داخل المنصة.
+          ✅ تم إنشاء الكتاب. الخطوة التالية: أضف الغلاف وملف PDF/EPUB أو اكتب المحتوى النصي.
         </section>
       ) : null}
 
@@ -103,10 +104,13 @@ export default async function EditStudioBookPage({ params, searchParams }: EditS
         backHref="/studio/books"
       />
 
-      <section className="space-y-4 rounded-2xl border border-slate-200 bg-white p-6 shadow-sm">
+      <section
+        id="content-section"
+        className={`space-y-4 rounded-2xl border bg-white p-6 shadow-sm ${query?.focus === "content" ? "border-indigo-300 ring-2 ring-indigo-100" : "border-slate-200"}`}
+      >
         <div>
-          <h2 className="text-xl font-bold text-slate-900">محتوى الكتاب (ملفات أو نص)</h2>
-          <p className="mt-1 text-sm text-slate-600">يمكنك اختيار أي طريقة: رفع ملفات قراءة (PDF/EPUB) أو كتابة المحتوى النصي مباشرة.</p>
+          <h2 className="text-xl font-bold text-slate-900">قسم المحتوى (الخطوة 2)</h2>
+          <p className="mt-1 text-sm text-slate-600">من هنا ترفع الغلاف وملفات القراءة، أو تكتب المحتوى النصي مباشرة.</p>
         </div>
 
         <div className="flex flex-wrap gap-2">
