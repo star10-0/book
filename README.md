@@ -134,11 +134,18 @@ Payment flows are isolated behind `PaymentGateway` implementations (`src/lib/pay
 BOOK_STORAGE_PROVIDER="local"
 ```
 
-> Local mode stores uploads under `public/uploads/books/*` and serves them as normal static files.
+> Local mode now stores sensitive paid reader files under `storage/private/uploads/*` and serves reading/download access via protected route handlers.
 
 ## Payment provider variables (server only)
 
 Current gateways are placeholders and operate in **mock mode** by default, so these values are not required for local development today. Keep them ready for future real integration:
+
+```bash
+# Enable /api/payments/verify-mock only in local/test when needed
+ALLOW_MOCK_PAYMENT_VERIFICATION="true"
+```
+
+> `ALLOW_MOCK_PAYMENT_VERIFICATION` is honored only when `NODE_ENV` is `development` or `test`. In production, mock verification is hard-disabled.
 
 ```bash
 # Sham Cash (future real integration)

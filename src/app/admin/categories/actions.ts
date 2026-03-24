@@ -1,6 +1,7 @@
 "use server";
 
 import { revalidatePath } from "next/cache";
+import { requireAdmin } from "@/lib/auth-session";
 import { prisma } from "@/lib/prisma";
 
 const SLUG_PATTERN = /^[a-z0-9]+(?:-[a-z0-9]+)*$/;
@@ -38,6 +39,8 @@ async function validateCategoryFields(nameAr: string, slug: string, currentId?: 
 }
 
 export async function createCategoryAction(_prevState: CategoryFormState, formData: FormData): Promise<CategoryFormState> {
+  await requireAdmin({ callbackUrl: "/admin/categories" });
+
   const nameAr = readField(formData, "nameAr");
   const slug = readField(formData, "slug").toLowerCase();
 
@@ -53,6 +56,8 @@ export async function createCategoryAction(_prevState: CategoryFormState, formDa
 }
 
 export async function updateCategoryAction(categoryId: string, _prevState: CategoryFormState, formData: FormData): Promise<CategoryFormState> {
+  await requireAdmin({ callbackUrl: "/admin/categories" });
+
   const nameAr = readField(formData, "nameAr");
   const slug = readField(formData, "slug").toLowerCase();
 
@@ -68,6 +73,8 @@ export async function updateCategoryAction(categoryId: string, _prevState: Categ
 }
 
 export async function deleteCategoryAction(formData: FormData) {
+  await requireAdmin({ callbackUrl: "/admin/categories" });
+
   const categoryId = formData.get("categoryId");
 
   if (typeof categoryId !== "string" || !categoryId) {

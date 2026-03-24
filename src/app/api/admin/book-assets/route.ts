@@ -5,6 +5,7 @@ import { NextResponse } from "next/server";
 import { requireAdmin } from "@/lib/auth-session";
 import { BOOK_ASSET_EXTENSIONS, BOOK_ASSET_MIME_TYPES, isSupportedAdminBookAssetKind } from "@/lib/files/book-asset-metadata";
 import { createStorageProvider } from "@/lib/files/storage-provider";
+import { validateFileSignature, validateUploadSize } from "@/lib/files/upload-validation";
 import { prisma } from "@/lib/prisma";
 
 export const runtime = "nodejs";
@@ -89,7 +90,7 @@ export async function POST(request: Request) {
     return NextResponse.json({ error: "الأنواع المدعومة حاليًا: COVER_IMAGE, EPUB, PDF" }, { status: 400 });
   }
 
-  const book = await prisma.book.findUnique({ where: { id: bookId }, select: { id: true } });
+  const book = await prisma.book.findUnique({ where: { id: bookId }, select: { id: true, contentAccessPolicy: true } });
 
   if (!book) {
     return NextResponse.json({ error: "الكتاب المطلوب غير موجود." }, { status: 404 });
@@ -99,8 +100,20 @@ export async function POST(request: Request) {
     return NextResponse.json({ error: "صيغة الملف أو نوع MIME غير مدعوم لهذا النوع." }, { status: 400 });
   }
 
+  const sizeValidation = validateUploadSize(kind, file.size);
+  if (!sizeValidation.ok) {
+    return NextResponse.json({ error: `حجم الملف يتجاوز الحد المسموح (${Math.floor(sizeValidation.maxBytes / (1024 * 1024))}MB).` }, { status: 400 });
+  }
+
   const provider = createStorageProvider();
   const bytes = new Uint8Array(await file.arrayBuffer());
+
+  if (!validateFileSignature(kind, file.name, bytes)) {
+    return NextResponse.json({ error: "بصمة الملف لا تطابق نوعه المعلن." }, { status: 400 });
+  }
+
+  const shouldBePublic =
+    kind === FileKind.COVER_IMAGE ? true : book.contentAccessPolicy === "PUBLIC_READ" || book.contentAccessPolicy === "PUBLIC_DOWNLOAD";
 
   const uploaded = await provider.uploadFile({
     bytes,
@@ -108,6 +121,7 @@ export async function POST(request: Request) {
     fileName: file.name,
     fileSizeBytes: file.size,
     mimeType: file.type,
+    visibility: shouldBePublic ? "public" : "private",
   });
 
   const previousAsset = await prisma.bookFile.findFirst({

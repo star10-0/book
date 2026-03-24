@@ -1,6 +1,7 @@
 "use server";
 
 import { revalidatePath } from "next/cache";
+import { requireAdmin } from "@/lib/auth-session";
 import { prisma } from "@/lib/prisma";
 
 const SLUG_PATTERN = /^[a-z0-9]+(?:-[a-z0-9]+)*$/;
@@ -38,6 +39,8 @@ async function validateAuthorFields(nameAr: string, slug: string, currentId?: st
 }
 
 export async function createAuthorAction(_prevState: AuthorFormState, formData: FormData): Promise<AuthorFormState> {
+  await requireAdmin({ callbackUrl: "/admin/authors" });
+
   const nameAr = readField(formData, "nameAr");
   const slug = readField(formData, "slug").toLowerCase();
 
@@ -53,6 +56,8 @@ export async function createAuthorAction(_prevState: AuthorFormState, formData: 
 }
 
 export async function updateAuthorAction(authorId: string, _prevState: AuthorFormState, formData: FormData): Promise<AuthorFormState> {
+  await requireAdmin({ callbackUrl: "/admin/authors" });
+
   const nameAr = readField(formData, "nameAr");
   const slug = readField(formData, "slug").toLowerCase();
 
@@ -68,6 +73,8 @@ export async function updateAuthorAction(authorId: string, _prevState: AuthorFor
 }
 
 export async function deleteAuthorAction(formData: FormData) {
+  await requireAdmin({ callbackUrl: "/admin/authors" });
+
   const authorId = formData.get("authorId");
 
   if (typeof authorId !== "string" || !authorId) {

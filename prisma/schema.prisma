@@ -383,6 +383,7 @@ model AccessGrant {
   @@index([userId, status, expiresAt])
   @@index([bookId])
   @@index([orderItemId])
+  @@unique([userId, orderItemId, type])
 }
 
 model ReadingProgress {
