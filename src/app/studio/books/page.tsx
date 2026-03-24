@@ -32,14 +32,27 @@ export default async function StudioBooksPage() {
   });
 
   return (
-    <section className="rounded-2xl border border-slate-200 bg-white p-5 shadow-sm">
-      <div className="mb-4 flex flex-wrap items-center justify-between gap-2">
+    <section className="space-y-4 rounded-2xl border border-slate-200 bg-white p-5 shadow-sm" dir="rtl">
+      <div className="rounded-xl border border-indigo-200 bg-indigo-50 p-4 text-sm text-indigo-900">
+        <p className="font-semibold">رحلة إنشاء الكتاب: إنشاء البيانات أولًا ثم إكمال المحتوى من صفحة التعديل.</p>
+        <p className="mt-1 text-xs">بعد إنشاء أي كتاب، افتح «تعديل» لإضافة: رفع الغلاف، رفع PDF، رفع EPUB، وكتابة المحتوى النصي.</p>
+      </div>
+
+      <div className="mb-1 flex flex-wrap items-center justify-between gap-2">
         <h2 className="text-lg font-bold text-slate-900">كتبي</h2>
         <Link href="/studio/books/new" className="rounded-lg bg-indigo-700 px-4 py-2 text-sm font-semibold text-white hover:bg-indigo-600">
           أضف كتابًا
         </Link>
       </div>
 
+      {books.length === 0 ? (
+        <div className="rounded-xl border border-dashed border-slate-300 bg-slate-50 p-5 text-sm text-slate-700">
+          <p className="font-semibold">لا يوجد كتب مضافة بعد.</p>
+          <p className="mt-1 text-xs text-slate-600">
+            ابدأ بإنشاء كتاب جديد، ثم ستنتقل تلقائيًا إلى صفحة التعديل لإكمال المحتوى (الغلاف / PDF / EPUB / نص الكتاب).
+          </p>
+        </div>
+      ) : (
       <div className="overflow-x-auto">
         <table className="min-w-full text-sm">
           <thead>
@@ -81,6 +94,7 @@ export default async function StudioBooksPage() {
           </tbody>
         </table>
       </div>
+      )}
     </section>
   );
 }

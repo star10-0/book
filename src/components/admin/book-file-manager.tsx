@@ -145,10 +145,11 @@ export function BookFileManager({ bookId, initialAssets, apiBasePath = "/api/adm
   };
 
   return (
-    <section className="space-y-4 rounded-2xl border border-slate-200 bg-white p-6 shadow-sm">
+    <section className="space-y-4 rounded-2xl border-2 border-indigo-200 bg-indigo-50/40 p-6 shadow-sm">
       <div>
-        <h2 className="text-xl font-bold text-slate-900">إدارة ملفات الكتاب</h2>
-        <p className="mt-2 text-sm text-slate-600">اختر نوع المحتوى ثم ارفع الملف المناسب. يمكنك استبدال أي ملف لاحقًا من نفس البطاقة.</p>
+        <h2 className="text-xl font-bold text-slate-900">أدوات المحتوى</h2>
+        <p className="mt-1 text-sm font-semibold text-slate-700">اختر نوع المحتوى ثم ارفع الملف المناسب. يمكنك استبدال أي ملف لاحقًا من نفس البطاقة.</p>
+        <p className="mt-1 text-xs text-slate-600">الحالة تظهر داخل كل بطاقة لتعرف مباشرةً ما تم رفعه وما يزال ناقصًا.</p>
       </div>
 
       {message ? <p className="rounded-lg bg-emerald-50 p-3 text-sm font-semibold text-emerald-700">{message}</p> : null}
@@ -160,7 +161,7 @@ export function BookFileManager({ bookId, initialAssets, apiBasePath = "/api/adm
           const isBusy = busyKind === item.kind;
 
           return (
-            <article key={item.kind} className="space-y-3 rounded-xl border border-slate-200 p-4">
+            <article key={item.kind} className="space-y-3 rounded-xl border border-slate-200 bg-white p-4">
               <div>
                 <h3 className="font-semibold text-slate-900">{item.label}</h3>
                 <p className="text-xs text-slate-500">{item.help}</p>
