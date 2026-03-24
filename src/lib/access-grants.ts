@@ -33,19 +33,6 @@ export async function grantAccessForPaidOrder(
   for (const item of orderItems) {
     const type = mapOfferTypeToGrantType(item.offerType);
 
-    const existingGrant = await tx.accessGrant.findFirst({
-      where: {
-        userId: input.userId,
-        orderItemId: item.id,
-        type,
-      },
-      select: { id: true },
-    });
-
-    if (existingGrant) {
-      continue;
-    }
-
     if (type === AccessGrantType.PURCHASE) {
       const existingPurchaseForBook = await tx.accessGrant.findFirst({
         where: {
@@ -61,8 +48,16 @@ export async function grantAccessForPaidOrder(
         continue;
       }
 
-      await tx.accessGrant.create({
-        data: {
+      await tx.accessGrant.upsert({
+        where: {
+          userId_orderItemId_type: {
+            userId: input.userId,
+            orderItemId: item.id,
+            type,
+          },
+        },
+        update: {},
+        create: {
           userId: input.userId,
           bookId: item.bookId,
           orderItemId: item.id,
@@ -109,8 +104,16 @@ export async function grantAccessForPaidOrder(
       continue;
     }
 
-    await tx.accessGrant.create({
-      data: {
+    await tx.accessGrant.upsert({
+      where: {
+        userId_orderItemId_type: {
+          userId: input.userId,
+          orderItemId: item.id,
+          type,
+        },
+      },
+      update: {},
+      create: {
         userId: input.userId,
         bookId: item.bookId,
         orderItemId: item.id,

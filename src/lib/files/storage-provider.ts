@@ -21,6 +21,7 @@ export type StorageUploadRequest = {
 export type StorageUploadInput = StorageUploadRequest & {
   bytes: Uint8Array;
   folder: string;
+  visibility?: "public" | "private";
 };
 
 export type StoredUpload = {
@@ -63,18 +64,20 @@ class LocalStorageProvider implements StorageProviderAdapter {
 
     const extension = path.extname(input.fileName).toLowerCase();
     const key = path.posix.join(input.folder, `${randomUUID()}${extension}`);
-    const relativePublicPath = path.posix.join("uploads", key);
-    const absolutePath = path.join(process.cwd(), "public", relativePublicPath);
+    const visibility = input.visibility ?? "private";
+    const isPublic = visibility === "public";
+    const baseDirectory = isPublic ? path.join(process.cwd(), "public", "uploads") : path.join(process.cwd(), "storage", "private", "uploads");
+    const absolutePath = path.join(baseDirectory, key);
 
     await mkdir(path.dirname(absolutePath), { recursive: true });
     await writeFile(absolutePath, input.bytes);
 
-    const publicUrl = `/${relativePublicPath}`;
+    const publicUrl = isPublic ? `/uploads/${key}` : null;
 
     return {
       pointer: {
         key,
-        publicUrl,
+        publicUrl: publicUrl ?? undefined,
       },
       publicUrl,
     };
@@ -82,9 +85,11 @@ class LocalStorageProvider implements StorageProviderAdapter {
 
   async deleteFile(pointer: BookAssetPointer): Promise<void> {
     const { rm } = await import("node:fs/promises");
-    const absolutePath = path.join(process.cwd(), "public", "uploads", pointer.key);
+    const publicAbsolutePath = path.join(process.cwd(), "public", "uploads", pointer.key);
+    const privateAbsolutePath = path.join(process.cwd(), "storage", "private", "uploads", pointer.key);
 
-    await rm(absolutePath, { force: true });
+    await rm(publicAbsolutePath, { force: true });
+    await rm(privateAbsolutePath, { force: true });
   }
 
   resolvePublicUrl(pointer: BookAssetPointer): string | null {

@@ -1,5 +1,6 @@
 import { getCurrentUser } from "@/lib/auth-session";
 import { GatewayConfigurationError, GatewayRequestError } from "@/lib/payments/gateways/provider-http";
+import { isMockPaymentVerificationEnabled } from "@/lib/payments/mock-mode";
 import { verifyPayment } from "@/lib/payments/payment-service";
 import { isSameOriginMutation, jsonNoStore, rejectCrossOriginMutation } from "@/lib/security";
 
@@ -9,6 +10,10 @@ interface VerifyMockRequestBody {
 }
 
 export async function POST(request: Request) {
+  if (!isMockPaymentVerificationEnabled()) {
+    return jsonNoStore({ message: "مسار التحقق التجريبي غير متاح في هذه البيئة." }, { status: 404 });
+  }
+
   if (!isSameOriginMutation(request)) {
     return rejectCrossOriginMutation();
   }
@@ -65,6 +70,10 @@ export async function POST(request: Request) {
 
     if (error instanceof Error && error.message.startsWith("Invalid payment status transition")) {
       return jsonNoStore({ message: "حالة الدفع الحالية لا تسمح بالتحقق." }, { status: 409 });
+    }
+
+    if (error instanceof Error && error.message === "MOCK_VERIFICATION_DISABLED") {
+      return jsonNoStore({ message: "التحقق التجريبي غير مفعّل على الخادم." }, { status: 403 });
     }
 
     if (error instanceof GatewayConfigurationError) {

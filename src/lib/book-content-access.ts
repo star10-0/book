@@ -1,6 +1,7 @@
 import { ContentAccessPolicy, FileKind } from "@prisma/client";
 
 type ReaderAsset = {
+  id: string;
   kind: FileKind;
   publicUrl: string | null;
 };
@@ -12,7 +13,7 @@ type BookContentInputs = {
 };
 
 export function getReadableFile(files: ReaderAsset[]) {
-  return files.find((file) => (file.kind === FileKind.PDF || file.kind === FileKind.EPUB) && Boolean(file.publicUrl)) ?? null;
+  return files.find((file) => file.kind === FileKind.PDF || file.kind === FileKind.EPUB) ?? null;
 }
 
 export function resolveBookContentAccess(input: BookContentInputs) {
@@ -20,7 +21,7 @@ export function resolveBookContentAccess(input: BookContentInputs) {
   const readableFile = getReadableFile(input.files);
 
   const hasReadableContent = Boolean(textContent) || Boolean(readableFile);
-  const hasDownloadableFile = Boolean(readableFile?.publicUrl);
+  const hasDownloadableFile = Boolean(readableFile);
 
   const canReadPublicly =
     (input.policy === ContentAccessPolicy.PUBLIC_READ || input.policy === ContentAccessPolicy.PUBLIC_DOWNLOAD) &&

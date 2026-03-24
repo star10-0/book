@@ -1,6 +1,7 @@
 import { Prisma, OrderStatus, PaymentProvider, PaymentStatus, type PaymentAttemptStatus } from "@prisma/client";
 import { prisma } from "@/lib/prisma";
 import { resolvePaymentGateway } from "@/lib/payments/gateways";
+import { isMockPaymentVerificationEnabled } from "@/lib/payments/mock-mode";
 import { ensurePaymentStatusTransition } from "@/lib/payments/status-flow";
 import { grantAccessForPaidOrder } from "@/lib/access-grants";
 
@@ -47,6 +48,29 @@ export async function createPaymentForOrder(input: CreatePaymentForOrderInput) {
   }
 
   const gateway = resolvePaymentGateway(input.provider);
+
+  const existingAttempt = await prisma.paymentAttempt.findFirst({
+    where: {
+      orderId: order.id,
+      userId: order.userId,
+      provider: input.provider,
+      status: {
+        in: ["PENDING", "SUBMITTED", "VERIFYING"],
+      },
+    },
+    orderBy: { createdAt: "desc" },
+    include: {
+      payment: true,
+    },
+  });
+
+  if (existingAttempt) {
+    return {
+      payment: existingAttempt.payment,
+      attempt: existingAttempt,
+      checkoutUrl: undefined,
+    };
+  }
 
   const result = await prisma.$transaction(async (tx) => {
     const payment = await tx.payment.create({
@@ -153,6 +177,10 @@ export async function submitPaymentProof(input: SubmitPaymentProofInput) {
 }
 
 export async function verifyPayment(input: VerifyPaymentInput) {
+  if (typeof input.mockOutcome !== "undefined" && !isMockPaymentVerificationEnabled()) {
+    throw new Error("MOCK_VERIFICATION_DISABLED");
+  }
+
   const attempt = await prisma.paymentAttempt.findFirst({
     where: {
       id: input.attemptId,
@@ -166,6 +194,10 @@ export async function verifyPayment(input: VerifyPaymentInput) {
 
   if (!attempt) {
     throw new Error("ATTEMPT_NOT_FOUND");
+  }
+
+  if (attempt.status === "PAID" || attempt.status === "FAILED") {
+    return attempt;
   }
 
   const gateway = resolvePaymentGateway(attempt.provider);

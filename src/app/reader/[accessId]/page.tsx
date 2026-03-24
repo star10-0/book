@@ -66,6 +66,7 @@ export default async function ReaderPage({ params }: ReaderPageProps) {
               createdAt: "asc",
             },
             select: {
+              id: true,
               kind: true,
               publicUrl: true,
               storageKey: true,
@@ -130,9 +131,9 @@ export default async function ReaderPage({ params }: ReaderPageProps) {
   const textContent = accessGrant.book.textContent?.trim();
 
   const readerSource: ReaderDocumentSource | null = pdfFile
-    ? {
-        kind: "PDF",
-        publicUrl: pdfFile.publicUrl,
+      ? {
+          kind: "PDF",
+        publicUrl: `/api/books/assets/${pdfFile.id}`,
         storageKey: pdfFile.storageKey,
         isEncrypted: pdfFile.isEncrypted,
         metadata: pdfFile.metadata,
@@ -141,7 +142,7 @@ export default async function ReaderPage({ params }: ReaderPageProps) {
     : epubFile
       ? {
           kind: "EPUB",
-          publicUrl: epubFile.publicUrl,
+          publicUrl: `/api/books/assets/${epubFile.id}`,
           storageKey: epubFile.storageKey,
           isEncrypted: epubFile.isEncrypted,
           metadata: epubFile.metadata,

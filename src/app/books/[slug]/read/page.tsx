@@ -29,6 +29,7 @@ export default async function PublicReadPage({ params }: PublicReadPageProps) {
         where: { kind: { in: [FileKind.PDF, FileKind.EPUB] } },
         orderBy: { createdAt: "asc" },
         select: {
+          id: true,
           kind: true,
           publicUrl: true,
           storageKey: true,
@@ -55,7 +56,7 @@ export default async function PublicReadPage({ params }: PublicReadPageProps) {
   }
 
   const readableAsset = contentAccess.readableFile
-    ? book.files.find((file) => file.kind === contentAccess.readableFile?.kind && file.publicUrl === contentAccess.readableFile.publicUrl) ?? null
+    ? book.files.find((file) => file.id === contentAccess.readableFile?.id) ?? null
     : null;
 
   const readerSource: ReaderDocumentSource | null = contentAccess.canReadPreview
@@ -67,7 +68,7 @@ export default async function PublicReadPage({ params }: PublicReadPageProps) {
     : contentAccess.readableFile?.kind === FileKind.PDF
       ? {
           kind: "PDF",
-          publicUrl: contentAccess.readableFile.publicUrl,
+          publicUrl: `/api/books/assets/${contentAccess.readableFile.id}`,
           storageKey: readableAsset?.storageKey ?? "",
           isEncrypted: readableAsset?.isEncrypted ?? false,
           metadata: readableAsset?.metadata,
@@ -76,7 +77,7 @@ export default async function PublicReadPage({ params }: PublicReadPageProps) {
       : contentAccess.readableFile?.kind === FileKind.EPUB
         ? {
             kind: "EPUB",
-            publicUrl: contentAccess.readableFile.publicUrl,
+            publicUrl: `/api/books/assets/${contentAccess.readableFile.id}`,
             storageKey: readableAsset?.storageKey ?? "",
             isEncrypted: readableAsset?.isEncrypted ?? false,
             metadata: readableAsset?.metadata,
