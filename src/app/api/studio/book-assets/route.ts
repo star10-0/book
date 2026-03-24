@@ -7,7 +7,9 @@ import { canManageCreatorBook } from "@/lib/authz";
 import { BOOK_ASSET_EXTENSIONS, BOOK_ASSET_MIME_TYPES, isSupportedAdminBookAssetKind } from "@/lib/files/book-asset-metadata";
 import { createStorageProvider } from "@/lib/files/storage-provider";
 import { validateFileSignature, validateUploadSize } from "@/lib/files/upload-validation";
+import { getClientIp } from "@/lib/observability/logger";
 import { prisma } from "@/lib/prisma";
+import { enforceRateLimit, isSameOriginMutation, rejectCrossOriginMutation, rejectRateLimited } from "@/lib/security";
 
 export const runtime = "nodejs";
 
@@ -78,6 +80,15 @@ export async function GET(request: Request) {
 
 export async function POST(request: Request) {
   const user = await requireCreator();
+
+  if (!isSameOriginMutation(request)) {
+    return rejectCrossOriginMutation();
+  }
+
+  const rateLimit = enforceRateLimit({ key: `studio:book-assets:upload:${getClientIp(request)}`, limit: 40, windowMs: 60_000 });
+  if (!rateLimit.allowed) {
+    return rejectRateLimited(rateLimit.retryAfterSeconds);
+  }
 
   const formData = await request.formData();
   const bookId = formData.get("bookId");
@@ -199,6 +210,15 @@ export async function POST(request: Request) {
 
 export async function DELETE(request: Request) {
   const user = await requireCreator();
+
+  if (!isSameOriginMutation(request)) {
+    return rejectCrossOriginMutation();
+  }
+
+  const rateLimit = enforceRateLimit({ key: `studio:book-assets:delete:${getClientIp(request)}`, limit: 40, windowMs: 60_000 });
+  if (!rateLimit.allowed) {
+    return rejectRateLimited(rateLimit.retryAfterSeconds);
+  }
 
   const url = new URL(request.url);
   const assetId = url.searchParams.get("assetId");

@@ -1,8 +1,10 @@
 import { NextResponse } from "next/server";
 import { API_ERROR_CODES, jsonError, parseJsonBody } from "@/lib/api-response";
 import { getCurrentUser } from "@/lib/auth-session";
+import { getClientIp } from "@/lib/observability/logger";
 import { prisma } from "@/lib/prisma";
 import { normalizeProgress } from "@/lib/reader/locator";
+import { enforceRateLimit, isSameOriginMutation, rejectCrossOriginMutation, rejectRateLimited } from "@/lib/security";
 
 type UpdateReadingProgressBody = {
   progressPercent?: number;
@@ -34,6 +36,15 @@ function validatePayload(payload: unknown): { data?: { progressPercent: number; 
 }
 
 export async function PATCH(request: Request, context: { params: Promise<{ accessId: string }> }) {
+  if (!isSameOriginMutation(request)) {
+    return rejectCrossOriginMutation();
+  }
+
+  const rateLimit = enforceRateLimit({ key: `reading-progress:update:${getClientIp(request)}`, limit: 120, windowMs: 60_000 });
+  if (!rateLimit.allowed) {
+    return rejectRateLimited(rateLimit.retryAfterSeconds);
+  }
+
   const { accessId } = await context.params;
   const user = await getCurrentUser();
 

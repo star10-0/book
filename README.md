@@ -179,6 +179,8 @@ Implemented baseline controls:
 
 - Auth server actions: sign-in/sign-up in-memory limits.
 - Sensitive APIs: order creation + payment-related endpoints have per-IP in-memory limits.
+- Asset mutation APIs: admin/studio upload and delete endpoints enforce same-origin mutation checks and per-IP limits.
+- Reader state API: reading progress updates enforce same-origin mutation checks and per-IP limits.
 
 Important limitation:
 
