@@ -96,7 +96,7 @@ export function ReaderShell({ accessId, bookTitle, initialProgressPercent, initi
         <p className="text-sm text-slate-500 dark:text-slate-400">
           {readerEngine ? `المحرّك: ${readerEngine.displayName}` : "لا يوجد ملف قراءة مدعوم لهذا الكتاب."}
         </p>
-        {source?.isEncrypted ? (
+        {source && source.kind !== "TEXT" && source.isEncrypted ? (
           <p className="text-xs text-amber-700 dark:text-amber-400">
             هذا الملف معلّم كمشفّر. نقطة تكامل DRM جاهزة عبر ReaderProtectionHooks.
           </p>

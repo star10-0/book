@@ -37,7 +37,7 @@ export function ReaderViewport({ source, locator, theme, onLocationChange, onCon
   const totalPages = source?.kind === "PDF" && typeof source.pageCount === "number" && source.pageCount > 0 ? source.pageCount : null;
 
   useEffect(() => {
-    if (!source?.publicUrl || source.kind !== "PDF") {
+    if (!source || source.kind !== "PDF" || !source.publicUrl) {
       onControlsReady(null);
       return;
     }
@@ -62,7 +62,24 @@ export function ReaderViewport({ source, locator, theme, onLocationChange, onCon
     });
   }, [currentPage, onControlsReady, onLocationChange, source, totalPages]);
 
-  if (!source?.publicUrl) {
+  if (!source) {
+    return (
+      <div className={`rounded-xl border p-8 text-center ${palette.wrapper} ${palette.frame}`}>
+        <p className="text-sm font-semibold">لا يوجد محتوى قابل للقراءة لهذا الكتاب حالياً.</p>
+        <p className="mt-2 text-xs text-slate-500 dark:text-slate-400">تمت إضافة بيانات الكتاب فقط. يجب رفع PDF/EPUB أو حفظ محتوى نصي أولاً.</p>
+      </div>
+    );
+  }
+
+  if (source.kind === "TEXT") {
+    return (
+      <article className={`max-h-[70vh] overflow-y-auto whitespace-pre-wrap rounded-xl border p-6 leading-8 ${palette.wrapper} ${palette.frame}`}>
+        {source.textContent}
+      </article>
+    );
+  }
+
+  if (!source.publicUrl) {
     return (
       <div className={`rounded-xl border p-8 text-center ${palette.wrapper} ${palette.frame}`}>
         <p className="text-sm font-semibold">ملف القراءة غير متاح للعرض الآن.</p>

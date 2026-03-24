@@ -1,7 +1,7 @@
 import { ReaderDocumentSource } from "@/lib/reader/types";
 
 export type ReaderEngineDefinition = {
-  key: "pdf-native" | "epub-web";
+  key: "pdf-native" | "epub-web" | "text-inline";
   displayName: string;
   supportsContinuousProgress: boolean;
 };
@@ -19,9 +19,17 @@ export function getReaderEngine(source: ReaderDocumentSource | null): ReaderEngi
     };
   }
 
+  if (source.kind === "EPUB") {
+    return {
+      key: "epub-web",
+      displayName: "EPUB Web Renderer",
+      supportsContinuousProgress: true,
+    };
+  }
+
   return {
-    key: "epub-web",
-    displayName: "EPUB Web Renderer",
+    key: "text-inline",
+    displayName: "Text Reader",
     supportsContinuousProgress: true,
   };
 }

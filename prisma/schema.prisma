@@ -160,6 +160,7 @@ model Book {
   descriptionEn    String?
   metadata         Json?
   coverImageUrl    String?
+  textContent      String?
   status           BookStatus        @default(DRAFT)
   format           BookFormat        @default(DIGITAL)
   publicationDate  DateTime?

@@ -35,6 +35,11 @@ export type StudioBookFormState = {
   values?: StudioBookFormValues;
 };
 
+export type StudioBookTextContentState = {
+  error?: string;
+  success?: string;
+};
+
 function readField(formData: FormData, key: string) {
   const value = formData.get(key);
   return typeof value === "string" ? value.trim() : "";
@@ -394,7 +399,42 @@ export async function createStudioBookAction(_prevState: StudioBookFormState, fo
 
   revalidatePath("/studio/books");
   revalidatePath("/books");
-  redirect(`/studio/books/${book.id}/edit`);
+  redirect(`/studio/books/${book.id}/edit?focus=content`);
+}
+
+export async function updateStudioBookTextContentAction(
+  bookId: string,
+  _prevState: StudioBookTextContentState,
+  formData: FormData,
+): Promise<StudioBookTextContentState> {
+  const user = await requireCreator({ callbackUrl: `/studio/books/${bookId}/edit` });
+
+  const targetBook = await prisma.book.findUnique({ where: { id: bookId }, select: { creatorId: true } });
+  if (!targetBook || (user.role !== UserRole.ADMIN && targetBook.creatorId !== user.id)) {
+    return { error: "لا يمكنك تعديل محتوى هذا الكتاب." };
+  }
+
+  const textContentValue = formData.get("textContent");
+  const textContent = typeof textContentValue === "string" ? textContentValue.trim() : "";
+
+  if (textContent.length > 500_000) {
+    return { error: "المحتوى النصي طويل جدًا. الحد الأقصى 500,000 حرف." };
+  }
+
+  await prisma.book.update({
+    where: { id: bookId },
+    data: {
+      textContent: textContent || null,
+    },
+  });
+
+  revalidatePath(`/studio/books/${bookId}/edit`);
+  revalidatePath("/studio/books");
+  revalidatePath("/books");
+
+  return {
+    success: textContent ? "تم حفظ المحتوى النصي بنجاح." : "تم مسح المحتوى النصي من الكتاب.",
+  };
 }
 
 export async function updateStudioBookAction(bookId: string, _prevState: StudioBookFormState, formData: FormData): Promise<StudioBookFormState> {
