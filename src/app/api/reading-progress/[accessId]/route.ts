@@ -1,4 +1,5 @@
 import { NextResponse } from "next/server";
+import { API_ERROR_CODES, jsonError, parseJsonBody } from "@/lib/api-response";
 import { getCurrentUser } from "@/lib/auth-session";
 import { prisma } from "@/lib/prisma";
 import { normalizeProgress } from "@/lib/reader/locator";
@@ -37,21 +38,19 @@ export async function PATCH(request: Request, context: { params: Promise<{ acces
   const user = await getCurrentUser();
 
   if (!user) {
-    return NextResponse.json({ message: "يجب تسجيل الدخول أولاً." }, { status: 401 });
+    return jsonError(API_ERROR_CODES.unauthorized, "يجب تسجيل الدخول أولاً.", 401);
   }
 
-  let body: unknown;
-
-  try {
-    body = await request.json();
-  } catch {
-    return NextResponse.json({ message: "تعذر قراءة بيانات التقدم." }, { status: 400 });
+  const parsedBody = await parseJsonBody<unknown>(request, { invalidMessage: "تعذر قراءة بيانات التقدم." });
+  if ("error" in parsedBody) {
+    return parsedBody.error;
   }
+  const body = parsedBody.data;
 
   const validation = validatePayload(body);
 
   if (!validation.data) {
-    return NextResponse.json({ message: validation.error ?? "بيانات التقدم غير صالحة." }, { status: 400 });
+    return jsonError(API_ERROR_CODES.invalid_request, validation.error ?? "بيانات التقدم غير صالحة.", 400);
   }
 
   const accessGrant = await prisma.accessGrant.findFirst({
@@ -67,7 +66,7 @@ export async function PATCH(request: Request, context: { params: Promise<{ acces
   });
 
   if (!accessGrant) {
-    return NextResponse.json({ message: "الوصول غير متاح أو منتهي الصلاحية." }, { status: 403 });
+    return jsonError(API_ERROR_CODES.forbidden, "الوصول غير متاح أو منتهي الصلاحية.", 403);
   }
 
   const now = new Date();

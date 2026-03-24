@@ -1,4 +1,5 @@
 import { PaymentProvider } from "@prisma/client";
+import { API_ERROR_CODES, jsonError, parseJsonBody } from "@/lib/api-response";
 import { getCurrentUser } from "@/lib/auth-session";
 import { GatewayConfigurationError, GatewayRequestError } from "@/lib/payments/gateways/provider-http";
 import { isPaymentError, PAYMENT_ERROR_CODES } from "@/lib/payments/errors";
@@ -15,29 +16,27 @@ export async function POST(request: Request) {
     return rejectCrossOriginMutation();
   }
 
-  let body: CreatePaymentRequestBody;
-
-  try {
-    body = (await request.json()) as CreatePaymentRequestBody;
-  } catch {
-    return jsonNoStore({ message: "تعذر قراءة بيانات الدفع." }, { status: 400 });
+  const parsedBody = await parseJsonBody<CreatePaymentRequestBody>(request, { invalidMessage: "تعذر قراءة بيانات الدفع." });
+  if ("error" in parsedBody) {
+    return parsedBody.error;
   }
+  const body = parsedBody.data;
 
   const orderId = body.orderId?.trim();
   const provider = body.provider;
 
   if (!orderId || !provider) {
-    return jsonNoStore({ message: "الطلب غير مكتمل." }, { status: 400 });
+    return jsonError(API_ERROR_CODES.invalid_request, "الطلب غير مكتمل.", 400);
   }
 
   if (!Object.values(PaymentProvider).includes(provider)) {
-    return jsonNoStore({ message: "مزود الدفع غير صالح." }, { status: 400 });
+    return jsonError(API_ERROR_CODES.invalid_request, "مزود الدفع غير صالح.", 400);
   }
 
   const user = await getCurrentUser();
 
   if (!user) {
-    return jsonNoStore({ message: "يجب تسجيل الدخول أولاً." }, { status: 401 });
+    return jsonError(API_ERROR_CODES.unauthorized, "يجب تسجيل الدخول أولاً.", 401);
   }
 
   try {
@@ -89,6 +88,6 @@ export async function POST(request: Request) {
     }
 
     console.error("Failed to create payment", error);
-    return jsonNoStore({ message: "تعذر إنشاء محاولة الدفع حالياً. حاول لاحقاً." }, { status: 500 });
+    return jsonError(API_ERROR_CODES.server_error, "تعذر إنشاء محاولة الدفع حالياً. حاول لاحقاً.", 500);
   }
 }

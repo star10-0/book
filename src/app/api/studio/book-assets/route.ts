@@ -3,6 +3,7 @@ import { FileKind, StorageProvider, UserRole } from "@prisma/client";
 import { NextResponse } from "next/server";
 
 import { requireCreator } from "@/lib/auth-session";
+import { canManageCreatorBook } from "@/lib/authz";
 import { BOOK_ASSET_EXTENSIONS, BOOK_ASSET_MIME_TYPES, isSupportedAdminBookAssetKind } from "@/lib/files/book-asset-metadata";
 import { createStorageProvider } from "@/lib/files/storage-provider";
 import { validateFileSignature, validateUploadSize } from "@/lib/files/upload-validation";
@@ -36,8 +37,7 @@ function isAllowedFileForKind(kind: FileKind, fileName: string, mimeType: string
 async function canManageBook(userId: string, role: UserRole, bookId: string) {
   const book = await prisma.book.findUnique({ where: { id: bookId }, select: { id: true, creatorId: true } });
   if (!book) return null;
-  if (role === UserRole.ADMIN) return book;
-  return book.creatorId === userId ? book : null;
+  return canManageCreatorBook({ role, actorUserId: userId, bookCreatorId: book.creatorId }) ? book : null;
 }
 
 export async function GET(request: Request) {
