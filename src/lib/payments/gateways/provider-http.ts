@@ -1,3 +1,5 @@
+import { logInfo } from "@/lib/observability/logger";
+
 const DEFAULT_TIMEOUT_MS = 10_000;
 
 const SENSITIVE_KEY_PATTERN = /(authorization|token|secret|password|api[-_]?key|signature)/i;
@@ -50,7 +52,7 @@ export function readOptionalTimeoutMs(name: string): number {
 }
 
 export function safeLogProviderResponse(provider: string, phase: "create" | "verify", payload: unknown) {
-  console.info(`[payments:${provider}] ${phase} response`, sanitizeForLogs(payload));
+  logInfo("Payment provider response", { provider, phase, payload: sanitizeForLogs(payload) });
 }
 
 export function sanitizeForLogs(value: unknown): unknown {

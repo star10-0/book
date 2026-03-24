@@ -1,8 +1,9 @@
 import { API_ERROR_CODES, jsonError, parseJsonBody } from "@/lib/api-response";
 import { getCurrentUser } from "@/lib/auth-session";
+import { logError, getClientIp, getRequestId } from "@/lib/observability/logger";
 import { isPaymentError, PAYMENT_ERROR_CODES } from "@/lib/payments/errors";
 import { submitPaymentProof } from "@/lib/payments/payment-service";
-import { isSameOriginMutation, jsonNoStore, rejectCrossOriginMutation } from "@/lib/security";
+import { enforceRateLimit, isSameOriginMutation, jsonNoStore, rejectCrossOriginMutation, rejectRateLimited } from "@/lib/security";
 
 interface SubmitPaymentProofRequestBody {
   attemptId?: string;
@@ -11,8 +12,16 @@ interface SubmitPaymentProofRequestBody {
 }
 
 export async function POST(request: Request) {
+  const requestId = getRequestId(request);
+  const clientIp = getClientIp(request);
+
   if (!isSameOriginMutation(request)) {
     return rejectCrossOriginMutation();
+  }
+
+  const rateLimit = enforceRateLimit({ key: `payments:proof:${clientIp}`, limit: 20, windowMs: 60_000 });
+  if (!rateLimit.allowed) {
+    return rejectRateLimited(rateLimit.retryAfterSeconds);
   }
 
   const parsedBody = await parseJsonBody<SubmitPaymentProofRequestBody>(request, { invalidMessage: "تعذر قراءة بيانات إثبات الدفع." });
@@ -66,7 +75,7 @@ export async function POST(request: Request) {
       return jsonNoStore({ message: "مرجع مزود الدفع غير متاح بعد. أعد إنشاء المحاولة." }, { status: 409 });
     }
 
-    console.error("Failed to submit payment proof", error);
+    logError("Failed to submit payment proof", error, { route: "/api/payments/submit-proof", requestId, ip: clientIp, userId: user.id });
     return jsonError(API_ERROR_CODES.server_error, "تعذر إرسال إثبات الدفع حالياً. حاول لاحقاً.", 500);
   }
 }

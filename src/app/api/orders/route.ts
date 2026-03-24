@@ -1,17 +1,26 @@
 import { PaymentProvider } from "@prisma/client";
 import { API_ERROR_CODES, jsonError, parseJsonBody } from "@/lib/api-response";
 import { getCurrentUser } from "@/lib/auth-session";
+import { logError, getClientIp, getRequestId } from "@/lib/observability/logger";
 import {
   isOfferCurrentlyAvailable,
   mapOfferTypeToAccessGrantType,
   validateCreateOrderPayload,
 } from "@/lib/orders/create-order";
 import { prisma } from "@/lib/prisma";
-import { isSameOriginMutation, jsonNoStore, rejectCrossOriginMutation } from "@/lib/security";
+import { enforceRateLimit, isSameOriginMutation, jsonNoStore, rejectCrossOriginMutation, rejectRateLimited } from "@/lib/security";
 
 export async function POST(request: Request) {
+  const requestId = getRequestId(request);
+  const clientIp = getClientIp(request);
+
   if (!isSameOriginMutation(request)) {
     return rejectCrossOriginMutation();
+  }
+
+  const rateLimit = enforceRateLimit({ key: `orders:create:${clientIp}`, limit: 30, windowMs: 60_000 });
+  if (!rateLimit.allowed) {
+    return rejectRateLimited(rateLimit.retryAfterSeconds);
   }
 
   const user = await getCurrentUser();
@@ -166,7 +175,7 @@ export async function POST(request: Request) {
       { status: 201 },
     );
   } catch (error) {
-    console.error("Failed to create order", error);
+    logError("Failed to create order", error, { route: "/api/orders", requestId, ip: clientIp, userId: user.id });
     return jsonError(API_ERROR_CODES.server_error, "حدث خطأ أثناء إنشاء الطلب. يرجى المحاولة لاحقاً.", 500);
   }
 }
