@@ -69,6 +69,7 @@ export default async function EditAdminBookPage({ params, searchParams }: EditBo
 
   const purchaseOffer = book.offers.find((offer) => offer.type === "PURCHASE");
   const rentalOffer = book.offers.find((offer) => offer.type === "RENTAL");
+  const metadata = book.metadata && typeof book.metadata === "object" && !Array.isArray(book.metadata) ? book.metadata : null;
 
   const initialValues: BookFormValues = {
     titleAr: book.titleAr,
@@ -83,6 +84,9 @@ export default async function EditAdminBookPage({ params, searchParams }: EditBo
     rentOfferEnabled: rentalOffer?.isActive ? "enabled" : "disabled",
     description: book.descriptionAr ?? "",
     metadata: book.metadata ? JSON.stringify(book.metadata, null, 2) : "",
+    metadataLanguage: typeof metadata?.language === "string" ? metadata.language : "",
+    metadataPages: typeof metadata?.pages === "number" ? String(metadata.pages) : "",
+    metadataPublisher: typeof metadata?.publisher === "string" ? metadata.publisher : "",
   };
   const contentStatuses = buildContentStatuses(files, Boolean(book.textContent?.trim()));
 

@@ -1,6 +1,6 @@
 "use server";
 
-import { BookStatus, CurrencyCode, OfferType, UserRole } from "@prisma/client";
+import { BookStatus, CurrencyCode, OfferType, Prisma, UserRole } from "@prisma/client";
 import { revalidatePath } from "next/cache";
 import { redirect } from "next/navigation";
 import { requireCreator, requireUser } from "@/lib/auth-session";
@@ -26,6 +26,9 @@ export type StudioBookFormValues = {
   rentOfferEnabled?: string;
   description?: string;
   metadata?: string;
+  metadataLanguage?: string;
+  metadataPages?: string;
+  metadataPublisher?: string;
 };
 
 export type StudioBookFormState = {
@@ -105,16 +108,43 @@ function parseRentalDays(value: string) {
   return days;
 }
 
-function parseMetadata(value: string) {
-  if (!value) {
-    return null;
+function parseMetadata(values: StudioBookFormValues) {
+  const baseValue = values.metadata ?? "";
+  let metadata: Record<string, Prisma.InputJsonValue> = {};
+
+  if (baseValue) {
+    try {
+      const parsed = JSON.parse(baseValue);
+
+      if (!parsed || Array.isArray(parsed) || typeof parsed !== "object") {
+        return undefined;
+      }
+
+      metadata = parsed as Record<string, Prisma.InputJsonValue>;
+    } catch {
+      return undefined;
+    }
   }
 
-  try {
-    return JSON.parse(value);
-  } catch {
-    return undefined;
+  if (values.metadataLanguage) {
+    metadata.language = values.metadataLanguage;
   }
+
+  if (values.metadataPublisher) {
+    metadata.publisher = values.metadataPublisher;
+  }
+
+  if (values.metadataPages) {
+    const pages = Number(values.metadataPages);
+
+    if (!Number.isInteger(pages) || pages <= 0) {
+      return "invalid-pages" as const;
+    }
+
+    metadata.pages = pages;
+  }
+
+  return Object.keys(metadata).length > 0 ? (metadata as Prisma.InputJsonObject) : null;
 }
 
 function buildBookValues(formData: FormData): StudioBookFormValues {
@@ -131,6 +161,9 @@ function buildBookValues(formData: FormData): StudioBookFormValues {
     rentOfferEnabled: readField(formData, "rentOfferEnabled") || "enabled",
     description: readField(formData, "description"),
     metadata: readField(formData, "metadata"),
+    metadataLanguage: readField(formData, "metadataLanguage"),
+    metadataPages: readField(formData, "metadataPages"),
+    metadataPublisher: readField(formData, "metadataPublisher"),
   };
 }
 
@@ -203,9 +236,11 @@ async function validateBookForm(values: StudioBookFormValues, creatorId: string,
     fieldErrors.description = "الوصف يجب ألا يتجاوز 2000 حرف.";
   }
 
-  const metadata = parseMetadata(values.metadata ?? "");
+  const metadata = parseMetadata(values);
   if (metadata === undefined) {
     fieldErrors.metadata = "صيغة metadata غير صحيحة. أدخل JSON صالحًا.";
+  } else if (metadata === "invalid-pages") {
+    fieldErrors.metadataPages = "عدد الصفحات يجب أن يكون رقمًا صحيحًا أكبر من الصفر.";
   }
 
   if (Object.keys(fieldErrors).length > 0 || !status || !creatorProfile?.authorId) {
@@ -221,7 +256,7 @@ async function validateBookForm(values: StudioBookFormValues, creatorId: string,
     purchasePriceCents,
     rentalPriceCents,
     rentalDays,
-    metadata,
+    metadata: metadata && metadata !== "invalid-pages" ? metadata : undefined,
   };
 }
 

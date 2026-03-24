@@ -33,6 +33,9 @@ function mergeValues(initialValues: BaseBookValues | undefined, stateValues: Bas
     rentOfferEnabled: stateValues?.rentOfferEnabled ?? initialValues?.rentOfferEnabled ?? "enabled",
     description: stateValues?.description ?? initialValues?.description ?? "",
     metadata: stateValues?.metadata ?? initialValues?.metadata ?? "",
+    metadataLanguage: stateValues?.metadataLanguage ?? initialValues?.metadataLanguage ?? "",
+    metadataPages: stateValues?.metadataPages ?? initialValues?.metadataPages ?? "",
+    metadataPublisher: stateValues?.metadataPublisher ?? initialValues?.metadataPublisher ?? "",
   };
 }
 
@@ -80,22 +83,36 @@ export function BookForm({ mode, initialValues, authors, categories, hideAuthorF
           </label>
         ) : null}
 
-        <label className="flex flex-col gap-2 text-sm font-medium text-slate-700">
-          التصنيف
-          <select
-            name="categoryId"
-            defaultValue={values.categoryId}
-            className="rounded-lg border border-slate-300 bg-white px-3 py-2 focus:border-slate-500 focus:outline-none"
+        <div className="space-y-2">
+          <label className="flex flex-col gap-2 text-sm font-medium text-slate-700">
+            التصنيف
+            {categories.length > 0 ? (
+              <select
+                name="categoryId"
+                defaultValue={values.categoryId}
+                className="rounded-lg border border-slate-300 bg-white px-3 py-2 focus:border-slate-500 focus:outline-none"
+              >
+                <option value="">اختر التصنيف</option>
+                {categories.map((category) => (
+                  <option key={category.id} value={category.id}>
+                    {category.nameAr}
+                  </option>
+                ))}
+              </select>
+            ) : (
+              <div className="rounded-lg border border-amber-300 bg-amber-50 px-3 py-2 text-sm text-amber-900">
+                لا توجد تصنيفات بعد. أنشئ تصنيفًا واحدًا على الأقل للمتابعة.
+              </div>
+            )}
+          </label>
+          <Link
+            href="/admin/categories"
+            className="inline-flex items-center rounded-lg border border-indigo-300 px-3 py-1.5 text-xs font-semibold text-indigo-700 hover:bg-indigo-50 focus-visible:outline-none focus-visible:ring-2 focus-visible:ring-indigo-500"
           >
-            <option value="">اختر التصنيف</option>
-            {categories.map((category) => (
-              <option key={category.id} value={category.id}>
-                {category.nameAr}
-              </option>
-            ))}
-          </select>
+            إدارة/إنشاء التصنيفات
+          </Link>
           {state.fieldErrors?.categoryId ? <p className="text-sm font-medium text-rose-700">{state.fieldErrors.categoryId}</p> : null}
-        </label>
+        </div>
       </AdminFormSection>
 
       <AdminFormSection title="الأسعار والعروض" description="إدارة سعر الشراء والإيجار وتفعيل العرض لكل منهما.">
@@ -163,14 +180,28 @@ export function BookForm({ mode, initialValues, authors, categories, hideAuthorF
           {state.fieldErrors?.description ? <p className="text-sm font-medium text-rose-700">{state.fieldErrors.description}</p> : null}
         </div>
 
-        <div className="md:col-span-2 space-y-2">
-          <AdminTextArea
-            label="Metadata (JSON)"
-            name="metadata"
-            defaultValue={values.metadata}
-            placeholder='{"language":"ar","pages":220,"publisher":"دار المعرفة"}'
-          />
+        <div className="md:col-span-2 space-y-3 rounded-lg border border-slate-200 bg-slate-50 p-4">
+          <h3 className="text-sm font-semibold text-slate-800">بيانات إضافية (اختياري)</h3>
+          <p className="text-xs text-slate-600">يمكنك ترك الحقول التالية فارغة. سيتم حفظها تلقائيًا داخل metadata بصيغة JSON.</p>
+          <div className="grid gap-3 md:grid-cols-3">
+            <AdminInput label="لغة الكتاب (اختياري)" name="metadataLanguage" defaultValue={values.metadataLanguage} placeholder="ar" />
+            <AdminInput label="عدد الصفحات (اختياري)" name="metadataPages" defaultValue={values.metadataPages} type="number" placeholder="220" />
+            <AdminInput label="الناشر (اختياري)" name="metadataPublisher" defaultValue={values.metadataPublisher} placeholder="دار المعرفة" />
+          </div>
+          <div className="space-y-2">
+            <AdminTextArea
+              label="Metadata (JSON) اختياري للمستخدم المتقدم"
+              name="metadata"
+              defaultValue={values.metadata}
+              placeholder='{"language":"ar","pages":220,"publisher":"دار المعرفة"}'
+            />
+            <p className="text-xs text-slate-600">
+              أدخل JSON صحيحًا فقط إذا كنت تحتاج مفاتيح إضافية. مثال صالح:
+              <span dir="ltr" className="mr-1 font-mono">{'{"language":"ar","pages":220,"publisher":"دار المعرفة"}'}</span>
+            </p>
+          </div>
           {state.fieldErrors?.metadata ? <p className="text-sm font-medium text-rose-700">{state.fieldErrors.metadata}</p> : null}
+          {state.fieldErrors?.metadataPages ? <p className="text-sm font-medium text-rose-700">{state.fieldErrors.metadataPages}</p> : null}
         </div>
       </AdminFormSection>
 
