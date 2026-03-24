@@ -26,6 +26,7 @@ function buildContentSecurityPolicy() {
 }
 
 const contentSecurityPolicy = buildContentSecurityPolicy();
+const uploadFrameContentSecurityPolicy = "frame-ancestors 'self'";
 
 const nextConfig: NextConfig = {
   reactStrictMode: true,
@@ -43,6 +44,20 @@ const nextConfig: NextConfig = {
           { key: "Cross-Origin-Opener-Policy", value: "same-origin" },
           { key: "Cross-Origin-Resource-Policy", value: "same-origin" },
           { key: "Strict-Transport-Security", value: "max-age=63072000; includeSubDomains; preload" },
+        ],
+      },
+      {
+        source: "/api/books/assets/:path*",
+        headers: [
+          { key: "X-Frame-Options", value: "SAMEORIGIN" },
+          { key: "Content-Security-Policy", value: uploadFrameContentSecurityPolicy },
+        ],
+      },
+      {
+        source: "/uploads/books/:path*",
+        headers: [
+          { key: "X-Frame-Options", value: "SAMEORIGIN" },
+          { key: "Content-Security-Policy", value: uploadFrameContentSecurityPolicy },
         ],
       },
     ];

@@ -1,4 +1,5 @@
 import { AccessGrantType, AccessGrantStatus, OfferType, Prisma } from "@prisma/client";
+import { hasValidRentalDays } from "@/lib/services/invariants";
 
 const DAY_IN_MS = 24 * 60 * 60 * 1000;
 
@@ -33,19 +34,6 @@ export async function grantAccessForPaidOrder(
   for (const item of orderItems) {
     const type = mapOfferTypeToGrantType(item.offerType);
 
-    const existingGrant = await tx.accessGrant.findFirst({
-      where: {
-        userId: input.userId,
-        orderItemId: item.id,
-        type,
-      },
-      select: { id: true },
-    });
-
-    if (existingGrant) {
-      continue;
-    }
-
     if (type === AccessGrantType.PURCHASE) {
       const existingPurchaseForBook = await tx.accessGrant.findFirst({
         where: {
@@ -61,8 +49,16 @@ export async function grantAccessForPaidOrder(
         continue;
       }
 
-      await tx.accessGrant.create({
-        data: {
+      await tx.accessGrant.upsert({
+        where: {
+          userId_orderItemId_type: {
+            userId: input.userId,
+            orderItemId: item.id,
+            type,
+          },
+        },
+        update: {},
+        create: {
           userId: input.userId,
           bookId: item.bookId,
           orderItemId: item.id,
@@ -75,9 +71,10 @@ export async function grantAccessForPaidOrder(
       continue;
     }
 
-    if (!item.rentalDays || item.rentalDays <= 0) {
+    if (!hasValidRentalDays(item.offerType, item.rentalDays)) {
       throw new Error("INVALID_RENTAL_DAYS");
     }
+    const rentalDays = item.rentalDays as number;
 
     const existingActiveRentalForBook = await tx.accessGrant.findFirst({
       where: {
@@ -102,21 +99,29 @@ export async function grantAccessForPaidOrder(
       await tx.accessGrant.update({
         where: { id: existingActiveRentalForBook.id },
         data: {
-          expiresAt: addDays(rentalBaseDate, item.rentalDays),
+          expiresAt: addDays(rentalBaseDate, rentalDays),
         },
       });
 
       continue;
     }
 
-    await tx.accessGrant.create({
-      data: {
+    await tx.accessGrant.upsert({
+      where: {
+        userId_orderItemId_type: {
+          userId: input.userId,
+          orderItemId: item.id,
+          type,
+        },
+      },
+      update: {},
+      create: {
         userId: input.userId,
         bookId: item.bookId,
         orderItemId: item.id,
         type,
         startsAt: grantedAt,
-        expiresAt: addDays(grantedAt, item.rentalDays),
+        expiresAt: addDays(grantedAt, rentalDays),
         status: AccessGrantStatus.ACTIVE,
       },
     });

@@ -55,16 +55,18 @@ export default async function ReaderPage({ params }: ReaderPageProps) {
           id: true,
           titleAr: true,
           slug: true,
+          textContent: true,
           files: {
             where: {
               kind: {
-                in: [FileKind.EPUB, FileKind.PDF],
+                in: [FileKind.PDF, FileKind.EPUB],
               },
             },
             orderBy: {
-              sortOrder: "asc",
+              createdAt: "asc",
             },
             select: {
+              id: true,
               kind: true,
               publicUrl: true,
               storageKey: true,
@@ -72,7 +74,6 @@ export default async function ReaderPage({ params }: ReaderPageProps) {
               metadata: true,
               pdfPageCount: true,
             },
-            take: 1,
           },
         },
       },
@@ -125,18 +126,34 @@ export default async function ReaderPage({ params }: ReaderPageProps) {
     },
   });
 
-  const bookFile = accessGrant.book.files[0];
-  const readerSource: ReaderDocumentSource | null =
-    bookFile && (bookFile.kind === "PDF" || bookFile.kind === "EPUB")
-    ? {
-        kind: bookFile.kind,
-        publicUrl: bookFile.publicUrl,
-        storageKey: bookFile.storageKey,
-        isEncrypted: bookFile.isEncrypted,
-        metadata: bookFile.metadata,
-        pageCount: bookFile.pdfPageCount,
+  const pdfFile = accessGrant.book.files.find((file) => file.kind === FileKind.PDF);
+  const epubFile = accessGrant.book.files.find((file) => file.kind === FileKind.EPUB);
+  const textContent = accessGrant.book.textContent?.trim();
+
+  const readerSource: ReaderDocumentSource | null = pdfFile
+      ? {
+          kind: "PDF",
+        publicUrl: `/api/books/assets/${pdfFile.id}`,
+        storageKey: pdfFile.storageKey,
+        isEncrypted: pdfFile.isEncrypted,
+        metadata: pdfFile.metadata,
+        pageCount: pdfFile.pdfPageCount,
       }
-    : null;
+    : epubFile
+      ? {
+          kind: "EPUB",
+          publicUrl: `/api/books/assets/${epubFile.id}`,
+          storageKey: epubFile.storageKey,
+          isEncrypted: epubFile.isEncrypted,
+          metadata: epubFile.metadata,
+        }
+      : textContent
+        ? {
+            kind: "TEXT",
+            textContent,
+            contentFormat: "plain",
+          }
+        : null;
 
   return (
     <main className="space-y-6" dir="rtl">
@@ -165,13 +182,13 @@ export default async function ReaderPage({ params }: ReaderPageProps) {
           </div>
         </section>
       ) : (
-          <ReaderShell
-            accessId={accessGrant.id}
-            bookTitle={accessGrant.book.titleAr}
-            initialProgressPercent={readingProgress?.progressPercent ?? 0}
-            initialLocator={readingProgress?.locator ?? "page:1"}
-            source={readerSource}
-          />
+        <ReaderShell
+          accessId={accessGrant.id}
+          bookTitle={accessGrant.book.titleAr}
+          initialProgressPercent={readingProgress?.progressPercent ?? 0}
+          initialLocator={readingProgress?.locator ?? "page:1"}
+          source={readerSource}
+        />
       )}
     </main>
   );

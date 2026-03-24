@@ -8,6 +8,7 @@ import {
   RelatedBooksSection,
 } from "@/components/book-details";
 import { getCurrentUser } from "@/lib/auth-session";
+import { resolveBookContentAccess } from "@/lib/book-content-access";
 import { prisma } from "@/lib/prisma";
 
 type BookDetailsPageProps = {
@@ -48,6 +49,19 @@ export default async function BookDetailsPage({ params }: BookDetailsPageProps) 
     include: {
       author: { select: { nameAr: true } },
       category: { select: { id: true, nameAr: true } },
+      files: {
+        where: {
+          kind: {
+            in: ["PDF", "EPUB"],
+          },
+        },
+        orderBy: { createdAt: "asc" },
+        select: {
+          id: true,
+          kind: true,
+          publicUrl: true,
+        },
+      },
       offers: {
         where: {
           isActive: true,
@@ -69,7 +83,6 @@ export default async function BookDetailsPage({ params }: BookDetailsPageProps) 
           user: {
             select: {
               fullName: true,
-              email: true,
             },
           },
         },
@@ -110,6 +123,11 @@ export default async function BookDetailsPage({ params }: BookDetailsPageProps) 
   const userReview = user
     ? book.reviews.find((review) => review.userId === user.id) ?? null
     : null;
+  const contentAccess = resolveBookContentAccess({
+    policy: book.contentAccessPolicy,
+    files: book.files,
+    textContent: book.textContent,
+  });
 
   return (
     <main>
@@ -126,6 +144,9 @@ export default async function BookDetailsPage({ params }: BookDetailsPageProps) 
             coverImageUrl: book.coverImageUrl,
             publicationDate: book.publicationDate,
             metadata: book.metadata,
+            publicReadUrl: contentAccess.canReadPublicly || contentAccess.canReadPreview ? `/books/${book.slug}/read` : null,
+            publicReadLabel: contentAccess.canReadPreview ? "قراءة عينة" : "اقرأ الآن",
+            publicDownloadUrl: contentAccess.canDownloadPublicly && contentAccess.readableFile ? `/api/books/assets/${contentAccess.readableFile.id}` : null,
           }}
           offers={book.offers}
           averageRating={averageRating}
@@ -161,7 +182,7 @@ export default async function BookDetailsPage({ params }: BookDetailsPageProps) 
             rating: review.rating,
             comment: review.comment,
             createdAt: review.createdAt,
-            userName: review.user.fullName ?? review.user.email,
+            userName: review.user.fullName?.trim() || "قارئ في المنصة",
           }))}
         />
 

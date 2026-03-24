@@ -17,12 +17,37 @@ type BookAssetItem = {
 type BookFileManagerProps = {
   bookId: string;
   initialAssets: BookAssetItem[];
+  apiBasePath?: string;
 };
 
-const kindCards: { kind: FileKind; label: string; help: string; accept: string }[] = [
-  { kind: FileKind.COVER_IMAGE, label: "غلاف الكتاب", help: "JPEG/PNG/WEBP", accept: ".jpg,.jpeg,.png,.webp,image/jpeg,image/png,image/webp" },
-  { kind: FileKind.PDF, label: "نسخة PDF", help: "PDF فقط", accept: ".pdf,application/pdf" },
-  { kind: FileKind.EPUB, label: "نسخة EPUB", help: "EPUB فقط", accept: ".epub,application/epub+zip" },
+const kindCards: { kind: FileKind; label: string; uploadCta: string; help: string; accept: string; emptyStatus: string; uploadedStatus: string }[] = [
+  {
+    kind: FileKind.COVER_IMAGE,
+    label: "رفع الغلاف",
+    uploadCta: "اختر ملف الغلاف",
+    help: "يدعم: JPEG/PNG/WEBP",
+    accept: ".jpg,.jpeg,.png,.webp,image/jpeg,image/png,image/webp",
+    emptyStatus: "لا يوجد غلاف مرفوع",
+    uploadedStatus: "تم رفع الغلاف",
+  },
+  {
+    kind: FileKind.PDF,
+    label: "رفع PDF",
+    uploadCta: "اختر ملف PDF",
+    help: "PDF فقط",
+    accept: ".pdf,application/pdf",
+    emptyStatus: "لا يوجد PDF مرفوع",
+    uploadedStatus: "PDF مرفوع",
+  },
+  {
+    kind: FileKind.EPUB,
+    label: "رفع EPUB",
+    uploadCta: "اختر ملف EPUB",
+    help: "EPUB فقط",
+    accept: ".epub,application/epub+zip",
+    emptyStatus: "لا يوجد EPUB مرفوع",
+    uploadedStatus: "EPUB مرفوع",
+  },
 ];
 
 function formatSize(size: number | null) {
@@ -41,7 +66,7 @@ function formatSize(size: number | null) {
   return `${(size / (1024 * 1024)).toFixed(1)} م.ب`;
 }
 
-export function BookFileManager({ bookId, initialAssets }: BookFileManagerProps) {
+export function BookFileManager({ bookId, initialAssets, apiBasePath = "/api/admin/book-assets" }: BookFileManagerProps) {
   const [assets, setAssets] = useState(initialAssets);
   const [busyKind, setBusyKind] = useState<FileKind | null>(null);
   const [message, setMessage] = useState<string | null>(null);
@@ -52,7 +77,7 @@ export function BookFileManager({ bookId, initialAssets }: BookFileManagerProps)
   }, [assets]);
 
   const refreshAssets = async () => {
-    const response = await fetch(`/api/admin/book-assets?bookId=${bookId}`, { method: "GET" });
+    const response = await fetch(`${apiBasePath}?bookId=${bookId}`, { method: "GET" });
     const payload = (await response.json()) as { items?: BookAssetItem[]; error?: string };
 
     if (!response.ok || !payload.items) {
@@ -77,7 +102,7 @@ export function BookFileManager({ bookId, initialAssets }: BookFileManagerProps)
       formData.set("kind", kind);
       formData.set("file", file);
 
-      const response = await fetch("/api/admin/book-assets", {
+      const response = await fetch(apiBasePath, {
         method: "POST",
         body: formData,
       });
@@ -102,7 +127,7 @@ export function BookFileManager({ bookId, initialAssets }: BookFileManagerProps)
     setMessage(null);
 
     try {
-      const response = await fetch(`/api/admin/book-assets?assetId=${assetId}`, {
+      const response = await fetch(`${apiBasePath}?assetId=${assetId}`, {
         method: "DELETE",
       });
 
@@ -123,7 +148,7 @@ export function BookFileManager({ bookId, initialAssets }: BookFileManagerProps)
     <section className="space-y-4 rounded-2xl border border-slate-200 bg-white p-6 shadow-sm">
       <div>
         <h2 className="text-xl font-bold text-slate-900">إدارة ملفات الكتاب</h2>
-        <p className="mt-2 text-sm text-slate-600">ارفع الغلاف وملفات القراءة (PDF/EPUB) واربطها مباشرة بالكتاب.</p>
+        <p className="mt-2 text-sm text-slate-600">اختر نوع المحتوى ثم ارفع الملف المناسب. يمكنك استبدال أي ملف لاحقًا من نفس البطاقة.</p>
       </div>
 
       {message ? <p className="rounded-lg bg-emerald-50 p-3 text-sm font-semibold text-emerald-700">{message}</p> : null}
@@ -141,6 +166,10 @@ export function BookFileManager({ bookId, initialAssets }: BookFileManagerProps)
                 <p className="text-xs text-slate-500">{item.help}</p>
               </div>
 
+              <p className={`rounded-md px-2 py-1 text-xs font-semibold ${asset ? "bg-emerald-50 text-emerald-700" : "bg-amber-50 text-amber-700"}`}>
+                {asset ? item.uploadedStatus : item.emptyStatus}
+              </p>
+
               {asset ? (
                 <div className="space-y-1 rounded-lg bg-slate-50 p-3 text-xs text-slate-700">
                   <p className="font-medium">{asset.originalFileName ?? "ملف بدون اسم"}</p>
@@ -153,11 +182,11 @@ export function BookFileManager({ bookId, initialAssets }: BookFileManagerProps)
                   ) : null}
                 </div>
               ) : (
-                <p className="text-xs text-slate-500">لا يوجد ملف مرفوع لهذا النوع.</p>
+                <p className="text-xs text-slate-500">لم يتم رفع ملف لهذا النوع بعد.</p>
               )}
 
               <label className="block">
-                <span className="sr-only">رفع {item.label}</span>
+                <span className="mb-2 block text-xs font-medium text-slate-700">{item.uploadCta}</span>
                 <input
                   type="file"
                   accept={item.accept}

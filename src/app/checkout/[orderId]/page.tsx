@@ -7,15 +7,16 @@ import { requireUser } from "@/lib/auth-session";
 import { prisma } from "@/lib/prisma";
 
 type CheckoutPageProps = {
-  params: { orderId: string };
+  params: Promise<{ orderId: string }>;
 };
 
 export default async function CheckoutPage({ params }: CheckoutPageProps) {
   const user = await requireUser();
+  const { orderId } = await params;
 
   const order = await prisma.order.findFirst({
     where: {
-      id: params.orderId,
+      id: orderId,
       userId: user.id,
     },
     include: {

@@ -9,14 +9,20 @@ export type ReaderLocation = {
   progressPercent: number;
 };
 
-export type ReaderDocumentSource = {
-  kind: ReaderFileKind;
-  publicUrl: string | null;
-  storageKey: string;
-  isEncrypted: boolean;
-  metadata: unknown;
-  pageCount?: number | null;
-};
+export type ReaderDocumentSource =
+  | {
+      kind: ReaderFileKind;
+      publicUrl: string | null;
+      storageKey: string;
+      isEncrypted: boolean;
+      metadata: unknown;
+      pageCount?: number | null;
+    }
+  | {
+      kind: "TEXT";
+      textContent: string;
+      contentFormat: "plain";
+    };
 
 export type ReaderProtectionHooks = {
   onWatermarkRender?: (payload: { locator: string }) => void;

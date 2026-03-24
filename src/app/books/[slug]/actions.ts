@@ -3,11 +3,12 @@
 import { revalidatePath } from "next/cache";
 import { requireUser } from "@/lib/auth-session";
 import { prisma } from "@/lib/prisma";
+import { isValidRating } from "@/lib/services/invariants";
 
 function normalizeRating(value: FormDataEntryValue | null) {
   const rating = Number(value);
 
-  if (!Number.isInteger(rating) || rating < 1 || rating > 5) {
+  if (!isValidRating(rating)) {
     return null;
   }
 

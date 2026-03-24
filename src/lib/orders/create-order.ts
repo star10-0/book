@@ -1,4 +1,5 @@
 import { AccessGrantType, type BookOffer } from "@prisma/client";
+import { hasValidRentalDays } from "@/lib/services/invariants";
 
 const CUID_PATTERN = /^[a-z0-9]{8,36}$/;
 
@@ -57,7 +58,7 @@ export function isOfferCurrentlyAvailable(
     return false;
   }
 
-  if (offer.type === "RENTAL" && (!offer.rentalDays || offer.rentalDays <= 0)) {
+  if (!hasValidRentalDays(offer.type, offer.rentalDays)) {
     return false;
   }
 

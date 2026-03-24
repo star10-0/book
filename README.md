@@ -32,11 +32,16 @@ Payment flows are isolated behind `PaymentGateway` implementations (`src/lib/pay
 
 ### ✅ Complete (implemented)
 
+- Creator-first publishing flow:
+  - any authenticated user can activate writer mode from profile (`ابدأ ككاتب`)
+  - dedicated creator dashboard under `/studio` for books/orders/payments/profile
+  - book ownership enforced through `Book.creatorId` so creators manage only their own books
+  - public creator pages available at `/creators/[slug]`
 - Arabic-first RTL layout with improved keyboard navigation and mobile-friendly navigation controls.
 - Credentials auth flow:
   - sign up / sign in / sign out
   - signed server sessions in HTTP-only cookies
-  - protected `/account/*` and role-protected `/admin/*`
+  - protected `/account/*`, creator-protected `/studio/*`, and role-protected `/admin/*`
 - Catalog browsing and book details with active digital offers.
 - Authenticated offer-to-checkout flow: review selected offer on `/checkout`, create order via `POST /api/orders`, then continue on `/checkout/[orderId]` and `/orders/[orderId]/summary`.
 - Payment attempt lifecycle:
@@ -129,11 +134,18 @@ Payment flows are isolated behind `PaymentGateway` implementations (`src/lib/pay
 BOOK_STORAGE_PROVIDER="local"
 ```
 
-> Local mode stores uploads under `public/uploads/books/*` and serves them as normal static files.
+> Local mode now stores sensitive paid reader files under `storage/private/uploads/*` and serves reading/download access via protected route handlers.
 
 ## Payment provider variables (server only)
 
 Current gateways are placeholders and operate in **mock mode** by default, so these values are not required for local development today. Keep them ready for future real integration:
+
+```bash
+# Enable /api/payments/verify-mock only in local/test when needed
+ALLOW_MOCK_PAYMENT_VERIFICATION="true"
+```
+
+> `ALLOW_MOCK_PAYMENT_VERIFICATION` is honored only when `NODE_ENV` is `development` or `test`. In production, mock verification is hard-disabled.
 
 ```bash
 # Sham Cash (future real integration)

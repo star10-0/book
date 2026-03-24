@@ -9,18 +9,29 @@ datasource db {
 
 enum UserRole {
   USER
+  CREATOR
   ADMIN
 }
 
 enum BookStatus {
   DRAFT
+  PENDING_REVIEW
   PUBLISHED
+  REJECTED
   ARCHIVED
 }
 
 enum BookFormat {
   DIGITAL
   PHYSICAL
+}
+
+enum ContentAccessPolicy {
+  PRIVATE
+  PAID_ONLY
+  PUBLIC_READ
+  PUBLIC_DOWNLOAD
+  PREVIEW_ONLY
 }
 
 enum FileKind {
@@ -101,10 +112,27 @@ model User {
   readingProgresses ReadingProgress[]
   wishlistItems     WishlistItem[]
   reviews           BookReview[]
+  creatorProfile    CreatorProfile?
+  createdBooks      Book[]            @relation("BookCreator")
   createdAt         DateTime          @default(now())
   updatedAt         DateTime          @updatedAt
 
   @@index([role])
+}
+
+model CreatorProfile {
+  id          String   @id @default(cuid())
+  userId       String   @unique
+  slug         String   @unique
+  displayName  String
+  bio          String?
+  avatarUrl    String?
+  coverUrl     String?
+  authorId     String?  @unique
+  user         User     @relation(fields: [userId], references: [id], onDelete: Cascade)
+  author       Author?  @relation(fields: [authorId], references: [id], onDelete: SetNull)
+  createdAt    DateTime @default(now())
+  updatedAt    DateTime @updatedAt
 }
 
 model Author {
@@ -115,6 +143,7 @@ model Author {
   bioAr     String?
   bioEn     String?
   books     Book[]
+  creatorProfile CreatorProfile?
   createdAt DateTime @default(now())
   updatedAt DateTime @updatedAt
 }
@@ -139,13 +168,17 @@ model Book {
   descriptionEn    String?
   metadata         Json?
   coverImageUrl    String?
+  textContent      String?
+  contentAccessPolicy ContentAccessPolicy @default(PAID_ONLY)
   status           BookStatus        @default(DRAFT)
   format           BookFormat        @default(DIGITAL)
   publicationDate  DateTime?
   authorId         String
   categoryId       String
+  creatorId        String?
   author           Author            @relation(fields: [authorId], references: [id], onDelete: Restrict)
   category         Category          @relation(fields: [categoryId], references: [id], onDelete: Restrict)
+  creator          User?             @relation("BookCreator", fields: [creatorId], references: [id], onDelete: SetNull)
   files            BookFile[]
   offers           BookOffer[]
   orderItems       OrderItem[]
@@ -160,6 +193,7 @@ model Book {
   @@index([format])
   @@index([authorId])
   @@index([categoryId])
+  @@index([creatorId])
 }
 
 model BookFile {
@@ -303,6 +337,7 @@ model Payment {
   @@index([userId, createdAt])
   @@index([orderId, status])
   @@index([provider, providerRef])
+  @@unique([provider, providerRef])
 }
 
 model PaymentAttempt {
@@ -328,6 +363,7 @@ model PaymentAttempt {
   @@index([paymentId, createdAt])
   @@index([orderId, status])
   @@index([provider, providerReference])
+  @@unique([provider, providerReference])
 }
 
 model AccessGrant {
@@ -349,6 +385,7 @@ model AccessGrant {
   @@index([userId, status, expiresAt])
   @@index([bookId])
   @@index([orderItemId])
+  @@unique([userId, orderItemId, type])
 }
 
 model ReadingProgress {

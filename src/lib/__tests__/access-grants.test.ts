@@ -79,6 +79,32 @@ function createTxStub(orderItems: Array<{ id: string; bookId: string; offerType:
           created.push(saved);
           return saved;
         },
+        upsert: async ({
+          where,
+          create,
+        }: {
+          where: { userId_orderItemId_type: { userId: string; orderItemId: string; type: AccessGrantType } };
+          update: Record<string, unknown>;
+          create: Omit<GrantRecord, "id">;
+        }) => {
+          const existing = created.find(
+            (grant) =>
+              grant.userId === where.userId_orderItemId_type.userId &&
+              grant.orderItemId === where.userId_orderItemId_type.orderItemId &&
+              grant.type === where.userId_orderItemId_type.type,
+          );
+
+          if (existing) {
+            return existing;
+          }
+
+          const saved: GrantRecord = {
+            id: `g-${created.length + 1}`,
+            ...create,
+          };
+          created.push(saved);
+          return saved;
+        },
         update: async ({ where, data }: { where: { id: string }; data: { expiresAt?: Date } }) => {
           const target = created.find((grant) => grant.id === where.id);
 

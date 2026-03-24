@@ -1,0 +1,4 @@
+CREATE TYPE "ContentAccessPolicy" AS ENUM ('PRIVATE', 'PAID_ONLY', 'PUBLIC_READ', 'PUBLIC_DOWNLOAD', 'PREVIEW_ONLY');
+
+ALTER TABLE "Book"
+ADD COLUMN "contentAccessPolicy" "ContentAccessPolicy" NOT NULL DEFAULT 'PAID_ONLY';
