@@ -93,7 +93,7 @@ class LocalStorageProvider implements StorageProviderAdapter {
   }
 
   resolvePublicUrl(pointer: BookAssetPointer): string | null {
-    return pointer.publicUrl ?? `/uploads/${pointer.key}`;
+    return pointer.publicUrl ?? null;
   }
 }
 
