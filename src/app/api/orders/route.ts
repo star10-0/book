@@ -1,4 +1,5 @@
 import { PaymentProvider } from "@prisma/client";
+import { API_ERROR_CODES, jsonError, parseJsonBody } from "@/lib/api-response";
 import { getCurrentUser } from "@/lib/auth-session";
 import {
   isOfferCurrentlyAvailable,
@@ -16,16 +17,14 @@ export async function POST(request: Request) {
   const user = await getCurrentUser();
 
   if (!user) {
-    return jsonNoStore({ message: "يجب تسجيل الدخول أولاً." }, { status: 401 });
+    return jsonError(API_ERROR_CODES.unauthorized, "يجب تسجيل الدخول أولاً.", 401);
   }
 
-  let body: unknown;
-
-  try {
-    body = await request.json();
-  } catch {
-    return jsonNoStore({ message: "تعذر قراءة بيانات الطلب." }, { status: 400 });
+  const parsedBody = await parseJsonBody<unknown>(request, { invalidMessage: "تعذر قراءة بيانات الطلب." });
+  if ("error" in parsedBody) {
+    return parsedBody.error;
   }
+  const body = parsedBody.data;
 
   const validation = validateCreateOrderPayload(body);
 
@@ -168,6 +167,6 @@ export async function POST(request: Request) {
     );
   } catch (error) {
     console.error("Failed to create order", error);
-    return jsonNoStore({ message: "حدث خطأ أثناء إنشاء الطلب. يرجى المحاولة لاحقاً." }, { status: 500 });
+    return jsonError(API_ERROR_CODES.server_error, "حدث خطأ أثناء إنشاء الطلب. يرجى المحاولة لاحقاً.", 500);
   }
 }

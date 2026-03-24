@@ -1,7 +1,7 @@
 import { createHmac, timingSafeEqual } from "node:crypto";
-import { UserRole } from "@prisma/client";
 import { cookies } from "next/headers";
 import { redirect } from "next/navigation";
+import { isAdminRole, isCreatorOrAdminRole } from "@/lib/authz";
 import { prisma } from "@/lib/prisma";
 
 const SESSION_COOKIE_NAME = "book_session";
@@ -161,7 +161,7 @@ export async function requireUser(options?: { callbackUrl?: string }) {
 export async function requireAdmin(options?: { callbackUrl?: string }) {
   const user = await requireUser(options);
 
-  if (user.role !== UserRole.ADMIN) {
+  if (!isAdminRole(user.role)) {
     redirect("/");
   }
 
@@ -171,7 +171,7 @@ export async function requireAdmin(options?: { callbackUrl?: string }) {
 export async function requireCreator(options?: { callbackUrl?: string }) {
   const user = await requireUser(options);
 
-  if (user.role !== UserRole.CREATOR && user.role !== UserRole.ADMIN) {
+  if (!isCreatorOrAdminRole(user.role)) {
     redirect("/account/profile");
   }
 

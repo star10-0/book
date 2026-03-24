@@ -22,6 +22,7 @@ test("canTransitionPaymentStatus supports reconciliation-safe transitions", () =
   assert.equal(canTransitionPaymentStatus("PENDING", "SUCCEEDED"), true);
   assert.equal(canTransitionPaymentStatus("FAILED", "SUCCEEDED"), true);
   assert.equal(canTransitionPaymentStatus("SUCCEEDED", "FAILED"), false);
+  assert.equal(canTransitionPaymentStatus("REFUNDED", "SUCCEEDED"), false);
 });
 
 test("deriveOrderStatusFromPaymentStatus maps payment lifecycle to order lifecycle", () => {

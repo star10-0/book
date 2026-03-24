@@ -1,3 +1,4 @@
+import { API_ERROR_CODES, jsonError, parseJsonBody } from "@/lib/api-response";
 import { getCurrentUser } from "@/lib/auth-session";
 import { isPaymentError, PAYMENT_ERROR_CODES } from "@/lib/payments/errors";
 import { submitPaymentProof } from "@/lib/payments/payment-service";
@@ -14,25 +15,23 @@ export async function POST(request: Request) {
     return rejectCrossOriginMutation();
   }
 
-  let body: SubmitPaymentProofRequestBody;
-
-  try {
-    body = (await request.json()) as SubmitPaymentProofRequestBody;
-  } catch {
-    return jsonNoStore({ message: "تعذر قراءة بيانات إثبات الدفع." }, { status: 400 });
+  const parsedBody = await parseJsonBody<SubmitPaymentProofRequestBody>(request, { invalidMessage: "تعذر قراءة بيانات إثبات الدفع." });
+  if ("error" in parsedBody) {
+    return parsedBody.error;
   }
+  const body = parsedBody.data;
 
   const attemptId = body.attemptId?.trim();
   const transactionReference = body.transactionReference?.trim();
 
   if (!attemptId || !transactionReference) {
-    return jsonNoStore({ message: "بيانات إثبات الدفع غير مكتملة." }, { status: 400 });
+    return jsonError(API_ERROR_CODES.invalid_request, "بيانات إثبات الدفع غير مكتملة.", 400);
   }
 
   const user = await getCurrentUser();
 
   if (!user) {
-    return jsonNoStore({ message: "يجب تسجيل الدخول أولاً." }, { status: 401 });
+    return jsonError(API_ERROR_CODES.unauthorized, "يجب تسجيل الدخول أولاً.", 401);
   }
 
   try {
@@ -68,6 +67,6 @@ export async function POST(request: Request) {
     }
 
     console.error("Failed to submit payment proof", error);
-    return jsonNoStore({ message: "تعذر إرسال إثبات الدفع حالياً. حاول لاحقاً." }, { status: 500 });
+    return jsonError(API_ERROR_CODES.server_error, "تعذر إرسال إثبات الدفع حالياً. حاول لاحقاً.", 500);
   }
 }
