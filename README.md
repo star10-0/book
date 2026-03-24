@@ -1,100 +1,40 @@
 # Book — Arabic-first PWA Bookstore
 
-`Book` is an Arabic-first digital bookstore built with Next.js App Router. The current implementation supports catalog browsing, authenticated checkout for digital offers, payment-attempt lifecycle management through pluggable gateways, user library access, and a baseline reader flow.
+`Book` is an Arabic-first digital bookstore built with Next.js App Router. It currently supports catalog browsing, authenticated checkout for digital offers, payment-attempt lifecycle management behind pluggable gateways, user library access, and a baseline reader flow.
 
-## Stack
+## Technology Stack
 
-- Next.js (App Router)
+- Next.js 15 (App Router)
 - TypeScript
 - Tailwind CSS
 - Prisma + PostgreSQL
 - Cookie-based credentials authentication (signed HTTP-only session cookie)
 
-## Architecture (Current)
+## Architecture Summary
 
-### App layers
-
-- **UI layer (`src/app`, `src/components`)**: Server Components by default, with client components for interactive forms and reader controls.
+- **UI layer (`src/app`, `src/components`)**: server components by default, client components only for interactivity.
 - **Domain/services (`src/lib`)**:
-  - auth/session + password hashing
-  - order creation helpers
-  - payment orchestration + gateway abstraction
-  - access grant issuance
-  - reader helpers (locator/progress normalization)
-- **Persistence**: Prisma models for users, catalog, offers, orders, payment attempts, access grants, and reading progress.
-- **APIs (Route Handlers)**: focused handlers under `src/app/api/*` for orders, payment attempts, reading progress, and admin asset scaffolding.
+  - authentication/session handling
+  - order and payment orchestration
+  - access grants and reader helpers
+  - storage abstractions and validation
+- **Persistence**: Prisma schema for users, catalog, offers, orders, payment attempts, access grants, and reading progress.
+- **APIs (`src/app/api/*`)**: focused route handlers for checkout, payments, and reading progress.
 
-### Payment abstraction
+## Production Readiness — Sprint 8 updates
 
-Payment flows are isolated behind `PaymentGateway` implementations (`src/lib/payments/gateways/*`). Route handlers call the shared `payment-service` so provider-specific logic stays out of endpoints.
+This sprint improved production safety without broad UI redesign:
 
-## Launch-readiness status
+- Stronger runtime environment validation with explicit warnings/errors.
+- Structured logging utility for safer operational diagnostics.
+- Baseline abuse controls via in-memory rate limiting on sensitive auth/payment/order paths.
+- Better deployment documentation and explicit required environment variables.
+- Safer SEO host handling via `APP_BASE_URL` for metadata, sitemap, robots, and JSON-LD.
+- Minor PWA cache consistency update for static assets (manifest/icons).
 
-### ✅ Complete (implemented)
+---
 
-- Creator-first publishing flow:
-  - any authenticated user can activate writer mode from profile (`ابدأ ككاتب`)
-  - dedicated creator dashboard under `/studio` for books/orders/payments/profile
-  - book ownership enforced through `Book.creatorId` so creators manage only their own books
-  - public creator pages available at `/creators/[slug]`
-- Arabic-first RTL layout with improved keyboard navigation and mobile-friendly navigation controls.
-- Credentials auth flow:
-  - sign up / sign in / sign out
-  - signed server sessions in HTTP-only cookies
-  - protected `/account/*`, creator-protected `/studio/*`, and role-protected `/admin/*`
-- Catalog browsing and book details with active digital offers.
-- Authenticated offer-to-checkout flow: review selected offer on `/checkout`, create order via `POST /api/orders`, then continue on `/checkout/[orderId]` and `/orders/[orderId]/summary`.
-- Payment attempt lifecycle:
-  - create payment attempt
-  - submit proof/transaction reference
-  - verify with gateway abstraction
-- Access grant issuance on paid orders (purchase and rental logic).
-- Library pages and reader access page tied to active grants.
-- Reading progress persistence (`PATCH /api/reading-progress/[accessId]`).
-- PWA improvements:
-  - installable manifest with app shortcuts and maskable icons
-  - production-only service worker registration
-  - offline fallback page (`/offline`) with navigation fallback in the service worker
-- Metadata/SEO improvements:
-  - enriched root metadata + canonical and robots directives
-  - generated `robots.txt` and `sitemap.xml`
-  - basic JSON-LD website schema.
-- Practical security hardening:
-  - stricter HTTP security headers in `next.config.ts` (CSP, HSTS, COOP/CORP)
-  - same-origin guard for state-changing payment/order endpoints
-  - no-store cache policy for sensitive API JSON responses.
-
-### 🧪 Mocked / scaffolded
-
-- Admin dashboard metrics and many admin listing pages still use mock/static data.
-- Cloud storage adapters (S3/R2) are prepared via interfaces/placeholders; local provider is active for development uploads.
-- Reader rendering engine is placeholder-oriented for now (document source wiring exists; full EPUB/PDF experience is not production-grade yet).
-- Payment provider integrations are abstracted behind gateways, and the current implementation intentionally runs in mock mode to validate end-to-end checkout/payment UX before real provider APIs are integrated.
-
-### 🚧 Remaining before production launch
-
-1. **Payment reliability + compliance**
-   - webhook/callback signature verification
-   - idempotency keys + duplicate submission protection
-   - provider reconciliation jobs and dispute workflows.
-2. **Security maturity**
-   - robust CSRF token strategy for all state-changing mutations (especially any non-JSON form posts)
-   - rate limiting + bot protection on auth/payment endpoints
-   - centralized audit/security logging, alerting, and incident runbooks.
-3. **Reader productionization**
-   - robust EPUB/PDF rendering controls
-   - DRM/encryption strategy and signed URL delivery
-   - richer offline reading/content rights behavior.
-4. **Admin and operations**
-   - replace remaining mock admin datasets with database-backed management
-   - backups, restore drills, migration rollback policy, staging smoke tests
-   - uptime monitoring, tracing, and error tracking integration.
-5. **SEO/content operations**
-   - real production domain + social share images
-   - schema.org coverage for `Book` details pages
-   - analytics and search console configuration.
-
-## Environment setup
+## Quick Start
 
 1. Install dependencies:
 
@@ -102,22 +42,13 @@ Payment flows are isolated behind `PaymentGateway` implementations (`src/lib/pay
    npm install
    ```
 
-2. Copy env template:
+2. Create local env file:
 
    ```bash
    cp .env.example .env
    ```
 
-3. Configure environment variables:
-
-   - `DATABASE_URL` (PostgreSQL)
-   - `AUTH_SECRET` (long random secret used for session signing)
-   - `NEXTAUTH_SECRET` (set this to the same value as `AUTH_SECRET` for compatibility with hosting tooling)
-   - `NEXTAUTH_URL` (for local development: `http://localhost:3000`)
-   - payment provider variables are optional during mock mode; they will be required when real provider APIs are integrated
-   - optional storage variables (for future S3/R2 providers; local is default)
-
-4. Prisma + run:
+3. Run database setup and development server:
 
    ```bash
    npm run prisma:migrate -- --name init
@@ -125,65 +56,149 @@ Payment flows are isolated behind `PaymentGateway` implementations (`src/lib/pay
    npm run dev
    ```
 
-> Seed now creates only an admin account by default (`admin@book.local` / `AdminPass123!`). Create reader accounts via sign up.
+> Seed currently creates an admin account (`admin@book.local` / `AdminPass123!`). Create reader accounts through sign-up.
 
-## Book asset storage variables (server only)
+---
+
+## Required environment variables
+
+These are required for reliable non-test runtime:
+
+- `DATABASE_URL`
+- `AUTH_SECRET` (at least 32 chars in production)
+- `NEXTAUTH_SECRET`
+- `NEXTAUTH_URL`
+- `APP_BASE_URL` (canonical HTTPS origin for production)
+
+## Environment variables by concern
+
+### Runtime + Auth
 
 ```bash
-# Active provider: local | s3 | r2
+DATABASE_URL="postgresql://..."
+AUTH_SECRET="..."
+NEXTAUTH_SECRET="..."
+NEXTAUTH_URL="https://your-domain.example"
+APP_BASE_URL="https://your-domain.example"
+```
+
+### Storage
+
+```bash
+# local | s3 | r2
 BOOK_STORAGE_PROVIDER="local"
 ```
 
-> Local mode now stores sensitive paid reader files under `storage/private/uploads/*` and serves reading/download access via protected route handlers.
+> `local` storage is acceptable in development, but not ideal for production on ephemeral hosts.
 
-## Payment provider variables (server only)
-
-Current gateways are placeholders and operate in **mock mode** by default, so these values are not required for local development today. Keep them ready for future real integration:
+### Payments
 
 ```bash
-# Gateway execution mode: mock | live (live integration endpoints are prepared, not yet implemented)
+# mock | live
 PAYMENT_GATEWAY_MODE="mock"
+ALLOW_MOCK_PAYMENT_VERIFICATION="false"
 
-# Enable /api/payments/verify-mock only in local/test when needed
-ALLOW_MOCK_PAYMENT_VERIFICATION="true"
-```
-
-> `ALLOW_MOCK_PAYMENT_VERIFICATION` is honored only when `NODE_ENV` is `development` or `test`. In production, mock verification is hard-disabled.
-
-```bash
-# Sham Cash (future real integration)
-SHAM_CASH_API_BASE_URL="https://api.shamcash.example"
-SHAM_CASH_API_KEY="replace-with-sham-cash-api-key"
-SHAM_CASH_MERCHANT_ID="replace-with-sham-cash-merchant-id"
+# Sham Cash
+SHAM_CASH_API_BASE_URL="..."
+SHAM_CASH_API_KEY="..."
+SHAM_CASH_MERCHANT_ID="..."
 SHAM_CASH_CREATE_PAYMENT_PATH="/payments/create"
 SHAM_CASH_VERIFY_PAYMENT_PATH="/payments/verify"
 SHAM_CASH_TIMEOUT_MS="10000"
 
-# Syriatel Cash (future real integration)
-SYRIATEL_CASH_API_BASE_URL="https://api.syriatelcash.example"
-SYRIATEL_CASH_API_KEY="replace-with-syriatel-cash-api-key"
-SYRIATEL_CASH_MERCHANT_ID="replace-with-syriatel-cash-merchant-id"
+# Syriatel Cash
+SYRIATEL_CASH_API_BASE_URL="..."
+SYRIATEL_CASH_API_KEY="..."
+SYRIATEL_CASH_MERCHANT_ID="..."
 SYRIATEL_CASH_CREATE_PAYMENT_PATH="/payments/create"
 SYRIATEL_CASH_VERIFY_PAYMENT_PATH="/payments/verify"
 SYRIATEL_CASH_TIMEOUT_MS="10000"
 ```
 
-## PWA notes
+---
 
-- Manifest: `public/manifest.webmanifest`
-- Service worker: `public/sw.js`
-- Registration component: `src/components/pwa/sw-register.tsx` (production only)
-- Offline route: `src/app/offline/page.tsx`
-- Icon source: `public/icons/source-book-icon.svg`
-- Generate icons:
+## Deployment notes
 
-  ```bash
-  npm run icons:generate
-  ```
+- Use Node.js 20+ and a managed PostgreSQL service.
+- Run `npm run build` in CI and deploy only on successful lint/typecheck/test.
+- Ensure Prisma migrations are applied before switching live traffic.
+- Use HTTPS in production and set `APP_BASE_URL` to the final canonical domain.
+- Keep `PAYMENT_GATEWAY_MODE=mock` outside live rollout until real provider integrations and reconciliation jobs are complete.
 
-## Quality checks
+### Suggested rollout flow
 
-Run after meaningful changes:
+1. Deploy to staging.
+2. Run smoke tests for auth, checkout, payment attempt flow, and reader access.
+3. Run DB backup snapshot.
+4. Deploy production.
+5. Verify monitoring/alerts and payment queue behavior.
+
+---
+
+## Storage assumptions and caveats
+
+Current local provider writes:
+
+- public assets: `public/uploads/*`
+- private assets: `storage/private/uploads/*`
+
+Production caveat:
+
+- Container/dyno filesystem may be ephemeral.
+- Use object storage (`s3`/`r2`) before scaling production traffic.
+- Keep a migration plan for existing local files before switching providers.
+
+---
+
+## Monitoring, logging, and backup guidance
+
+### Logging
+
+- Route-level failures in sensitive endpoints are now logged using structured JSON.
+- Avoid logging secrets, payment tokens, API keys, or raw credentials.
+- Forward logs to your platform aggregator (e.g., Datadog, ELK, Cloud logging).
+
+### Monitoring (minimum)
+
+- Uptime checks for `/`, `/books`, and one authenticated API probe.
+- Error-rate alerts on `/api/orders`, `/api/payments/create`, `/api/payments/submit-proof`, `/api/payments/verify-mock`.
+- Latency SLO tracking for checkout and payment endpoints.
+
+### Backups
+
+- Daily PostgreSQL backups with retention policy.
+- Before each production migration: on-demand snapshot.
+- Quarterly restore drill to a staging environment.
+- Document RPO/RTO targets and validate them with drills.
+
+---
+
+## Rate limiting and abuse prevention status
+
+Implemented baseline controls:
+
+- Auth server actions: sign-in/sign-up in-memory limits.
+- Sensitive APIs: order creation + payment-related endpoints have per-IP in-memory limits.
+
+Important limitation:
+
+- In-memory rate limiting is per-process and resets on restart.
+- For production scale, move to shared storage backed limits (Redis/KV) and add WAF/bot rules.
+
+---
+
+## SEO & PWA notes
+
+- Canonical host now comes from `APP_BASE_URL`.
+- `robots.txt` and `sitemap.xml` use the same canonical base URL.
+- Book detail metadata now includes canonical + OpenGraph URL.
+- Service worker static caching now includes manifest and icon asset extensions for consistency.
+
+---
+
+## Validation commands
+
+Run these after meaningful changes:
 
 ```bash
 npm run lint
@@ -191,4 +206,4 @@ npm run typecheck
 npm run test
 ```
 
-> `typecheck` auto-runs `prisma generate` first to keep Prisma types synchronized.
+> `typecheck` runs `prisma generate` first.

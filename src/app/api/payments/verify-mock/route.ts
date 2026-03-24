@@ -1,10 +1,11 @@
 import { API_ERROR_CODES, jsonError, parseJsonBody } from "@/lib/api-response";
 import { getCurrentUser } from "@/lib/auth-session";
+import { logError, getClientIp, getRequestId } from "@/lib/observability/logger";
 import { GatewayConfigurationError, GatewayRequestError } from "@/lib/payments/gateways/provider-http";
 import { isPaymentError, PAYMENT_ERROR_CODES } from "@/lib/payments/errors";
 import { isMockPaymentVerificationEnabled } from "@/lib/payments/mock-mode";
 import { verifyPayment } from "@/lib/payments/payment-service";
-import { isSameOriginMutation, jsonNoStore, rejectCrossOriginMutation } from "@/lib/security";
+import { enforceRateLimit, isSameOriginMutation, jsonNoStore, rejectCrossOriginMutation, rejectRateLimited } from "@/lib/security";
 
 interface VerifyMockRequestBody {
   attemptId?: string;
@@ -12,12 +13,20 @@ interface VerifyMockRequestBody {
 }
 
 export async function POST(request: Request) {
+  const requestId = getRequestId(request);
+  const clientIp = getClientIp(request);
+
   if (!isMockPaymentVerificationEnabled()) {
     return jsonNoStore({ message: "مسار التحقق التجريبي غير متاح في هذه البيئة." }, { status: 404 });
   }
 
   if (!isSameOriginMutation(request)) {
     return rejectCrossOriginMutation();
+  }
+
+  const rateLimit = enforceRateLimit({ key: `payments:verify-mock:${clientIp}`, limit: 20, windowMs: 60_000 });
+  if (!rateLimit.allowed) {
+    return rejectRateLimited(rateLimit.retryAfterSeconds);
   }
 
   const parsedBody = await parseJsonBody<VerifyMockRequestBody>(request, { invalidMessage: "تعذر قراءة بيانات التحقق." });
@@ -92,7 +101,7 @@ export async function POST(request: Request) {
       return jsonNoStore({ message: "تعذر التحقق من الدفع عبر مزود الخدمة حالياً." }, { status: 502 });
     }
 
-    console.error("Failed to verify payment", error);
+    logError("Failed to verify payment", error, { route: "/api/payments/verify-mock", requestId, ip: clientIp, userId: user.id });
     return jsonError(API_ERROR_CODES.server_error, "تعذر التحقق من الدفع حالياً. حاول لاحقاً.", 500);
   }
 }

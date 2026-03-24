@@ -1,10 +1,11 @@
 import { PaymentProvider } from "@prisma/client";
 import { API_ERROR_CODES, jsonError, parseJsonBody } from "@/lib/api-response";
 import { getCurrentUser } from "@/lib/auth-session";
+import { logError, getClientIp, getRequestId } from "@/lib/observability/logger";
 import { GatewayConfigurationError, GatewayRequestError } from "@/lib/payments/gateways/provider-http";
 import { isPaymentError, PAYMENT_ERROR_CODES } from "@/lib/payments/errors";
 import { createPaymentForOrder } from "@/lib/payments/payment-service";
-import { isSameOriginMutation, jsonNoStore, rejectCrossOriginMutation } from "@/lib/security";
+import { enforceRateLimit, isSameOriginMutation, jsonNoStore, rejectCrossOriginMutation, rejectRateLimited } from "@/lib/security";
 
 interface CreatePaymentRequestBody {
   orderId?: string;
@@ -12,8 +13,16 @@ interface CreatePaymentRequestBody {
 }
 
 export async function POST(request: Request) {
+  const requestId = getRequestId(request);
+  const clientIp = getClientIp(request);
+
   if (!isSameOriginMutation(request)) {
     return rejectCrossOriginMutation();
+  }
+
+  const rateLimit = enforceRateLimit({ key: `payments:create:${clientIp}`, limit: 40, windowMs: 60_000 });
+  if (!rateLimit.allowed) {
+    return rejectRateLimited(rateLimit.retryAfterSeconds);
   }
 
   const parsedBody = await parseJsonBody<CreatePaymentRequestBody>(request, { invalidMessage: "تعذر قراءة بيانات الدفع." });
@@ -87,7 +96,7 @@ export async function POST(request: Request) {
       return jsonNoStore({ message: "تعذر إنشاء عملية الدفع لدى مزود الخدمة حالياً." }, { status: 502 });
     }
 
-    console.error("Failed to create payment", error);
+    logError("Failed to create payment", error, { route: "/api/payments/create", requestId, ip: clientIp, userId: user.id });
     return jsonError(API_ERROR_CODES.server_error, "تعذر إنشاء محاولة الدفع حالياً. حاول لاحقاً.", 500);
   }
 }

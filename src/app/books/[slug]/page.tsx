@@ -9,6 +9,7 @@ import {
 } from "@/components/book-details";
 import { getCurrentUser } from "@/lib/auth-session";
 import { resolveBookContentAccess } from "@/lib/book-content-access";
+import { getAppBaseUrl } from "@/lib/env";
 import { prisma } from "@/lib/prisma";
 
 type BookDetailsPageProps = {
@@ -30,9 +31,21 @@ export async function generateMetadata({ params }: BookDetailsPageProps): Promis
     };
   }
 
+  const appBaseUrl = getAppBaseUrl();
+
   return {
     title: book.titleAr,
     description: book.descriptionAr ?? `تصفح تفاصيل كتاب ${book.titleAr} وخيارات الشراء أو الاستئجار.`,
+    alternates: {
+      canonical: `/books/${slug}`,
+    },
+    openGraph: {
+      title: book.titleAr,
+      description: book.descriptionAr ?? `تصفح تفاصيل كتاب ${book.titleAr}.`,
+      url: `${appBaseUrl}/books/${slug}`,
+      type: "article",
+      locale: "ar_SY",
+    },
   };
 }
 

@@ -5,6 +5,7 @@ import { redirect } from "next/navigation";
 import { hashPassword, verifyPassword } from "@/lib/auth-password";
 import { endUserSession, startUserSession } from "@/lib/auth-session";
 import { prisma } from "@/lib/prisma";
+import { checkRateLimit } from "@/lib/security/rate-limit";
 
 export type AuthFormState = {
   error?: string;
@@ -49,6 +50,16 @@ export async function signInAction(_prevState: AuthFormState, formData: FormData
 
   if (Object.keys(fieldErrors).length > 0) {
     return { error: "تحقق من الحقول المطلوبة ثم أعد المحاولة.", fieldErrors };
+  }
+
+  const signInRateLimit = checkRateLimit({
+    key: `auth:signin:${email}`,
+    limit: 8,
+    windowMs: 10 * 60_000,
+  });
+
+  if (!signInRateLimit.allowed) {
+    return { error: "تم تجاوز عدد محاولات تسجيل الدخول. يرجى الانتظار ثم إعادة المحاولة." };
   }
 
   if (!hasAuthSecretConfigured()) {
@@ -106,6 +117,16 @@ export async function signUpAction(_prevState: AuthFormState, formData: FormData
 
   if (Object.keys(fieldErrors).length > 0) {
     return { error: "تحقق من الحقول المطلوبة ثم أعد المحاولة.", fieldErrors };
+  }
+
+  const signUpRateLimit = checkRateLimit({
+    key: `auth:signup:${email}`,
+    limit: 5,
+    windowMs: 30 * 60_000,
+  });
+
+  if (!signUpRateLimit.allowed) {
+    return { error: "تم تجاوز عدد محاولات إنشاء الحساب. يرجى الانتظار ثم إعادة المحاولة." };
   }
 
   if (!hasAuthSecretConfigured()) {

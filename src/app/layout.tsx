@@ -1,13 +1,15 @@
 import type { Metadata, Viewport } from "next";
 import { ServiceWorkerRegister } from "@/components/pwa/sw-register";
+import { getAppBaseUrl } from "@/lib/env";
 import { APP_DESCRIPTION, APP_NAME } from "@/lib/constants/app";
 import "./globals.css";
 
-const appTitle = "Book";
+const appTitle = APP_NAME;
 const appDescription = "منصة عربية حديثة لشراء واستئجار الكتب الرقمية مع تجربة قراءة سهلة وسريعة.";
+const appBaseUrl = getAppBaseUrl();
 
 export const metadata: Metadata = {
-  metadataBase: new URL("https://book.example"),
+  metadataBase: new URL(appBaseUrl),
   title: {
     default: `${appTitle} | مكتبة رقمية عربية`,
     template: `%s | ${appTitle}`,
@@ -82,7 +84,7 @@ export default function RootLayout({
               name: APP_NAME,
               description: APP_DESCRIPTION,
               inLanguage: "ar",
-              url: "https://book.example",
+              url: appBaseUrl,
             }),
           }}
         />
