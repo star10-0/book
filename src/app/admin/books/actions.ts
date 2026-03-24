@@ -242,7 +242,42 @@ export async function createBookAction(_prevState: BookFormState, formData: Form
 
   revalidatePath("/admin/books");
   revalidatePath("/books");
-  redirect(`/admin/books/${book.id}/edit`);
+  redirect(`/admin/books/${book.id}/edit?focus=content`);
+}
+
+type AdminBookTextContentState = {
+  error?: string;
+  success?: string;
+};
+
+export async function updateAdminBookTextContentAction(
+  bookId: string,
+  _prevState: AdminBookTextContentState,
+  formData: FormData,
+): Promise<AdminBookTextContentState> {
+  await requireAdmin({ callbackUrl: `/admin/books/${bookId}/edit` });
+
+  const textContentValue = formData.get("textContent");
+  const textContent = typeof textContentValue === "string" ? textContentValue.trim() : "";
+
+  if (textContent.length > 500_000) {
+    return { error: "المحتوى النصي طويل جدًا. الحد الأقصى 500,000 حرف." };
+  }
+
+  await prisma.book.update({
+    where: { id: bookId },
+    data: {
+      textContent: textContent || null,
+    },
+  });
+
+  revalidatePath(`/admin/books/${bookId}/edit`);
+  revalidatePath("/admin/books");
+  revalidatePath("/books");
+
+  return {
+    success: textContent ? "تم حفظ المحتوى النصي بنجاح." : "تم مسح المحتوى النصي من الكتاب.",
+  };
 }
 
 export async function updateBookAction(bookId: string, _prevState: BookFormState, formData: FormData): Promise<BookFormState> {
