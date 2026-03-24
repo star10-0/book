@@ -1,4 +1,5 @@
 import { getCurrentUser } from "@/lib/auth-session";
+import { isPaymentError, PAYMENT_ERROR_CODES } from "@/lib/payments/errors";
 import { submitPaymentProof } from "@/lib/payments/payment-service";
 import { isSameOriginMutation, jsonNoStore, rejectCrossOriginMutation } from "@/lib/security";
 
@@ -50,16 +51,20 @@ export async function POST(request: Request) {
       },
     });
   } catch (error) {
-    if (error instanceof Error && error.message === "INVALID_PAYMENT_PROOF_INPUT") {
+    if (isPaymentError(error, PAYMENT_ERROR_CODES.invalidPaymentProofInput)) {
       return jsonNoStore({ message: "بيانات إثبات الدفع غير صالحة." }, { status: 400 });
     }
 
-    if (error instanceof Error && error.message === "ATTEMPT_NOT_FOUND") {
+    if (isPaymentError(error, PAYMENT_ERROR_CODES.attemptNotFound)) {
       return jsonNoStore({ message: "محاولة الدفع غير موجودة." }, { status: 404 });
     }
 
-    if (error instanceof Error && error.message === "ATTEMPT_NOT_SUBMITTABLE") {
+    if (isPaymentError(error, PAYMENT_ERROR_CODES.attemptNotSubmittable)) {
       return jsonNoStore({ message: "لا يمكن إرسال إثبات الدفع لهذه المحاولة حالياً." }, { status: 409 });
+    }
+
+    if (isPaymentError(error, PAYMENT_ERROR_CODES.missingProviderReference)) {
+      return jsonNoStore({ message: "مرجع مزود الدفع غير متاح بعد. أعد إنشاء المحاولة." }, { status: 409 });
     }
 
     console.error("Failed to submit payment proof", error);

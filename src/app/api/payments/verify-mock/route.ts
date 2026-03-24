@@ -1,5 +1,6 @@
 import { getCurrentUser } from "@/lib/auth-session";
 import { GatewayConfigurationError, GatewayRequestError } from "@/lib/payments/gateways/provider-http";
+import { isPaymentError, PAYMENT_ERROR_CODES } from "@/lib/payments/errors";
 import { isMockPaymentVerificationEnabled } from "@/lib/payments/mock-mode";
 import { verifyPayment } from "@/lib/payments/payment-service";
 import { isSameOriginMutation, jsonNoStore, rejectCrossOriginMutation } from "@/lib/security";
@@ -60,11 +61,11 @@ export async function POST(request: Request) {
       },
     });
   } catch (error) {
-    if (error instanceof Error && error.message === "ATTEMPT_NOT_FOUND") {
+    if (isPaymentError(error, PAYMENT_ERROR_CODES.attemptNotFound)) {
       return jsonNoStore({ message: "محاولة الدفع غير موجودة." }, { status: 404 });
     }
 
-    if (error instanceof Error && error.message === "MISSING_PROVIDER_REFERENCE") {
+    if (isPaymentError(error, PAYMENT_ERROR_CODES.missingProviderReference)) {
       return jsonNoStore({ message: "بيانات مزود الدفع غير مكتملة لهذه المحاولة." }, { status: 409 });
     }
 
@@ -72,12 +73,16 @@ export async function POST(request: Request) {
       return jsonNoStore({ message: "حالة الدفع الحالية لا تسمح بالتحقق." }, { status: 409 });
     }
 
-    if (error instanceof Error && error.message === "ATTEMPT_ALREADY_VERIFYING") {
+    if (isPaymentError(error, PAYMENT_ERROR_CODES.attemptAlreadyVerifying)) {
       return jsonNoStore({ message: "محاولة الدفع قيد التحقق حالياً. أعد المحاولة بعد لحظات." }, { status: 409 });
     }
 
-    if (error instanceof Error && error.message === "MOCK_VERIFICATION_DISABLED") {
+    if (isPaymentError(error, PAYMENT_ERROR_CODES.mockVerificationDisabled)) {
       return jsonNoStore({ message: "التحقق التجريبي غير مفعّل على الخادم." }, { status: 403 });
+    }
+
+    if (isPaymentError(error, PAYMENT_ERROR_CODES.providerReferenceIntegrityMismatch)) {
+      return jsonNoStore({ message: "مرجع مزود الدفع لا يطابق سجل العملية." }, { status: 409 });
     }
 
     if (error instanceof GatewayConfigurationError) {
