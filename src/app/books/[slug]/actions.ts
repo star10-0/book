@@ -3,17 +3,7 @@
 import { revalidatePath } from "next/cache";
 import { requireUser } from "@/lib/auth-session";
 import { prisma } from "@/lib/prisma";
-import { isValidRating } from "@/lib/services/invariants";
-
-function normalizeRating(value: FormDataEntryValue | null) {
-  const rating = Number(value);
-
-  if (!isValidRating(rating)) {
-    return null;
-  }
-
-  return rating;
-}
+import { normalizeRating } from "@/lib/services/invariants";
 
 function normalizeComment(value: FormDataEntryValue | null) {
   if (typeof value !== "string") {
