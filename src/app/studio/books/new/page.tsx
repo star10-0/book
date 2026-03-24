@@ -2,9 +2,11 @@ import { createStudioBookAction } from "@/app/studio/actions";
 import type { BookFormState } from "@/app/admin/books/actions";
 import { BookForm } from "@/components/admin/book-form";
 import { requireCreator } from "@/lib/auth-session";
+import { ensureDevelopmentCategories } from "@/lib/default-categories";
 import { prisma } from "@/lib/prisma";
 
 export default async function NewStudioBookPage() {
+  await ensureDevelopmentCategories();
   await requireCreator({ callbackUrl: "/studio/books/new" });
 
   const categories = await prisma.category.findMany({ select: { id: true, nameAr: true }, orderBy: { nameAr: "asc" } });
