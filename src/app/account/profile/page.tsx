@@ -1,5 +1,6 @@
 import Link from "next/link";
 import { SiteHeader } from "@/components/site-header";
+import { BecomeCreatorForm } from "@/components/studio/become-creator-form";
 import { requireUser } from "@/lib/auth-session";
 import { formatArabicDate } from "@/lib/formatters/intl";
 import { prisma } from "@/lib/prisma";
@@ -71,6 +72,21 @@ export default async function AccountProfilePage() {
               </li>
             </ul>
           </article>
+        </section>
+
+
+        <section className="rounded-2xl bg-white p-5 shadow-sm ring-1 ring-slate-200">
+          <h2 className="text-lg font-bold text-slate-900">النشر ككاتب</h2>
+          {user.role === "CREATOR" || user.role === "ADMIN" ? (
+            <div className="mt-3 flex flex-wrap items-center gap-2">
+              <p className="text-sm text-slate-700">حسابك مفعّل ككاتب. يمكنك إدارة كتبك من لوحة الكاتب.</p>
+              <Link href="/studio" className="rounded-lg bg-indigo-700 px-3 py-2 text-sm font-semibold text-white hover:bg-indigo-600">
+                لوحة الكاتب
+              </Link>
+            </div>
+          ) : (
+            <BecomeCreatorForm suggestedName={profile.fullName ?? user.email.split("@")[0]} />
+          )}
         </section>
 
         <section className="rounded-2xl bg-white p-5 shadow-sm ring-1 ring-slate-200">

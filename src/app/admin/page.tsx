@@ -10,8 +10,8 @@ export default function AdminDashboardPage() {
   ];
 
   const adminSections = [
-    { href: "/admin/books", title: "الكتب", description: "عرض جميع الكتب وإدارة النشر والعروض." },
-    { href: "/admin/authors", title: "المؤلفون", description: "إضافة وتعديل بيانات المؤلفين." },
+    { href: "/admin/books", title: "الكتب", description: "مراجعة جميع الكتب والإشراف على المحتوى." },
+    { href: "/admin/authors", title: "المؤلفون", description: "متابعة ملفات المؤلفين والكتّاب." },
     { href: "/admin/categories", title: "التصنيفات", description: "تنظيم التصنيفات وربطها بالكتب." },
     { href: "/admin/orders", title: "الطلبات", description: "متابعة الطلبات وحالاتها." },
     { href: "/admin/payments", title: "المدفوعات", description: "مراجعة محاولات الدفع وحالتها." },
@@ -22,7 +22,7 @@ export default function AdminDashboardPage() {
       <AdminPageCard>
         <AdminPageHeader
           title="نظرة عامة"
-          description="لوحة إدارية مبدئية لإدارة الكتب والعروض والطلبات. جميع الإجراءات حالياً بواجهات تمهيدية قابلة للتطوير."
+          description="لوحة المشرف مخصصة للمراجعة والإشراف العام على المنصة والمحتوى والمدفوعات."
         />
       </AdminPageCard>
 
@@ -36,7 +36,7 @@ export default function AdminDashboardPage() {
       </section>
 
       <AdminPageCard>
-        <AdminPageHeader title="إجراءات سريعة" description="الوصول المباشر لتدفق رفع الكتب وإدارة عروض البيع/الإيجار." />
+        <AdminPageHeader title="إجراءات الإشراف" description="الوصول المباشر لأدوات المراجعة والإشراف." />
         <div className="flex flex-wrap gap-3">
           <Link
             href="/admin/books"
@@ -45,7 +45,7 @@ export default function AdminDashboardPage() {
             إدارة الكتب
           </Link>
           <Link href="/admin/books/new" className="rounded-lg bg-slate-900 px-4 py-2 text-sm font-semibold text-white hover:bg-slate-700">
-            رفع/إضافة كتاب جديد
+            مراجعة الكتب
           </Link>
         </div>
       </AdminPageCard>

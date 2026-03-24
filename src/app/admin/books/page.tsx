@@ -7,6 +7,8 @@ import { prisma } from "@/lib/prisma";
 
 function mapStatus(status: string) {
   if (status === "PUBLISHED") return "منشور";
+  if (status === "PENDING_REVIEW") return "بانتظار المراجعة";
+  if (status === "REJECTED") return "مرفوض";
   if (status === "ARCHIVED") return "مؤرشف";
   return "مسودة";
 }
