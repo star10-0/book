@@ -1,6 +1,7 @@
 import { PaymentProvider } from "@prisma/client";
 import { getCurrentUser } from "@/lib/auth-session";
 import { GatewayConfigurationError, GatewayRequestError } from "@/lib/payments/gateways/provider-http";
+import { isPaymentError, PAYMENT_ERROR_CODES } from "@/lib/payments/errors";
 import { createPaymentForOrder } from "@/lib/payments/payment-service";
 import { isSameOriginMutation, jsonNoStore, rejectCrossOriginMutation } from "@/lib/security";
 
@@ -63,16 +64,20 @@ export async function POST(request: Request) {
       { status: result.reused ? 200 : 201 },
     );
   } catch (error) {
-    if (error instanceof Error && error.message === "ORDER_NOT_FOUND") {
+    if (isPaymentError(error, PAYMENT_ERROR_CODES.orderNotFound)) {
       return jsonNoStore({ message: "الطلب غير موجود." }, { status: 404 });
     }
 
-    if (error instanceof Error && error.message === "ORDER_NOT_PAYABLE") {
+    if (isPaymentError(error, PAYMENT_ERROR_CODES.orderNotPayable)) {
       return jsonNoStore({ message: "لا يمكن دفع هذا الطلب حالياً." }, { status: 409 });
     }
 
     if (error instanceof Error && error.message.startsWith("No payment gateway")) {
       return jsonNoStore({ message: "مزود الدفع غير مدعوم حالياً." }, { status: 400 });
+    }
+
+    if (isPaymentError(error, PAYMENT_ERROR_CODES.duplicateProviderReference)) {
+      return jsonNoStore({ message: "مرجع الدفع مستخدم مسبقاً، يرجى إعادة المحاولة." }, { status: 409 });
     }
 
     if (error instanceof GatewayConfigurationError) {

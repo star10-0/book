@@ -141,6 +141,9 @@ BOOK_STORAGE_PROVIDER="local"
 Current gateways are placeholders and operate in **mock mode** by default, so these values are not required for local development today. Keep them ready for future real integration:
 
 ```bash
+# Gateway execution mode: mock | live (live integration endpoints are prepared, not yet implemented)
+PAYMENT_GATEWAY_MODE="mock"
+
 # Enable /api/payments/verify-mock only in local/test when needed
 ALLOW_MOCK_PAYMENT_VERIFICATION="true"
 ```
