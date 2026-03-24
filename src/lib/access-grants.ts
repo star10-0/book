@@ -1,4 +1,5 @@
 import { AccessGrantType, AccessGrantStatus, OfferType, Prisma } from "@prisma/client";
+import { hasValidRentalDays } from "@/lib/services/invariants";
 
 const DAY_IN_MS = 24 * 60 * 60 * 1000;
 
@@ -70,9 +71,10 @@ export async function grantAccessForPaidOrder(
       continue;
     }
 
-    if (!item.rentalDays || item.rentalDays <= 0) {
+    if (!hasValidRentalDays(item.offerType, item.rentalDays)) {
       throw new Error("INVALID_RENTAL_DAYS");
     }
+    const rentalDays = item.rentalDays as number;
 
     const existingActiveRentalForBook = await tx.accessGrant.findFirst({
       where: {
@@ -97,7 +99,7 @@ export async function grantAccessForPaidOrder(
       await tx.accessGrant.update({
         where: { id: existingActiveRentalForBook.id },
         data: {
-          expiresAt: addDays(rentalBaseDate, item.rentalDays),
+          expiresAt: addDays(rentalBaseDate, rentalDays),
         },
       });
 
@@ -119,7 +121,7 @@ export async function grantAccessForPaidOrder(
         orderItemId: item.id,
         type,
         startsAt: grantedAt,
-        expiresAt: addDays(grantedAt, item.rentalDays),
+        expiresAt: addDays(grantedAt, rentalDays),
         status: AccessGrantStatus.ACTIVE,
       },
     });
