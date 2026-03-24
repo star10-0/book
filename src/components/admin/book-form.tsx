@@ -34,6 +34,7 @@ function mergeValues(initialValues: BaseBookValues | undefined, stateValues: Bas
     allowReadingOnSite: stateValues?.allowReadingOnSite ?? initialValues?.allowReadingOnSite ?? "disabled",
     allowDownloading: stateValues?.allowDownloading ?? initialValues?.allowDownloading ?? "disabled",
     previewOnly: stateValues?.previewOnly ?? initialValues?.previewOnly ?? "disabled",
+    paidOnlyMode: stateValues?.paidOnlyMode ?? initialValues?.paidOnlyMode ?? "enabled",
     description: stateValues?.description ?? initialValues?.description ?? "",
     metadata: stateValues?.metadata ?? initialValues?.metadata ?? "",
     metadataLanguage: stateValues?.metadataLanguage ?? initialValues?.metadataLanguage ?? "",
@@ -183,6 +184,19 @@ export function BookForm({ mode, initialValues, authors, categories, hideAuthorF
           <p className="text-xs text-slate-600">
             هذه الخيارات لا تلغي مسار الشراء/الإيجار. عند التعطيل يبقى الوصول عبر المنح بعد الدفع فقط.
           </p>
+        </div>
+
+        <div className="space-y-2">
+          <AdminSelect
+            label="وضع مدفوع فقط"
+            name="paidOnlyMode"
+            defaultValue={values.paidOnlyMode}
+            options={[
+              { value: "enabled", label: "مفعل" },
+              { value: "disabled", label: "متوقف" },
+            ]}
+          />
+          <p className="text-xs text-slate-500">عند التفعيل: يتم تعطيل أي وصول عام للمحتوى ويظل الوصول عبر الشراء/الإيجار فقط.</p>
         </div>
 
         <div className="space-y-2">
