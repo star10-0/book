@@ -1,6 +1,6 @@
 "use server";
 
-import { BookStatus, CurrencyCode, OfferType, Prisma, UserRole } from "@prisma/client";
+import { BookStatus, ContentAccessPolicy, CurrencyCode, OfferType, Prisma, UserRole } from "@prisma/client";
 import { revalidatePath } from "next/cache";
 import { redirect } from "next/navigation";
 import { requireCreator, requireUser } from "@/lib/auth-session";
@@ -24,6 +24,9 @@ export type StudioBookFormValues = {
   publicationStatus?: string;
   buyOfferEnabled?: string;
   rentOfferEnabled?: string;
+  allowReadingOnSite?: string;
+  allowDownloading?: string;
+  previewOnly?: string;
   description?: string;
   metadata?: string;
   metadataLanguage?: string;
@@ -159,12 +162,35 @@ function buildBookValues(formData: FormData): StudioBookFormValues {
     publicationStatus: readField(formData, "publicationStatus") || "draft",
     buyOfferEnabled: readField(formData, "buyOfferEnabled") || "enabled",
     rentOfferEnabled: readField(formData, "rentOfferEnabled") || "enabled",
+    allowReadingOnSite: readField(formData, "allowReadingOnSite"),
+    allowDownloading: readField(formData, "allowDownloading"),
+    previewOnly: readField(formData, "previewOnly"),
     description: readField(formData, "description"),
     metadata: readField(formData, "metadata"),
     metadataLanguage: readField(formData, "metadataLanguage"),
     metadataPages: readField(formData, "metadataPages"),
     metadataPublisher: readField(formData, "metadataPublisher"),
   };
+}
+
+function parseContentAccessPolicy(values: StudioBookFormValues) {
+  const previewOnly = values.previewOnly === "enabled";
+  const allowDownloading = values.allowDownloading === "enabled";
+  const allowReadingOnSite = values.allowReadingOnSite === "enabled";
+
+  if (previewOnly) {
+    return ContentAccessPolicy.PREVIEW_ONLY;
+  }
+
+  if (allowDownloading) {
+    return ContentAccessPolicy.PUBLIC_DOWNLOAD;
+  }
+
+  if (allowReadingOnSite) {
+    return ContentAccessPolicy.PUBLIC_READ;
+  }
+
+  return ContentAccessPolicy.PAID_ONLY;
 }
 
 async function validateBookForm(values: StudioBookFormValues, creatorId: string, bookId?: string) {
@@ -256,6 +282,7 @@ async function validateBookForm(values: StudioBookFormValues, creatorId: string,
     purchasePriceCents,
     rentalPriceCents,
     rentalDays,
+    contentAccessPolicy: parseContentAccessPolicy(values),
     metadata: metadata && metadata !== "invalid-pages" ? metadata : undefined,
   };
 }
@@ -403,6 +430,7 @@ export async function createStudioBookAction(_prevState: StudioBookFormState, fo
       slug: values.slug!,
       descriptionAr: values.description || null,
       metadata: validation.metadata,
+      contentAccessPolicy: validation.contentAccessPolicy,
       status: validation.status,
       creatorId: user.id,
       authorId: validation.creatorAuthorId,
@@ -494,6 +522,7 @@ export async function updateStudioBookAction(bookId: string, _prevState: StudioB
       slug: values.slug!,
       descriptionAr: values.description || null,
       metadata: validation.metadata,
+      contentAccessPolicy: validation.contentAccessPolicy,
       status: validation.status,
       authorId: validation.creatorAuthorId,
       categoryId: values.categoryId!,

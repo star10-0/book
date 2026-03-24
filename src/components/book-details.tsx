@@ -23,6 +23,9 @@ type BookDetailsProps = {
     coverImageUrl: string | null;
     publicationDate: Date | null;
     metadata: unknown;
+    publicReadUrl: string | null;
+    publicReadLabel: string | null;
+    publicDownloadUrl: string | null;
   };
   offers: Pick<BookOffer, "id" | "type" | "priceCents" | "currency" | "rentalDays">[];
   averageRating: number;
@@ -115,6 +118,33 @@ export function BookDetailsSection({
           <BookMetadata publicationDate={book.publicationDate} metadata={book.metadata} />
 
           <BookOffers offers={offers} />
+
+          {book.publicReadUrl || book.publicDownloadUrl ? (
+            <section aria-labelledby="book-content-access" className="space-y-3">
+              <h2 id="book-content-access" className="text-lg font-bold text-slate-900">
+                الوصول إلى المحتوى
+              </h2>
+              <div className="flex flex-wrap gap-3">
+                {book.publicReadUrl ? (
+                  <Link
+                    href={book.publicReadUrl}
+                    className="inline-flex rounded-xl bg-emerald-600 px-4 py-2 text-sm font-semibold text-white hover:bg-emerald-700 focus-visible:outline-none focus-visible:ring-2 focus-visible:ring-emerald-300"
+                  >
+                    {book.publicReadLabel ?? "اقرأ الآن"}
+                  </Link>
+                ) : null}
+                {book.publicDownloadUrl ? (
+                  <Link
+                    href={book.publicDownloadUrl}
+                    target="_blank"
+                    className="inline-flex rounded-xl border border-indigo-300 px-4 py-2 text-sm font-semibold text-indigo-700 hover:bg-indigo-50 focus-visible:outline-none focus-visible:ring-2 focus-visible:ring-indigo-300"
+                  >
+                    تحميل
+                  </Link>
+                ) : null}
+              </div>
+            </section>
+          ) : null}
 
           <OrderSummaryCard bookId={book.id} bookTitle={book.title} offers={offers} />
 

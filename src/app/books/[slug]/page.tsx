@@ -8,6 +8,7 @@ import {
   RelatedBooksSection,
 } from "@/components/book-details";
 import { getCurrentUser } from "@/lib/auth-session";
+import { resolveBookContentAccess } from "@/lib/book-content-access";
 import { prisma } from "@/lib/prisma";
 
 type BookDetailsPageProps = {
@@ -48,6 +49,18 @@ export default async function BookDetailsPage({ params }: BookDetailsPageProps) 
     include: {
       author: { select: { nameAr: true } },
       category: { select: { id: true, nameAr: true } },
+      files: {
+        where: {
+          kind: {
+            in: ["PDF", "EPUB"],
+          },
+        },
+        orderBy: { createdAt: "asc" },
+        select: {
+          kind: true,
+          publicUrl: true,
+        },
+      },
       offers: {
         where: {
           isActive: true,
@@ -110,6 +123,11 @@ export default async function BookDetailsPage({ params }: BookDetailsPageProps) 
   const userReview = user
     ? book.reviews.find((review) => review.userId === user.id) ?? null
     : null;
+  const contentAccess = resolveBookContentAccess({
+    policy: book.contentAccessPolicy,
+    files: book.files,
+    textContent: book.textContent,
+  });
 
   return (
     <main>
@@ -126,6 +144,9 @@ export default async function BookDetailsPage({ params }: BookDetailsPageProps) 
             coverImageUrl: book.coverImageUrl,
             publicationDate: book.publicationDate,
             metadata: book.metadata,
+            publicReadUrl: contentAccess.canReadPublicly || contentAccess.canReadPreview ? `/books/${book.slug}/read` : null,
+            publicReadLabel: contentAccess.canReadPreview ? "قراءة عينة" : "اقرأ الآن",
+            publicDownloadUrl: contentAccess.canDownloadPublicly ? contentAccess.readableFile?.publicUrl ?? null : null,
           }}
           offers={book.offers}
           averageRating={averageRating}
