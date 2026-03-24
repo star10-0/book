@@ -4,7 +4,7 @@ import { resolvePaymentGateway } from "@/lib/payments/gateways";
 import { isMockPaymentVerificationEnabled } from "@/lib/payments/mock-mode";
 import { ensurePaymentStatusTransition } from "@/lib/payments/status-flow";
 import { grantAccessForPaidOrder } from "@/lib/access-grants";
-import { isNonNegativeInteger } from "@/lib/services/invariants";
+import { normalizeNonNegativeMoneyCents, normalizeProviderReference } from "@/lib/services/invariants";
 
 export interface CreatePaymentForOrderInput {
   orderId: string;
@@ -51,7 +51,7 @@ export async function createPaymentForOrder(input: CreatePaymentForOrderInput) {
       throw new Error("ORDER_NOT_PAYABLE");
     }
 
-    if (!isNonNegativeInteger(order.totalCents)) {
+    if (normalizeNonNegativeMoneyCents(order.totalCents) === null) {
       throw new Error("INVALID_ORDER_TOTAL");
     }
 
@@ -115,10 +115,15 @@ export async function createPaymentForOrder(input: CreatePaymentForOrderInput) {
 
     ensurePaymentStatusTransition(attempt.status, "SUBMITTED");
 
+    const providerReference = normalizeProviderReference(gatewayResponse.providerReference);
+    if (!providerReference) {
+      throw new Error("INVALID_PROVIDER_REFERENCE");
+    }
+
     const conflictingAttempt = await tx.paymentAttempt.findFirst({
       where: {
         provider: input.provider,
-        providerReference: gatewayResponse.providerReference,
+        providerReference,
         id: { not: attempt.id },
       },
       select: { id: true },
@@ -128,11 +133,24 @@ export async function createPaymentForOrder(input: CreatePaymentForOrderInput) {
       throw new Error("DUPLICATE_PROVIDER_REFERENCE");
     }
 
+    const conflictingPayment = await tx.payment.findFirst({
+      where: {
+        provider: input.provider,
+        providerRef: providerReference,
+        id: { not: payment.id },
+      },
+      select: { id: true },
+    });
+
+    if (conflictingPayment) {
+      throw new Error("DUPLICATE_PROVIDER_REFERENCE");
+    }
+
     const submittedAttempt = await tx.paymentAttempt.update({
       where: { id: attempt.id },
       data: {
         status: "SUBMITTED",
-        providerReference: gatewayResponse.providerReference,
+        providerReference,
         responsePayload: gatewayResponse.rawPayload as Prisma.InputJsonValue | undefined,
       },
     });
@@ -140,7 +158,7 @@ export async function createPaymentForOrder(input: CreatePaymentForOrderInput) {
     await tx.payment.update({
       where: { id: payment.id },
       data: {
-        providerRef: gatewayResponse.providerReference,
+        providerRef: providerReference,
       },
     });
 
@@ -150,7 +168,12 @@ export async function createPaymentForOrder(input: CreatePaymentForOrderInput) {
       checkoutUrl: gatewayResponse.checkoutUrl,
       reused: false,
     };
-  }, { isolationLevel: Prisma.TransactionIsolationLevel.Serializable });
+  }, { isolationLevel: Prisma.TransactionIsolationLevel.Serializable }).catch((error: unknown) => {
+    if (error instanceof Prisma.PrismaClientKnownRequestError && error.code === "P2002") {
+      throw new Error("DUPLICATE_PROVIDER_REFERENCE");
+    }
+    throw error;
+  });
 
   return result;
 }
