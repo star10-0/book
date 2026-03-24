@@ -48,12 +48,11 @@ export async function POST(request: Request) {
 
     return jsonNoStore(
       {
-        message: "تم إنشاء محاولة الدفع.",
+        message: result.reused ? "تم استرجاع محاولة دفع جارية." : "تم إنشاء محاولة الدفع.",
         payment: {
           id: result.payment.id,
           status: result.payment.status,
           provider: result.payment.provider,
-          providerRef: result.attempt.providerReference,
         },
         attempt: {
           id: result.attempt.id,
@@ -61,7 +60,7 @@ export async function POST(request: Request) {
         },
         checkoutUrl: result.checkoutUrl,
       },
-      { status: 201 },
+      { status: result.reused ? 200 : 201 },
     );
   } catch (error) {
     if (error instanceof Error && error.message === "ORDER_NOT_FOUND") {

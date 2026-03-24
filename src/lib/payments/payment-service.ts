@@ -26,58 +26,59 @@ export interface SubmitPaymentProofInput {
 }
 
 export async function createPaymentForOrder(input: CreatePaymentForOrderInput) {
-  const order = await prisma.order.findFirst({
-    where: {
-      id: input.orderId,
-      userId: input.userId,
-    },
-    select: {
-      id: true,
-      userId: true,
-      totalCents: true,
-      currency: true,
-      status: true,
-    },
-  });
-
-  if (!order) {
-    throw new Error("ORDER_NOT_FOUND");
-  }
-
-  if (order.status !== OrderStatus.PENDING) {
-    throw new Error("ORDER_NOT_PAYABLE");
-  }
-
-  if (!isNonNegativeInteger(order.totalCents)) {
-    throw new Error("INVALID_ORDER_TOTAL");
-  }
-
   const gateway = resolvePaymentGateway(input.provider);
 
-  const existingAttempt = await prisma.paymentAttempt.findFirst({
-    where: {
-      orderId: order.id,
-      userId: order.userId,
-      provider: input.provider,
-      status: {
-        in: ["PENDING", "SUBMITTED", "VERIFYING"],
-      },
-    },
-    orderBy: { createdAt: "desc" },
-    include: {
-      payment: true,
-    },
-  });
-
-  if (existingAttempt) {
-    return {
-      payment: existingAttempt.payment,
-      attempt: existingAttempt,
-      checkoutUrl: undefined,
-    };
-  }
-
   const result = await prisma.$transaction(async (tx) => {
+    const order = await tx.order.findFirst({
+      where: {
+        id: input.orderId,
+        userId: input.userId,
+      },
+      select: {
+        id: true,
+        userId: true,
+        totalCents: true,
+        currency: true,
+        status: true,
+      },
+    });
+
+    if (!order) {
+      throw new Error("ORDER_NOT_FOUND");
+    }
+
+    if (order.status !== OrderStatus.PENDING) {
+      throw new Error("ORDER_NOT_PAYABLE");
+    }
+
+    if (!isNonNegativeInteger(order.totalCents)) {
+      throw new Error("INVALID_ORDER_TOTAL");
+    }
+
+    const existingAttempt = await tx.paymentAttempt.findFirst({
+      where: {
+        orderId: order.id,
+        userId: order.userId,
+        provider: input.provider,
+        status: {
+          in: ["PENDING", "SUBMITTED", "VERIFYING"],
+        },
+      },
+      orderBy: { createdAt: "desc" },
+      include: {
+        payment: true,
+      },
+    });
+
+    if (existingAttempt) {
+      return {
+        payment: existingAttempt.payment,
+        attempt: existingAttempt,
+        checkoutUrl: undefined,
+        reused: true,
+      };
+    }
+
     const payment = await tx.payment.create({
       data: {
         userId: order.userId,
@@ -147,8 +148,9 @@ export async function createPaymentForOrder(input: CreatePaymentForOrderInput) {
       payment,
       attempt: submittedAttempt,
       checkoutUrl: gatewayResponse.checkoutUrl,
+      reused: false,
     };
-  });
+  }, { isolationLevel: Prisma.TransactionIsolationLevel.Serializable });
 
   return result;
 }
@@ -218,8 +220,6 @@ export async function verifyPayment(input: VerifyPaymentInput) {
     return attempt;
   }
 
-  const gateway = resolvePaymentGateway(attempt.provider);
-
   const verifyingStatus: PaymentAttemptStatus = "VERIFYING";
   ensurePaymentStatusTransition(attempt.status, verifyingStatus);
 
@@ -229,23 +229,66 @@ export async function verifyPayment(input: VerifyPaymentInput) {
     throw new Error("MISSING_PROVIDER_REFERENCE");
   }
 
-  const gatewayResult = await gateway.verifyPayment({
-    paymentId: attempt.paymentId,
-    providerReference: attempt.providerReference,
-    transactionReference,
-    mockOutcome: input.mockOutcome,
+  const providerReference = attempt.providerReference;
+
+  const claimVerification = await prisma.paymentAttempt.updateMany({
+    where: {
+      id: attempt.id,
+      status: attempt.status,
+    },
+    data: {
+      status: verifyingStatus,
+    },
   });
+
+  if (claimVerification.count === 0) {
+    const latestAttempt = await prisma.paymentAttempt.findUnique({
+      where: { id: attempt.id },
+      include: {
+        payment: true,
+        order: true,
+      },
+    });
+
+    if (!latestAttempt) {
+      throw new Error("ATTEMPT_NOT_FOUND");
+    }
+
+    if (latestAttempt.status === "PAID" || latestAttempt.status === "FAILED") {
+      return latestAttempt;
+    }
+
+    throw new Error("ATTEMPT_ALREADY_VERIFYING");
+  }
+
+  const gateway = resolvePaymentGateway(attempt.provider);
+
+  const gatewayResult = await (async () => {
+    try {
+      return await gateway.verifyPayment({
+        paymentId: attempt.paymentId,
+        providerReference,
+        transactionReference,
+        mockOutcome: input.mockOutcome,
+      });
+    } catch (error) {
+      await prisma.paymentAttempt.updateMany({
+        where: {
+          id: attempt.id,
+          status: verifyingStatus,
+        },
+        data: {
+          status: attempt.status,
+        },
+      });
+
+      throw error;
+    }
+  })();
 
   const finalAttemptStatus: PaymentAttemptStatus = gatewayResult.isPaid ? "PAID" : "FAILED";
 
   return prisma.$transaction(async (tx) => {
-    await tx.paymentAttempt.update({
-      where: { id: attempt.id },
-      data: {
-        status: verifyingStatus,
-      },
-    });
-
     ensurePaymentStatusTransition(verifyingStatus, finalAttemptStatus);
 
     const finalizedAttempt = await tx.paymentAttempt.update({

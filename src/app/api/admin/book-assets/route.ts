@@ -90,7 +90,7 @@ export async function POST(request: Request) {
     return NextResponse.json({ error: "الأنواع المدعومة حاليًا: COVER_IMAGE, EPUB, PDF" }, { status: 400 });
   }
 
-  const book = await prisma.book.findUnique({ where: { id: bookId }, select: { id: true, contentAccessPolicy: true } });
+  const book = await prisma.book.findUnique({ where: { id: bookId }, select: { id: true } });
 
   if (!book) {
     return NextResponse.json({ error: "الكتاب المطلوب غير موجود." }, { status: 404 });
@@ -112,8 +112,7 @@ export async function POST(request: Request) {
     return NextResponse.json({ error: "بصمة الملف لا تطابق نوعه المعلن." }, { status: 400 });
   }
 
-  const shouldBePublic =
-    kind === FileKind.COVER_IMAGE ? true : book.contentAccessPolicy === "PUBLIC_READ" || book.contentAccessPolicy === "PUBLIC_DOWNLOAD";
+  const shouldBePublic = kind === FileKind.COVER_IMAGE;
 
   const uploaded = await provider.uploadFile({
     bytes,

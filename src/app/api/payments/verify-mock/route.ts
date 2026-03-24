@@ -72,6 +72,10 @@ export async function POST(request: Request) {
       return jsonNoStore({ message: "حالة الدفع الحالية لا تسمح بالتحقق." }, { status: 409 });
     }
 
+    if (error instanceof Error && error.message === "ATTEMPT_ALREADY_VERIFYING") {
+      return jsonNoStore({ message: "محاولة الدفع قيد التحقق حالياً. أعد المحاولة بعد لحظات." }, { status: 409 });
+    }
+
     if (error instanceof Error && error.message === "MOCK_VERIFICATION_DISABLED") {
       return jsonNoStore({ message: "التحقق التجريبي غير مفعّل على الخادم." }, { status: 403 });
     }

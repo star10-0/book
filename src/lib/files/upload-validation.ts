@@ -21,6 +21,41 @@ function matchesZipSignature(bytes: Uint8Array) {
   return bytes[0] === 0x50 && bytes[1] === 0x4b && (bytes[2] === 0x03 || bytes[2] === 0x05 || bytes[2] === 0x07) && (bytes[3] === 0x04 || bytes[3] === 0x06 || bytes[3] === 0x08);
 }
 
+function containsAscii(bytes: Uint8Array, text: string) {
+  const encoded = new TextEncoder().encode(text);
+
+  if (encoded.length === 0 || bytes.length < encoded.length) {
+    return false;
+  }
+
+  for (let i = 0; i <= bytes.length - encoded.length; i += 1) {
+    let match = true;
+
+    for (let j = 0; j < encoded.length; j += 1) {
+      if (bytes[i + j] !== encoded[j]) {
+        match = false;
+        break;
+      }
+    }
+
+    if (match) {
+      return true;
+    }
+  }
+
+  return false;
+}
+
+function matchesEpubSignature(bytes: Uint8Array) {
+  if (!matchesZipSignature(bytes)) {
+    return false;
+  }
+
+  const probeLength = Math.min(bytes.length, 4096);
+  const probeSlice = bytes.slice(0, probeLength);
+  return containsAscii(probeSlice, "application/epub+zip");
+}
+
 function matchesCoverSignature(bytes: Uint8Array, extension: string) {
   if (extension === ".jpg" || extension === ".jpeg") {
     return bytes.length >= 3 && bytes[0] === 0xff && bytes[1] === 0xd8 && bytes[2] === 0xff;
@@ -73,7 +108,7 @@ export function validateFileSignature(kind: FileKind, fileName: string, bytes: U
   }
 
   if (kind === FileKind.EPUB) {
-    return matchesZipSignature(bytes);
+    return matchesEpubSignature(bytes);
   }
 
   if (kind === FileKind.COVER_IMAGE) {
@@ -82,4 +117,3 @@ export function validateFileSignature(kind: FileKind, fileName: string, bytes: U
 
   return true;
 }
-

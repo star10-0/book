@@ -15,24 +15,17 @@ type BookAssetRouteParams = {
 
 function resolveLocalAssetPath(storageKey: string) {
   const privatePath = path.join(process.cwd(), "storage", "private", "uploads", storageKey);
-  const publicPath = path.join(process.cwd(), "public", "uploads", storageKey);
-
-  return { privatePath, publicPath };
+  return { privatePath };
 }
 
 async function resolveReadableLocalPath(storageKey: string) {
-  const { privatePath, publicPath } = resolveLocalAssetPath(storageKey);
+  const { privatePath } = resolveLocalAssetPath(storageKey);
 
   try {
     await access(privatePath);
     return privatePath;
   } catch {
-    try {
-      await access(publicPath);
-      return publicPath;
-    } catch {
-      return null;
-    }
+    return null;
   }
 }
 
