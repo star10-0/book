@@ -18,10 +18,10 @@ export function BookTextContentForm({ initialTextContent, action }: BookTextCont
   const [state, formAction, isPending] = useActionState(action, initialState);
 
   return (
-    <form action={formAction} className="space-y-4 rounded-xl border border-slate-200 bg-slate-50 p-4">
+    <form action={formAction} className="space-y-4 rounded-xl border border-slate-200 bg-white p-4">
       <div>
-        <h3 className="text-lg font-bold text-slate-900">كتابة محتوى الكتاب داخل المنصة</h3>
-        <p className="mt-1 text-sm text-slate-600">يمكنك كتابة النص الكامل للكتاب هنا ليظهر للقارئ داخل المتصفح حتى بدون PDF أو EPUB.</p>
+        <h3 className="text-lg font-bold text-slate-900">كتابة المحتوى النصي</h3>
+        <p className="mt-1 text-sm text-slate-600">اكتب النص الكامل للكتاب ليظهر للقارئ داخل المتصفح، حتى لو لم ترفع PDF أو EPUB.</p>
       </div>
 
       <label className="block space-y-2">
