@@ -31,6 +31,9 @@ function mergeValues(initialValues: BaseBookValues | undefined, stateValues: Bas
     publicationStatus: stateValues?.publicationStatus ?? initialValues?.publicationStatus ?? "draft",
     buyOfferEnabled: stateValues?.buyOfferEnabled ?? initialValues?.buyOfferEnabled ?? "enabled",
     rentOfferEnabled: stateValues?.rentOfferEnabled ?? initialValues?.rentOfferEnabled ?? "enabled",
+    allowReadingOnSite: stateValues?.allowReadingOnSite ?? initialValues?.allowReadingOnSite ?? "disabled",
+    allowDownloading: stateValues?.allowDownloading ?? initialValues?.allowDownloading ?? "disabled",
+    previewOnly: stateValues?.previewOnly ?? initialValues?.previewOnly ?? "disabled",
     description: stateValues?.description ?? initialValues?.description ?? "",
     metadata: stateValues?.metadata ?? initialValues?.metadata ?? "",
     metadataLanguage: stateValues?.metadataLanguage ?? initialValues?.metadataLanguage ?? "",
@@ -173,6 +176,50 @@ export function BookForm({ mode, initialValues, authors, categories, hideAuthorF
             ]}
           />
           {state.fieldErrors?.publicationStatus ? <p className="text-sm font-medium text-rose-700">{state.fieldErrors.publicationStatus}</p> : null}
+        </div>
+
+        <div className="md:col-span-2 space-y-2">
+          <h3 className="text-sm font-semibold text-slate-800">وصول المحتوى بعد النشر</h3>
+          <p className="text-xs text-slate-600">
+            هذه الخيارات لا تلغي مسار الشراء/الإيجار. عند التعطيل يبقى الوصول عبر المنح بعد الدفع فقط.
+          </p>
+        </div>
+
+        <div className="space-y-2">
+          <AdminSelect
+            label="السماح بالقراءة على الموقع"
+            name="allowReadingOnSite"
+            defaultValue={values.allowReadingOnSite}
+            options={[
+              { value: "disabled", label: "لا" },
+              { value: "enabled", label: "نعم" },
+            ]}
+          />
+        </div>
+
+        <div className="space-y-2">
+          <AdminSelect
+            label="السماح بالتحميل"
+            name="allowDownloading"
+            defaultValue={values.allowDownloading}
+            options={[
+              { value: "disabled", label: "لا" },
+              { value: "enabled", label: "نعم" },
+            ]}
+          />
+        </div>
+
+        <div className="space-y-2">
+          <AdminSelect
+            label="وضع المعاينة فقط"
+            name="previewOnly"
+            defaultValue={values.previewOnly}
+            options={[
+              { value: "disabled", label: "لا" },
+              { value: "enabled", label: "نعم" },
+            ]}
+          />
+          <p className="text-xs text-slate-500">عند التفعيل: يظهر للزوار نموذج قراءة (عينة) من المحتوى النصي فقط.</p>
         </div>
 
         <div className="md:col-span-2 space-y-2">

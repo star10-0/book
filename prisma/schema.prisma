@@ -26,6 +26,14 @@ enum BookFormat {
   PHYSICAL
 }
 
+enum ContentAccessPolicy {
+  PRIVATE
+  PAID_ONLY
+  PUBLIC_READ
+  PUBLIC_DOWNLOAD
+  PREVIEW_ONLY
+}
+
 enum FileKind {
   COVER_IMAGE
   EPUB
@@ -161,6 +169,7 @@ model Book {
   metadata         Json?
   coverImageUrl    String?
   textContent      String?
+  contentAccessPolicy ContentAccessPolicy @default(PAID_ONLY)
   status           BookStatus        @default(DRAFT)
   format           BookFormat        @default(DIGITAL)
   publicationDate  DateTime?

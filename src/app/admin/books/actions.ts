@@ -1,6 +1,6 @@
 "use server";
 
-import { BookStatus, CurrencyCode, OfferType, Prisma } from "@prisma/client";
+import { BookStatus, ContentAccessPolicy, CurrencyCode, OfferType, Prisma } from "@prisma/client";
 import { revalidatePath } from "next/cache";
 import { redirect } from "next/navigation";
 import { requireAdmin } from "@/lib/auth-session";
@@ -19,6 +19,9 @@ export type BookFormValues = {
   publicationStatus?: string;
   buyOfferEnabled?: string;
   rentOfferEnabled?: string;
+  allowReadingOnSite?: string;
+  allowDownloading?: string;
+  previewOnly?: string;
   description?: string;
   metadata?: string;
   metadataLanguage?: string;
@@ -84,12 +87,35 @@ function buildValues(formData: FormData): BookFormValues {
     publicationStatus: readField(formData, "publicationStatus") || "draft",
     buyOfferEnabled: readField(formData, "buyOfferEnabled") || "disabled",
     rentOfferEnabled: readField(formData, "rentOfferEnabled") || "disabled",
+    allowReadingOnSite: readField(formData, "allowReadingOnSite"),
+    allowDownloading: readField(formData, "allowDownloading"),
+    previewOnly: readField(formData, "previewOnly"),
     description: readField(formData, "description"),
     metadata: readField(formData, "metadata"),
     metadataLanguage: readField(formData, "metadataLanguage"),
     metadataPages: readField(formData, "metadataPages"),
     metadataPublisher: readField(formData, "metadataPublisher"),
   };
+}
+
+function parseContentAccessPolicy(values: BookFormValues) {
+  const previewOnly = values.previewOnly === "enabled";
+  const allowDownloading = values.allowDownloading === "enabled";
+  const allowReadingOnSite = values.allowReadingOnSite === "enabled";
+
+  if (previewOnly) {
+    return ContentAccessPolicy.PREVIEW_ONLY;
+  }
+
+  if (allowDownloading) {
+    return ContentAccessPolicy.PUBLIC_DOWNLOAD;
+  }
+
+  if (allowReadingOnSite) {
+    return ContentAccessPolicy.PUBLIC_READ;
+  }
+
+  return ContentAccessPolicy.PAID_ONLY;
 }
 
 function parseMetadata(values: BookFormValues) {
@@ -223,6 +249,7 @@ async function validateBookForm(values: BookFormValues, bookId?: string) {
     purchasePriceCents,
     rentalPriceCents,
     rentalDays,
+    contentAccessPolicy: parseContentAccessPolicy(values),
     metadata: metadata && metadata !== "invalid-pages" ? metadata : undefined,
   };
 }
@@ -247,6 +274,7 @@ export async function createBookAction(_prevState: BookFormState, formData: Form
       slug: values.slug!,
       descriptionAr: values.description || null,
       metadata: validation.metadata,
+      contentAccessPolicy: validation.contentAccessPolicy,
       status: validation.status,
       authorId: values.authorId!,
       categoryId: values.categoryId!,
@@ -336,6 +364,7 @@ export async function updateBookAction(bookId: string, _prevState: BookFormState
       slug: values.slug!,
       descriptionAr: values.description || null,
       metadata: validation.metadata,
+      contentAccessPolicy: validation.contentAccessPolicy,
       status: validation.status,
       authorId: values.authorId!,
       categoryId: values.categoryId!,

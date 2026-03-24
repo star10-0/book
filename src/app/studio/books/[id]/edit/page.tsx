@@ -81,6 +81,10 @@ export default async function EditStudioBookPage({ params, searchParams }: EditS
     publicationStatus: book.status.toLowerCase(),
     buyOfferEnabled: purchaseOffer?.isActive ? "enabled" : "disabled",
     rentOfferEnabled: rentalOffer?.isActive ? "enabled" : "disabled",
+    allowReadingOnSite:
+      book.contentAccessPolicy === "PUBLIC_READ" || book.contentAccessPolicy === "PUBLIC_DOWNLOAD" ? "enabled" : "disabled",
+    allowDownloading: book.contentAccessPolicy === "PUBLIC_DOWNLOAD" ? "enabled" : "disabled",
+    previewOnly: book.contentAccessPolicy === "PREVIEW_ONLY" ? "enabled" : "disabled",
     description: book.descriptionAr ?? "",
     metadata: book.metadata ? JSON.stringify(book.metadata, null, 2) : "",
     metadataLanguage: typeof metadata?.language === "string" ? metadata.language : "",
