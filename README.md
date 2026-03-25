@@ -99,6 +99,35 @@ npm run prisma:migrate:deploy
 
 Do **not** run `prisma migrate dev` in production.
 
+## Local Schema Drift Recovery (Important)
+
+### Root cause seen in this codebase
+
+Recent schema updates added promo-related columns to `Order` (`discountCents`, `promoCodeId`) and related promo tables. If local development databases were not migrated after pulling those changes, runtime Prisma queries fail with missing-column errors (for example around `Order.discountCents`).
+
+### Safe recovery path for development
+
+If you need to preserve local data, apply pending migrations:
+
+```bash
+npm run prisma:migrate:status
+npm run prisma:migrate
+```
+
+If local data is disposable and drift is severe, use reset (recommended quickest recovery in dev):
+
+```bash
+npm run prisma:reset:dev
+```
+
+Then run:
+
+```bash
+npm run dev
+```
+
+After migrations are in sync, order creation and checkout queries work again.
+
 ### Migration/startup order
 
 1. Start PostgreSQL and wait for readiness.
@@ -128,6 +157,16 @@ In Docker this project uses `npm run start:prod`, which runs migrate deploy befo
    ```
 
 4. Open app at `http://<server-ip>:3000` (or behind your reverse proxy TLS domain).
+
+### If PostgreSQL is managed externally
+
+Use the app-only compose file:
+
+```bash
+docker compose -f docker-compose.app.yml --env-file .env.production up -d --build
+```
+
+Set `DATABASE_URL` to your managed PostgreSQL connection string.
 
 ## VPS Rollout Checklist
 

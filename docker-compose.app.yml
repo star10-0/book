@@ -4,9 +4,6 @@ services:
       context: .
       dockerfile: Dockerfile
     image: book-app:latest
-    depends_on:
-      db:
-        condition: service_healthy
     env_file:
       - .env.production
     environment:
@@ -27,22 +24,6 @@ services:
       timeout: 5s
       retries: 10
 
-  db:
-    image: postgres:16-alpine
-    environment:
-      POSTGRES_DB: book
-      POSTGRES_USER: book
-      POSTGRES_PASSWORD: book
-    volumes:
-      - postgres_data:/var/lib/postgresql/data
-    healthcheck:
-      test: ["CMD-SHELL", "pg_isready -U book -d book"]
-      interval: 5s
-      timeout: 5s
-      retries: 20
-    restart: unless-stopped
-
 volumes:
   app_public_uploads:
   app_private_uploads:
-  postgres_data:

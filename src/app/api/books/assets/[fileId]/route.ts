@@ -15,10 +15,15 @@ type BookAssetRouteParams = {
 
 function resolveLocalAssetPath(storageKey: string) {
   const normalized = storageKey.replace(/^\/+/, "");
-  const privatePath = path.join(process.cwd(), "storage", "private", "uploads", normalized);
-  const publicPath = path.join(process.cwd(), "public", "uploads", normalized);
+  const privateRoot = path.resolve(process.cwd(), "storage", "private", "uploads");
+  const publicRoot = path.resolve(process.cwd(), "public", "uploads");
+  const privatePath = path.resolve(privateRoot, normalized);
+  const publicPath = path.resolve(publicRoot, normalized);
 
-  return { privatePath, publicPath };
+  return {
+    privatePath: privatePath.startsWith(`${privateRoot}${path.sep}`) || privatePath === privateRoot ? privatePath : null,
+    publicPath: publicPath.startsWith(`${publicRoot}${path.sep}`) || publicPath === publicRoot ? publicPath : null,
+  };
 }
 
 async function resolveReadableLocalPath(storageKey: string) {
@@ -34,15 +39,19 @@ async function resolveReadableLocalPath(storageKey: string) {
   for (const candidate of normalizedCandidates) {
     const { privatePath, publicPath } = resolveLocalAssetPath(candidate);
 
-    try {
-      await access(privatePath);
-      return privatePath;
-    } catch {}
+    if (privatePath) {
+      try {
+        await access(privatePath);
+        return privatePath;
+      } catch {}
+    }
 
-    try {
-      await access(publicPath);
-      return publicPath;
-    } catch {}
+    if (publicPath) {
+      try {
+        await access(publicPath);
+        return publicPath;
+      } catch {}
+    }
   }
 
   return null;

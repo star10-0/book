@@ -71,6 +71,10 @@ export async function POST(request: Request) {
       return jsonNoStore({ message: "لا يمكن إرسال إثبات الدفع لهذه المحاولة حالياً." }, { status: 409 });
     }
 
+    if (isPaymentError(error, PAYMENT_ERROR_CODES.paymentProofImmutable)) {
+      return jsonNoStore({ message: "تم تثبيت مرجع الدفع لهذه المحاولة مسبقًا ولا يمكن تعديله." }, { status: 409 });
+    }
+
     if (isPaymentError(error, PAYMENT_ERROR_CODES.missingProviderReference)) {
       return jsonNoStore({ message: "مرجع مزود الدفع غير متاح بعد. أعد إنشاء المحاولة." }, { status: 409 });
     }
