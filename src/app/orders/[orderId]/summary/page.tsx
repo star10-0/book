@@ -22,6 +22,9 @@ export default async function OrderSummaryPage({ params }: OrderSummaryPageProps
       items: {
         orderBy: { createdAt: "asc" },
       },
+      promoCode: {
+        select: { code: true },
+      },
     },
   });
 
@@ -50,6 +53,8 @@ export default async function OrderSummaryPage({ params }: OrderSummaryPageProps
         currency={order.currency}
         subtotalCents={order.subtotalCents}
         totalCents={order.totalCents}
+        discountCents={order.discountCents}
+        promoCode={order.promoCode?.code}
         createdAt={order.createdAt}
         items={order.items}
         showCheckoutAction={order.status === "PENDING"}

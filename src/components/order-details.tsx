@@ -18,6 +18,8 @@ type OrderDetailsCardProps = {
   currency: CurrencyCode;
   subtotalCents: number;
   totalCents: number;
+  discountCents?: number;
+  promoCode?: string | null;
   createdAt: Date;
   items: OrderItemView[];
   showCheckoutAction?: boolean;
@@ -29,6 +31,8 @@ export function OrderDetailsCard({
   currency,
   subtotalCents,
   totalCents,
+  discountCents = 0,
+  promoCode,
   createdAt,
   items,
   showCheckoutAction = false,
@@ -74,6 +78,12 @@ export function OrderDetailsCard({
             <dt className="text-slate-600">الإجمالي الفرعي</dt>
             <dd className="font-semibold text-slate-900">{formatPrice(subtotalCents, currency)}</dd>
           </div>
+          {discountCents > 0 ? (
+            <div className="flex items-center justify-between gap-2">
+              <dt className="text-emerald-700">الخصم{promoCode ? ` (${promoCode})` : ""}</dt>
+              <dd className="font-semibold text-emerald-700">- {formatPrice(discountCents, currency)}</dd>
+            </div>
+          ) : null}
           <div className="flex items-center justify-between gap-2 border-t border-slate-200 pt-2">
             <dt className="font-bold text-slate-800">الإجمالي الكلي</dt>
             <dd className="text-base font-bold text-indigo-700">{formatPrice(totalCents, currency)}</dd>

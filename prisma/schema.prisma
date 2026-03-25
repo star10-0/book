@@ -98,6 +98,31 @@ enum AccessGrantStatus {
   REVOKED
 }
 
+enum PromoCodeType {
+  FREE
+  PERCENT
+  FIXED
+}
+
+enum PromoCodeAudience {
+  PUBLIC
+  INSTITUTION
+  CREATOR
+}
+
+enum PromoCodeAppliesTo {
+  ANY
+  PURCHASE
+  RENTAL
+  PUBLISHING_FEE
+}
+
+enum PromoRedemptionStatus {
+  APPLIED
+  REDEEMED
+  VOIDED
+}
+
 model User {
   id                String            @id @default(cuid())
   email             String            @unique
@@ -114,38 +139,55 @@ model User {
   reviews           BookReview[]
   creatorProfile    CreatorProfile?
   createdBooks      Book[]            @relation("BookCreator")
+  organizationId    String?
+  organization      Organization?     @relation(fields: [organizationId], references: [id], onDelete: SetNull)
+  promoRedemptions  PromoRedemption[]
+  creatorPromoCodes PromoCode[]       @relation("PromoCodeCreator")
+  createdPromoCodes PromoCode[]       @relation("PromoCodeCreatedBy")
   createdAt         DateTime          @default(now())
   updatedAt         DateTime          @updatedAt
 
   @@index([role])
+  @@index([organizationId])
+}
+
+model Organization {
+  id         String      @id @default(cuid())
+  slug       String      @unique
+  name       String
+  isActive   Boolean     @default(true)
+  users      User[]
+  promoCodes PromoCode[]
+  createdAt  DateTime    @default(now())
+  updatedAt  DateTime    @updatedAt
 }
 
 model CreatorProfile {
   id          String   @id @default(cuid())
-  userId       String   @unique
-  slug         String   @unique
-  displayName  String
-  bio          String?
-  avatarUrl    String?
-  coverUrl     String?
-  authorId     String?  @unique
-  user         User     @relation(fields: [userId], references: [id], onDelete: Cascade)
-  author       Author?  @relation(fields: [authorId], references: [id], onDelete: SetNull)
-  createdAt    DateTime @default(now())
-  updatedAt    DateTime @updatedAt
+  userId      String   @unique
+  slug        String   @unique
+  displayName String
+  bio         String?
+  avatarUrl   String?
+  coverUrl    String?
+  authorId    String?  @unique
+  user        User     @relation(fields: [userId], references: [id], onDelete: Cascade)
+  author      Author?  @relation(fields: [authorId], references: [id], onDelete: SetNull)
+  createdAt   DateTime @default(now())
+  updatedAt   DateTime @updatedAt
 }
 
 model Author {
-  id        String   @id @default(cuid())
-  slug      String   @unique
-  nameAr    String
-  nameEn    String?
-  bioAr     String?
-  bioEn     String?
-  books     Book[]
+  id             String          @id @default(cuid())
+  slug           String          @unique
+  nameAr         String
+  nameEn         String?
+  bioAr          String?
+  bioEn          String?
+  books          Book[]
   creatorProfile CreatorProfile?
-  createdAt DateTime @default(now())
-  updatedAt DateTime @updatedAt
+  createdAt      DateTime        @default(now())
+  updatedAt      DateTime        @updatedAt
 }
 
 model Category {
@@ -160,34 +202,34 @@ model Category {
 }
 
 model Book {
-  id               String            @id @default(cuid())
-  slug             String            @unique
-  titleAr          String
-  titleEn          String?
-  descriptionAr    String?
-  descriptionEn    String?
-  metadata         Json?
-  coverImageUrl    String?
-  textContent      String?
+  id                  String              @id @default(cuid())
+  slug                String              @unique
+  titleAr             String
+  titleEn             String?
+  descriptionAr       String?
+  descriptionEn       String?
+  metadata            Json?
+  coverImageUrl       String?
+  textContent         String?
   contentAccessPolicy ContentAccessPolicy @default(PAID_ONLY)
-  status           BookStatus        @default(DRAFT)
-  format           BookFormat        @default(DIGITAL)
-  publicationDate  DateTime?
-  authorId         String
-  categoryId       String
-  creatorId        String?
-  author           Author            @relation(fields: [authorId], references: [id], onDelete: Restrict)
-  category         Category          @relation(fields: [categoryId], references: [id], onDelete: Restrict)
-  creator          User?             @relation("BookCreator", fields: [creatorId], references: [id], onDelete: SetNull)
-  files            BookFile[]
-  offers           BookOffer[]
-  orderItems       OrderItem[]
-  accessGrants     AccessGrant[]
-  readingProgress  ReadingProgress[]
-  wishlistItems    WishlistItem[]
-  reviews          BookReview[]
-  createdAt        DateTime          @default(now())
-  updatedAt        DateTime          @updatedAt
+  status              BookStatus          @default(DRAFT)
+  format              BookFormat          @default(DIGITAL)
+  publicationDate     DateTime?
+  authorId            String
+  categoryId          String
+  creatorId           String?
+  author              Author              @relation(fields: [authorId], references: [id], onDelete: Restrict)
+  category            Category            @relation(fields: [categoryId], references: [id], onDelete: Restrict)
+  creator             User?               @relation("BookCreator", fields: [creatorId], references: [id], onDelete: SetNull)
+  files               BookFile[]
+  offers              BookOffer[]
+  orderItems          OrderItem[]
+  accessGrants        AccessGrant[]
+  readingProgress     ReadingProgress[]
+  wishlistItems       WishlistItem[]
+  reviews             BookReview[]
+  createdAt           DateTime            @default(now())
+  updatedAt           DateTime            @updatedAt
 
   @@index([status])
   @@index([format])
@@ -197,55 +239,54 @@ model Book {
 }
 
 model BookFile {
-  id                String          @id @default(cuid())
-  bookId            String
-  kind              FileKind
-  storageProvider   StorageProvider @default(LOCAL)
-  storageKey        String
-  bucket            String?
-  region            String?
-  publicUrl         String?
-  originalFileName  String?
-  mimeType          String?
-  sizeBytes         Int?
-  checksum          String?
-  metadata          Json?
-  coverWidth        Int?
-  coverHeight       Int?
-  coverBlurDataUrl  String?
-  epubVersion       String?
-  epubPackagePath   String?
-  pdfVersion        String?
-  pdfPageCount      Int?
-  isEncrypted       Boolean         @default(false)
-  sortOrder         Int             @default(0)
-  createdAt         DateTime        @default(now())
-  updatedAt         DateTime        @updatedAt
-  book              Book            @relation(fields: [bookId], references: [id], onDelete: Cascade)
+  id               String          @id @default(cuid())
+  bookId           String
+  kind             FileKind
+  storageProvider  StorageProvider @default(LOCAL)
+  storageKey       String
+  bucket           String?
+  region           String?
+  publicUrl        String?
+  originalFileName String?
+  mimeType         String?
+  sizeBytes        Int?
+  checksum         String?
+  metadata         Json?
+  coverWidth       Int?
+  coverHeight      Int?
+  coverBlurDataUrl String?
+  epubVersion      String?
+  epubPackagePath  String?
+  pdfVersion       String?
+  pdfPageCount     Int?
+  isEncrypted      Boolean         @default(false)
+  sortOrder        Int             @default(0)
+  createdAt        DateTime        @default(now())
+  updatedAt        DateTime        @updatedAt
+  book             Book            @relation(fields: [bookId], references: [id], onDelete: Cascade)
 
   @@unique([bookId, kind, sortOrder])
   @@index([bookId, kind])
 }
 
 model BookOffer {
-  id          String       @id @default(cuid())
-  bookId       String
-  type         OfferType
-  priceCents   Int
-  currency     CurrencyCode @default(SYP)
-  rentalDays   Int?
-  isActive     Boolean      @default(true)
-  startsAt     DateTime?
-  endsAt       DateTime?
-  createdAt    DateTime     @default(now())
-  updatedAt    DateTime     @updatedAt
-  book         Book         @relation(fields: [bookId], references: [id], onDelete: Cascade)
-  orderItems   OrderItem[]
+  id         String       @id @default(cuid())
+  bookId     String
+  type       OfferType
+  priceCents Int
+  currency   CurrencyCode @default(SYP)
+  rentalDays Int?
+  isActive   Boolean      @default(true)
+  startsAt   DateTime?
+  endsAt     DateTime?
+  createdAt  DateTime     @default(now())
+  updatedAt  DateTime     @updatedAt
+  book       Book         @relation(fields: [bookId], references: [id], onDelete: Cascade)
+  orderItems OrderItem[]
 
   @@index([bookId, type, isActive])
   @@index([startsAt, endsAt])
 }
-
 
 model WishlistItem {
   id        String   @id @default(cuid())
@@ -276,40 +317,45 @@ model BookReview {
 }
 
 model Order {
-  id            String       @id @default(cuid())
-  userId        String
-  status        OrderStatus  @default(PENDING)
-  currency      CurrencyCode @default(SYP)
-  subtotalCents Int
-  totalCents    Int
-  placedAt      DateTime?
-  cancelledAt   DateTime?
-  createdAt     DateTime     @default(now())
-  updatedAt     DateTime     @updatedAt
-  user          User         @relation(fields: [userId], references: [id], onDelete: Restrict)
-  items         OrderItem[]
-  payments      Payment[]
-  paymentAttempts PaymentAttempt[]
+  id               String            @id @default(cuid())
+  userId           String
+  status           OrderStatus       @default(PENDING)
+  currency         CurrencyCode      @default(SYP)
+  subtotalCents    Int
+  totalCents       Int
+  discountCents    Int               @default(0)
+  promoCodeId      String?
+  placedAt         DateTime?
+  cancelledAt      DateTime?
+  createdAt        DateTime          @default(now())
+  updatedAt        DateTime          @updatedAt
+  user             User              @relation(fields: [userId], references: [id], onDelete: Restrict)
+  items            OrderItem[]
+  payments         Payment[]
+  paymentAttempts  PaymentAttempt[]
+  promoCode        PromoCode?        @relation(fields: [promoCodeId], references: [id], onDelete: SetNull)
+  promoRedemptions PromoRedemption[]
 
   @@index([userId, status])
   @@index([createdAt])
+  @@index([promoCodeId])
 }
 
 model OrderItem {
-  id            String      @id @default(cuid())
-  orderId       String
-  bookId        String
-  offerId       String?
-  titleSnapshot String
-  offerType     OfferType
+  id             String        @id @default(cuid())
+  orderId        String
+  bookId         String
+  offerId        String?
+  titleSnapshot  String
+  offerType      OfferType
   unitPriceCents Int
-  quantity      Int         @default(1)
-  rentalDays    Int?
-  createdAt     DateTime    @default(now())
-  order         Order       @relation(fields: [orderId], references: [id], onDelete: Cascade)
-  book          Book        @relation(fields: [bookId], references: [id], onDelete: Restrict)
-  offer         BookOffer?  @relation(fields: [offerId], references: [id], onDelete: SetNull)
-  accessGrants  AccessGrant[]
+  quantity       Int           @default(1)
+  rentalDays     Int?
+  createdAt      DateTime      @default(now())
+  order          Order         @relation(fields: [orderId], references: [id], onDelete: Cascade)
+  book           Book          @relation(fields: [bookId], references: [id], onDelete: Restrict)
+  offer          BookOffer?    @relation(fields: [offerId], references: [id], onDelete: SetNull)
+  accessGrants   AccessGrant[]
 
   @@index([orderId])
   @@index([bookId])
@@ -317,89 +363,148 @@ model OrderItem {
 }
 
 model Payment {
-  id             String          @id @default(cuid())
-  userId          String
-  orderId         String
-  provider        PaymentProvider
-  providerRef     String?
-  status          PaymentStatus  @default(PENDING)
-  amountCents     Int
-  currency        CurrencyCode   @default(SYP)
-  metadata        Json?
-  paidAt          DateTime?
-  failedAt        DateTime?
-  createdAt       DateTime       @default(now())
-  updatedAt       DateTime       @updatedAt
-  user            User           @relation(fields: [userId], references: [id], onDelete: Restrict)
-  order           Order          @relation(fields: [orderId], references: [id], onDelete: Restrict)
-  attempts        PaymentAttempt[]
+  id               String            @id @default(cuid())
+  userId           String
+  orderId          String
+  provider         PaymentProvider
+  providerRef      String?
+  status           PaymentStatus     @default(PENDING)
+  amountCents      Int
+  currency         CurrencyCode      @default(SYP)
+  metadata         Json?
+  paidAt           DateTime?
+  failedAt         DateTime?
+  createdAt        DateTime          @default(now())
+  updatedAt        DateTime          @updatedAt
+  user             User              @relation(fields: [userId], references: [id], onDelete: Restrict)
+  order            Order             @relation(fields: [orderId], references: [id], onDelete: Restrict)
+  attempts         PaymentAttempt[]
+  promoRedemptions PromoRedemption[]
 
+  @@unique([provider, providerRef])
   @@index([userId, createdAt])
   @@index([orderId, status])
   @@index([provider, providerRef])
-  @@unique([provider, providerRef])
 }
 
 model PaymentAttempt {
   id                String               @id @default(cuid())
-  paymentId          String
-  userId             String
-  orderId            String
-  provider           PaymentProvider
-  status             PaymentAttemptStatus @default(PENDING)
-  amountCents        Int
-  currency           CurrencyCode         @default(SYP)
-  providerReference  String?
-  requestPayload     Json?
-  responsePayload    Json?
-  failureReason      String?
-  verifiedAt         DateTime?
-  createdAt          DateTime             @default(now())
-  updatedAt          DateTime             @updatedAt
-  payment            Payment              @relation(fields: [paymentId], references: [id], onDelete: Cascade)
-  user               User                 @relation(fields: [userId], references: [id], onDelete: Restrict)
-  order              Order                @relation(fields: [orderId], references: [id], onDelete: Restrict)
+  paymentId         String
+  userId            String
+  orderId           String
+  provider          PaymentProvider
+  status            PaymentAttemptStatus @default(PENDING)
+  amountCents       Int
+  currency          CurrencyCode         @default(SYP)
+  providerReference String?
+  requestPayload    Json?
+  responsePayload   Json?
+  failureReason     String?
+  verifiedAt        DateTime?
+  createdAt         DateTime             @default(now())
+  updatedAt         DateTime             @updatedAt
+  payment           Payment              @relation(fields: [paymentId], references: [id], onDelete: Cascade)
+  user              User                 @relation(fields: [userId], references: [id], onDelete: Restrict)
+  order             Order                @relation(fields: [orderId], references: [id], onDelete: Restrict)
 
+  @@unique([provider, providerReference])
   @@index([paymentId, createdAt])
   @@index([orderId, status])
   @@index([provider, providerReference])
-  @@unique([provider, providerReference])
+}
+
+model PromoCode {
+  id                 String             @id @default(cuid())
+  code               String             @unique
+  internalLabel      String?
+  notes              String?
+  type               PromoCodeType
+  value              Int?
+  currency           CurrencyCode?
+  isActive           Boolean            @default(true)
+  startsAt           DateTime?
+  expiresAt          DateTime?
+  maxTotalUses       Int?
+  maxUsesPerUser     Int?
+  minimumAmountCents Int?
+  audience           PromoCodeAudience  @default(PUBLIC)
+  appliesTo          PromoCodeAppliesTo @default(ANY)
+  organizationId     String?
+  creatorId          String?
+  createdByUserId    String?
+  createdAt          DateTime           @default(now())
+  updatedAt          DateTime           @updatedAt
+  organization       Organization?      @relation(fields: [organizationId], references: [id], onDelete: SetNull)
+  creator            User?              @relation("PromoCodeCreator", fields: [creatorId], references: [id], onDelete: SetNull)
+  createdBy          User?              @relation("PromoCodeCreatedBy", fields: [createdByUserId], references: [id], onDelete: SetNull)
+  orders             Order[]
+  redemptions        PromoRedemption[]
+
+  @@index([code, isActive])
+  @@index([organizationId])
+  @@index([creatorId])
+  @@index([audience, appliesTo])
+}
+
+model PromoRedemption {
+  id                 String                @id @default(cuid())
+  promoCodeId        String
+  userId             String
+  orderId            String
+  paymentId          String?
+  discountCents      Int
+  originalTotalCents Int
+  finalTotalCents    Int
+  status             PromoRedemptionStatus @default(APPLIED)
+  createdAt          DateTime              @default(now())
+  updatedAt          DateTime              @updatedAt
+  redeemedAt         DateTime?
+  promoCode          PromoCode             @relation(fields: [promoCodeId], references: [id], onDelete: Cascade)
+  user               User                  @relation(fields: [userId], references: [id], onDelete: Restrict)
+  order              Order                 @relation(fields: [orderId], references: [id], onDelete: Cascade)
+  payment            Payment?              @relation(fields: [paymentId], references: [id], onDelete: SetNull)
+
+  @@unique([promoCodeId, userId, orderId])
+  @@index([promoCodeId, status])
+  @@index([userId, status])
+  @@index([orderId])
+  @@index([paymentId])
 }
 
 model AccessGrant {
-  id            String            @id @default(cuid())
-  userId         String
-  bookId         String
-  orderItemId    String?
-  type           AccessGrantType
-  status         AccessGrantStatus @default(ACTIVE)
-  startsAt       DateTime          @default(now())
-  expiresAt      DateTime?
-  revokedAt      DateTime?
-  createdAt      DateTime          @default(now())
-  updatedAt      DateTime          @updatedAt
-  user           User              @relation(fields: [userId], references: [id], onDelete: Restrict)
-  book           Book              @relation(fields: [bookId], references: [id], onDelete: Restrict)
-  orderItem      OrderItem?        @relation(fields: [orderItemId], references: [id], onDelete: SetNull)
+  id          String            @id @default(cuid())
+  userId      String
+  bookId      String
+  orderItemId String?
+  type        AccessGrantType
+  status      AccessGrantStatus @default(ACTIVE)
+  startsAt    DateTime          @default(now())
+  expiresAt   DateTime?
+  revokedAt   DateTime?
+  createdAt   DateTime          @default(now())
+  updatedAt   DateTime          @updatedAt
+  user        User              @relation(fields: [userId], references: [id], onDelete: Restrict)
+  book        Book              @relation(fields: [bookId], references: [id], onDelete: Restrict)
+  orderItem   OrderItem?        @relation(fields: [orderItemId], references: [id], onDelete: SetNull)
 
+  @@unique([userId, orderItemId, type])
   @@index([userId, status, expiresAt])
   @@index([bookId])
   @@index([orderItemId])
-  @@unique([userId, orderItemId, type])
 }
 
 model ReadingProgress {
-  id              String   @id @default(cuid())
+  id              String    @id @default(cuid())
   userId          String
   bookId          String
-  progressPercent Float    @default(0)
+  progressPercent Float     @default(0)
   locator         String?
   lastOpenedAt    DateTime?
   completedAt     DateTime?
-  createdAt       DateTime @default(now())
-  updatedAt       DateTime @updatedAt
-  user            User     @relation(fields: [userId], references: [id], onDelete: Cascade)
-  book            Book     @relation(fields: [bookId], references: [id], onDelete: Cascade)
+  createdAt       DateTime  @default(now())
+  updatedAt       DateTime  @updatedAt
+  user            User      @relation(fields: [userId], references: [id], onDelete: Cascade)
+  book            Book      @relation(fields: [bookId], references: [id], onDelete: Cascade)
 
   @@unique([userId, bookId])
   @@index([userId, updatedAt])

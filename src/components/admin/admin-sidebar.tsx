@@ -11,6 +11,7 @@ const navItems = [
   { href: "/admin/authors", label: "المؤلفون" },
   { href: "/admin/orders", label: "الطلبات" },
   { href: "/admin/payments", label: "المدفوعات" },
+  { href: "/admin/promo-codes", label: "أكواد الخصم" },
   { href: "/admin/users", label: "المستخدمون" },
 ];
 
