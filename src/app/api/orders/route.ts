@@ -1,31 +1,40 @@
-import { PaymentProvider } from "@prisma/client";
+import { Prisma } from "@prisma/client";
+import { API_ERROR_CODES, jsonError, parseJsonBody } from "@/lib/api-response";
 import { getCurrentUser } from "@/lib/auth-session";
+import { logError, getClientIp, getRequestId } from "@/lib/observability/logger";
 import {
+  calculateOrderTotals,
   isOfferCurrentlyAvailable,
   mapOfferTypeToAccessGrantType,
   validateCreateOrderPayload,
 } from "@/lib/orders/create-order";
 import { prisma } from "@/lib/prisma";
-import { isSameOriginMutation, jsonNoStore, rejectCrossOriginMutation } from "@/lib/security";
+import { enforceRateLimit, isSameOriginMutation, jsonNoStore, rejectCrossOriginMutation, rejectRateLimited } from "@/lib/security";
 
 export async function POST(request: Request) {
+  const requestId = getRequestId(request);
+  const clientIp = getClientIp(request);
+
   if (!isSameOriginMutation(request)) {
     return rejectCrossOriginMutation();
+  }
+
+  const rateLimit = enforceRateLimit({ key: `orders:create:${clientIp}`, limit: 30, windowMs: 60_000 });
+  if (!rateLimit.allowed) {
+    return rejectRateLimited(rateLimit.retryAfterSeconds);
   }
 
   const user = await getCurrentUser();
 
   if (!user) {
-    return jsonNoStore({ message: "يجب تسجيل الدخول أولاً." }, { status: 401 });
+    return jsonError(API_ERROR_CODES.unauthorized, "يجب تسجيل الدخول أولاً.", 401);
   }
 
-  let body: unknown;
-
-  try {
-    body = await request.json();
-  } catch {
-    return jsonNoStore({ message: "تعذر قراءة بيانات الطلب." }, { status: 400 });
+  const parsedBody = await parseJsonBody<unknown>(request, { invalidMessage: "تعذر قراءة بيانات الطلب." });
+  if ("error" in parsedBody) {
+    return parsedBody.error;
   }
+  const body = parsedBody.data;
 
   const validation = validateCreateOrderPayload(body);
 
@@ -55,6 +64,10 @@ export async function POST(request: Request) {
 
     if (!offer || !isOfferCurrentlyAvailable(offer, now)) {
       return jsonNoStore({ message: "العرض المحدد غير متاح حالياً." }, { status: 404 });
+    }
+
+    if (offer.priceCents < 0) {
+      return jsonNoStore({ message: "سعر العرض غير صالح حالياً. يرجى اختيار عرض آخر." }, { status: 409 });
     }
 
     const [activeGrant, existingPendingOrder] = await Promise.all([
@@ -99,13 +112,19 @@ export async function POST(request: Request) {
       );
     }
 
-    const created = await prisma.$transaction(async (tx) => {
+    const totals = calculateOrderTotals({ subtotalCents: offer.priceCents });
+    if (!totals) {
+      return jsonNoStore({ message: "تعذر تسعير هذا العرض حالياً." }, { status: 409 });
+    }
+
+    const createdOrder = await prisma.$transaction(async (tx) => {
       const order = await tx.order.create({
         data: {
           userId: user.id,
           currency: offer.currency,
-          subtotalCents: offer.priceCents,
-          totalCents: offer.priceCents,
+          subtotalCents: totals.subtotalCents,
+          discountCents: totals.discountCents,
+          totalCents: totals.totalCents,
           items: {
             create: {
               bookId: offer.bookId,
@@ -123,32 +142,18 @@ export async function POST(request: Request) {
         },
       });
 
-      const payment = await tx.payment.create({
-        data: {
-          userId: user.id,
-          orderId: order.id,
-          provider: PaymentProvider.MANUAL,
-          amountCents: order.totalCents,
-          currency: order.currency,
-          metadata: {
-            source: "authenticated-checkout",
-            note: "TODO(payment): replace MANUAL stub with real provider session creation.",
-          },
-        },
-      });
-
-      return { order, payment };
+      return order;
     });
 
     return jsonNoStore(
       {
         message: "تم إنشاء الطلب بنجاح.",
         order: {
-          id: created.order.id,
-          status: created.order.status,
-          totalCents: created.order.totalCents,
-          currency: created.order.currency,
-          items: created.order.items.map((item) => ({
+          id: createdOrder.id,
+          status: createdOrder.status,
+          totalCents: createdOrder.totalCents,
+          currency: createdOrder.currency,
+          items: createdOrder.items.map((item) => ({
             id: item.id,
             titleSnapshot: item.titleSnapshot,
             offerType: item.offerType,
@@ -156,18 +161,23 @@ export async function POST(request: Request) {
             rentalDays: item.rentalDays,
           })),
         },
-        payment: {
-          id: created.payment.id,
-          status: created.payment.status,
-          provider: created.payment.provider,
-        },
-        checkoutUrl: `/checkout/${created.order.id}`,
-        summaryUrl: `/orders/${created.order.id}/summary`,
+        checkoutUrl: `/checkout/${createdOrder.id}`,
+        summaryUrl: `/orders/${createdOrder.id}/summary`,
       },
       { status: 201 },
     );
   } catch (error) {
-    console.error("Failed to create order", error);
-    return jsonNoStore({ message: "حدث خطأ أثناء إنشاء الطلب. يرجى المحاولة لاحقاً." }, { status: 500 });
+    if (error instanceof Prisma.PrismaClientKnownRequestError) {
+      if (error.code === "P2003" || error.code === "P2004") {
+        return jsonNoStore({ message: "تعذر إنشاء الطلب بسبب تعارض في بيانات العرض. أعد تحميل الصفحة وجرب مرة أخرى." }, { status: 409 });
+      }
+
+      if (error.code === "P2025") {
+        return jsonNoStore({ message: "تعذر العثور على بيانات الطلب المطلوبة." }, { status: 404 });
+      }
+    }
+
+    logError("Failed to create order", error, { route: "/api/orders", requestId, ip: clientIp, userId: user.id });
+    return jsonError(API_ERROR_CODES.server_error, "حدث خطأ أثناء إنشاء الطلب. يرجى المحاولة لاحقاً.", 500);
   }
 }

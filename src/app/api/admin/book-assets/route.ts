@@ -6,7 +6,9 @@ import { requireAdmin } from "@/lib/auth-session";
 import { BOOK_ASSET_EXTENSIONS, BOOK_ASSET_MIME_TYPES, isSupportedAdminBookAssetKind } from "@/lib/files/book-asset-metadata";
 import { createStorageProvider } from "@/lib/files/storage-provider";
 import { validateFileSignature, validateUploadSize } from "@/lib/files/upload-validation";
+import { getClientIp } from "@/lib/observability/logger";
 import { prisma } from "@/lib/prisma";
+import { enforceRateLimit, isSameOriginMutation, rejectCrossOriginMutation, rejectRateLimited } from "@/lib/security";
 
 export const runtime = "nodejs";
 
@@ -77,6 +79,15 @@ export async function GET(request: Request) {
 export async function POST(request: Request) {
   await requireAdmin();
 
+  if (!isSameOriginMutation(request)) {
+    return rejectCrossOriginMutation();
+  }
+
+  const rateLimit = enforceRateLimit({ key: `admin:book-assets:upload:${getClientIp(request)}`, limit: 40, windowMs: 60_000 });
+  if (!rateLimit.allowed) {
+    return rejectRateLimited(rateLimit.retryAfterSeconds);
+  }
+
   const formData = await request.formData();
   const bookId = formData.get("bookId");
   const kind = parseKind(typeof formData.get("kind") === "string" ? (formData.get("kind") as string) : null);
@@ -90,7 +101,7 @@ export async function POST(request: Request) {
     return NextResponse.json({ error: "الأنواع المدعومة حاليًا: COVER_IMAGE, EPUB, PDF" }, { status: 400 });
   }
 
-  const book = await prisma.book.findUnique({ where: { id: bookId }, select: { id: true, contentAccessPolicy: true } });
+  const book = await prisma.book.findUnique({ where: { id: bookId }, select: { id: true } });
 
   if (!book) {
     return NextResponse.json({ error: "الكتاب المطلوب غير موجود." }, { status: 404 });
@@ -112,8 +123,7 @@ export async function POST(request: Request) {
     return NextResponse.json({ error: "بصمة الملف لا تطابق نوعه المعلن." }, { status: 400 });
   }
 
-  const shouldBePublic =
-    kind === FileKind.COVER_IMAGE ? true : book.contentAccessPolicy === "PUBLIC_READ" || book.contentAccessPolicy === "PUBLIC_DOWNLOAD";
+  const shouldBePublic = kind === FileKind.COVER_IMAGE;
 
   const uploaded = await provider.uploadFile({
     bytes,
@@ -202,6 +212,15 @@ export async function POST(request: Request) {
 
 export async function DELETE(request: Request) {
   await requireAdmin();
+
+  if (!isSameOriginMutation(request)) {
+    return rejectCrossOriginMutation();
+  }
+
+  const rateLimit = enforceRateLimit({ key: `admin:book-assets:delete:${getClientIp(request)}`, limit: 40, windowMs: 60_000 });
+  if (!rateLimit.allowed) {
+    return rejectRateLimited(rateLimit.retryAfterSeconds);
+  }
 
   const url = new URL(request.url);
   const assetId = url.searchParams.get("assetId");

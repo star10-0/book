@@ -1,100 +1,16 @@
 # Book — Arabic-first PWA Bookstore
 
-`Book` is an Arabic-first digital bookstore built with Next.js App Router. The current implementation supports catalog browsing, authenticated checkout for digital offers, payment-attempt lifecycle management through pluggable gateways, user library access, and a baseline reader flow.
+`Book` is an Arabic-first digital bookstore built with Next.js App Router. It currently supports catalog browsing, authenticated checkout for digital offers, payment-attempt lifecycle management behind pluggable gateways, user library access, and a baseline reader flow.
 
-## Stack
+## Technology Stack
 
-- Next.js (App Router)
+- Next.js 15 (App Router)
 - TypeScript
 - Tailwind CSS
 - Prisma + PostgreSQL
 - Cookie-based credentials authentication (signed HTTP-only session cookie)
 
-## Architecture (Current)
-
-### App layers
-
-- **UI layer (`src/app`, `src/components`)**: Server Components by default, with client components for interactive forms and reader controls.
-- **Domain/services (`src/lib`)**:
-  - auth/session + password hashing
-  - order creation helpers
-  - payment orchestration + gateway abstraction
-  - access grant issuance
-  - reader helpers (locator/progress normalization)
-- **Persistence**: Prisma models for users, catalog, offers, orders, payment attempts, access grants, and reading progress.
-- **APIs (Route Handlers)**: focused handlers under `src/app/api/*` for orders, payment attempts, reading progress, and admin asset scaffolding.
-
-### Payment abstraction
-
-Payment flows are isolated behind `PaymentGateway` implementations (`src/lib/payments/gateways/*`). Route handlers call the shared `payment-service` so provider-specific logic stays out of endpoints.
-
-## Launch-readiness status
-
-### ✅ Complete (implemented)
-
-- Creator-first publishing flow:
-  - any authenticated user can activate writer mode from profile (`ابدأ ككاتب`)
-  - dedicated creator dashboard under `/studio` for books/orders/payments/profile
-  - book ownership enforced through `Book.creatorId` so creators manage only their own books
-  - public creator pages available at `/creators/[slug]`
-- Arabic-first RTL layout with improved keyboard navigation and mobile-friendly navigation controls.
-- Credentials auth flow:
-  - sign up / sign in / sign out
-  - signed server sessions in HTTP-only cookies
-  - protected `/account/*`, creator-protected `/studio/*`, and role-protected `/admin/*`
-- Catalog browsing and book details with active digital offers.
-- Authenticated offer-to-checkout flow: review selected offer on `/checkout`, create order via `POST /api/orders`, then continue on `/checkout/[orderId]` and `/orders/[orderId]/summary`.
-- Payment attempt lifecycle:
-  - create payment attempt
-  - submit proof/transaction reference
-  - verify with gateway abstraction
-- Access grant issuance on paid orders (purchase and rental logic).
-- Library pages and reader access page tied to active grants.
-- Reading progress persistence (`PATCH /api/reading-progress/[accessId]`).
-- PWA improvements:
-  - installable manifest with app shortcuts and maskable icons
-  - production-only service worker registration
-  - offline fallback page (`/offline`) with navigation fallback in the service worker
-- Metadata/SEO improvements:
-  - enriched root metadata + canonical and robots directives
-  - generated `robots.txt` and `sitemap.xml`
-  - basic JSON-LD website schema.
-- Practical security hardening:
-  - stricter HTTP security headers in `next.config.ts` (CSP, HSTS, COOP/CORP)
-  - same-origin guard for state-changing payment/order endpoints
-  - no-store cache policy for sensitive API JSON responses.
-
-### 🧪 Mocked / scaffolded
-
-- Admin dashboard metrics and many admin listing pages still use mock/static data.
-- Cloud storage adapters (S3/R2) are prepared via interfaces/placeholders; local provider is active for development uploads.
-- Reader rendering engine is placeholder-oriented for now (document source wiring exists; full EPUB/PDF experience is not production-grade yet).
-- Payment provider integrations are abstracted behind gateways, and the current implementation intentionally runs in mock mode to validate end-to-end checkout/payment UX before real provider APIs are integrated.
-
-### 🚧 Remaining before production launch
-
-1. **Payment reliability + compliance**
-   - webhook/callback signature verification
-   - idempotency keys + duplicate submission protection
-   - provider reconciliation jobs and dispute workflows.
-2. **Security maturity**
-   - robust CSRF token strategy for all state-changing mutations (especially any non-JSON form posts)
-   - rate limiting + bot protection on auth/payment endpoints
-   - centralized audit/security logging, alerting, and incident runbooks.
-3. **Reader productionization**
-   - robust EPUB/PDF rendering controls
-   - DRM/encryption strategy and signed URL delivery
-   - richer offline reading/content rights behavior.
-4. **Admin and operations**
-   - replace remaining mock admin datasets with database-backed management
-   - backups, restore drills, migration rollback policy, staging smoke tests
-   - uptime monitoring, tracing, and error tracking integration.
-5. **SEO/content operations**
-   - real production domain + social share images
-   - schema.org coverage for `Book` details pages
-   - analytics and search console configuration.
-
-## Environment setup
+## Quick Start (Local Development)
 
 1. Install dependencies:
 
@@ -102,22 +18,13 @@ Payment flows are isolated behind `PaymentGateway` implementations (`src/lib/pay
    npm install
    ```
 
-2. Copy env template:
+2. Create local env file:
 
    ```bash
    cp .env.example .env
    ```
 
-3. Configure environment variables:
-
-   - `DATABASE_URL` (PostgreSQL)
-   - `AUTH_SECRET` (long random secret used for session signing)
-   - `NEXTAUTH_SECRET` (set this to the same value as `AUTH_SECRET` for compatibility with hosting tooling)
-   - `NEXTAUTH_URL` (for local development: `http://localhost:3000`)
-   - payment provider variables are optional during mock mode; they will be required when real provider APIs are integrated
-   - optional storage variables (for future S3/R2 providers; local is default)
-
-4. Prisma + run:
+3. Run database setup and development server:
 
    ```bash
    npm run prisma:migrate -- --name init
@@ -125,60 +32,185 @@ Payment flows are isolated behind `PaymentGateway` implementations (`src/lib/pay
    npm run dev
    ```
 
-> Seed now creates only an admin account by default (`admin@book.local` / `AdminPass123!`). Create reader accounts via sign up.
+> Seed currently creates an admin account (`admin@book.local` / `AdminPass123!`).
 
-## Book asset storage variables (server only)
+## Production Deployment Model (Current Recommendation)
+
+Current production recommendation is **Docker/VPS with persistent local volumes** because:
+
+- uploads are still written to local filesystem paths,
+- protected reader files are streamed from private local storage,
+- S3/R2 adapters are present but not fully ready for production migration,
+- live payment providers are not implemented yet.
+
+## Production Environment Variables
+
+The app validates these settings at runtime and fails fast in production when required values are missing/invalid.
+
+### Required in production
+
+- `DATABASE_URL`
+- `AUTH_SECRET` (minimum 32 chars)
+- `NEXTAUTH_URL` (absolute HTTPS URL)
+- `APP_BASE_URL` (absolute HTTPS URL)
+- `BOOK_STORAGE_PROVIDER` (`local` | `s3` | `r2`)
+- `PAYMENT_GATEWAY_MODE` (`mock` | `live`)
+
+### Strongly recommended
+
+- `NEXTAUTH_SECRET` (keep equal to `AUTH_SECRET` for consistency)
+- `PORT` (optional; default `3000`)
+
+### Payment safety guardrails
+
+- Keep `PAYMENT_GATEWAY_MODE=mock` for first production rollout.
+- Keep `ALLOW_MOCK_PAYMENT_VERIFICATION=false` on staging/production.
+- Mock verification endpoint is only available when:
+  - `NODE_ENV` is `development` or `test`,
+  - `PAYMENT_GATEWAY_MODE=mock`,
+  - `ALLOW_MOCK_PAYMENT_VERIFICATION=true`.
+
+Use `.env.production.example` as the baseline template.
+
+## Docker Files
+
+- `Dockerfile`: production build + runtime image
+- `docker-compose.yml`: app + PostgreSQL + persistent volumes
+- `.dockerignore`: reduces build context
+
+## Persistent Volume Requirements
+
+You must persist these paths for Docker/VPS deployment:
+
+- `/app/public/uploads` → maps to project `public/uploads`
+- `/app/storage/private/uploads` → maps to project `storage/private/uploads`
+
+If you use bundled PostgreSQL via compose, also persist:
+
+- `/var/lib/postgresql/data`
+
+## Prisma Production Flow
+
+Production migration command:
 
 ```bash
-# Active provider: local | s3 | r2
-BOOK_STORAGE_PROVIDER="local"
+npm run prisma:migrate:deploy
 ```
 
-> Local mode now stores sensitive paid reader files under `storage/private/uploads/*` and serves reading/download access via protected route handlers.
+Do **not** run `prisma migrate dev` in production.
 
-## Payment provider variables (server only)
+## Local Schema Drift Recovery (Important)
 
-Current gateways are placeholders and operate in **mock mode** by default, so these values are not required for local development today. Keep them ready for future real integration:
+### Root cause seen in this codebase
+
+Recent schema updates added promo-related columns to `Order` (`discountCents`, `promoCodeId`) and related promo tables. If local development databases were not migrated after pulling those changes, runtime Prisma queries fail with missing-column errors (for example around `Order.discountCents`).
+
+### Safe recovery path for development
+
+If you need to preserve local data, apply pending migrations:
 
 ```bash
-# Enable /api/payments/verify-mock only in local/test when needed
-ALLOW_MOCK_PAYMENT_VERIFICATION="true"
+npm run prisma:migrate:status
+npm run prisma:migrate
 ```
 
-> `ALLOW_MOCK_PAYMENT_VERIFICATION` is honored only when `NODE_ENV` is `development` or `test`. In production, mock verification is hard-disabled.
+If local data is disposable and drift is severe, use reset (recommended quickest recovery in dev):
 
 ```bash
-# Sham Cash (future real integration)
-SHAM_CASH_API_BASE_URL="https://api.shamcash.example"
-SHAM_CASH_API_KEY="replace-with-sham-cash-api-key"
-SHAM_CASH_MERCHANT_ID="replace-with-sham-cash-merchant-id"
-SHAM_CASH_CREATE_PAYMENT_PATH="/payments/create"
-SHAM_CASH_VERIFY_PAYMENT_PATH="/payments/verify"
-SHAM_CASH_TIMEOUT_MS="10000"
-
-# Syriatel Cash (future real integration)
-SYRIATEL_CASH_API_BASE_URL="https://api.syriatelcash.example"
-SYRIATEL_CASH_API_KEY="replace-with-syriatel-cash-api-key"
-SYRIATEL_CASH_MERCHANT_ID="replace-with-syriatel-cash-merchant-id"
-SYRIATEL_CASH_CREATE_PAYMENT_PATH="/payments/create"
-SYRIATEL_CASH_VERIFY_PAYMENT_PATH="/payments/verify"
-SYRIATEL_CASH_TIMEOUT_MS="10000"
+npm run prisma:reset:dev
 ```
 
-## PWA notes
+Then run:
 
-- Manifest: `public/manifest.webmanifest`
-- Service worker: `public/sw.js`
-- Registration component: `src/components/pwa/sw-register.tsx` (production only)
-- Offline route: `src/app/offline/page.tsx`
-- Icon source: `public/icons/source-book-icon.svg`
-- Generate icons:
+```bash
+npm run dev
+```
 
-  ```bash
-  npm run icons:generate
-  ```
+After migrations are in sync, order creation and checkout queries work again.
 
-## Quality checks
+### Migration/startup order
+
+1. Start PostgreSQL and wait for readiness.
+2. Run `prisma migrate deploy`.
+3. Start the Next.js server.
+
+In Docker this project uses `npm run start:prod`, which runs migrate deploy before `next start`.
+
+## Staging / Production (Docker Compose)
+
+1. Copy env template and fill real values:
+
+   ```bash
+   cp .env.production.example .env.production
+   ```
+
+2. Build and start:
+
+   ```bash
+   docker compose --env-file .env.production up -d --build
+   ```
+
+3. Check logs:
+
+   ```bash
+   docker compose logs -f app
+   ```
+
+4. Open app at `http://<server-ip>:3000` (or behind your reverse proxy TLS domain).
+
+### If PostgreSQL is managed externally
+
+Use the app-only compose file:
+
+```bash
+docker compose -f docker-compose.app.yml --env-file .env.production up -d --build
+```
+
+Set `DATABASE_URL` to your managed PostgreSQL connection string.
+
+## VPS Rollout Checklist
+
+1. Provision VPS (Ubuntu/Debian), install Docker + Docker Compose plugin.
+2. Clone repo on VPS.
+3. Create `.env.production` from `.env.production.example`.
+4. Ensure domain + TLS reverse proxy are configured (Nginx/Caddy/Traefik).
+5. Run `docker compose up -d --build`.
+6. Smoke-test:
+   - sign in
+   - create order
+   - payment attempt lifecycle in mock mode
+   - reader access for purchased/rented content
+   - protected asset URLs return `403` for unauthorized users.
+
+## Backup, Restore, and Rollback Basics
+
+### Backups
+
+- PostgreSQL: daily backup + retention policy.
+- File volumes: snapshot both uploads volumes on same schedule:
+  - `public/uploads`
+  - `storage/private/uploads`
+- Always take an on-demand DB + file snapshot before deployment.
+
+### Restore expectations
+
+- Restore DB backup and both file volumes from the same backup window.
+- Run integrity smoke tests (login, library, reader streaming, recent orders).
+
+### Rollback basics
+
+- Keep previous app image tag available.
+- Roll back app image first if release is bad.
+- If migration changed schema incompatibly, restore database snapshot and aligned file volumes.
+
+## Current Limitations Before True Public Launch
+
+- Live Sham Cash and Syriatel Cash integrations are placeholders.
+- `PAYMENT_GATEWAY_MODE=live` currently throws configuration errors intentionally.
+- Distributed/shared rate limiting (Redis/KV) is not yet implemented.
+- Object storage migration plan (S3/R2) should be completed before horizontal scaling.
+
+## Validation Commands
 
 Run after meaningful changes:
 
@@ -188,4 +220,21 @@ npm run typecheck
 npm run test
 ```
 
-> `typecheck` auto-runs `prisma generate` first to keep Prisma types synchronized.
+## Promo Code / Discount System
+
+The platform now includes a server-validated promo system for checkout with:
+
+- `FREE`, `PERCENT`, and `FIXED` promo types.
+- Redemption tracking per user/order/payment.
+- Institution and creator restrictions.
+- Scope restrictions (`PURCHASE`, `RENTAL`, `PUBLISHING_FEE`, `ANY`).
+- Free-order internal completion flow (no external gateway call).
+
+### Management
+
+- Admin management: `/admin/promo-codes`
+- Creator management: `/studio/promo-codes`
+
+### Checkout usage
+
+Users enter promo codes on the checkout order payment panel (`/checkout/[orderId]`). Totals are always recalculated on the server before payment attempt creation.

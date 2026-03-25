@@ -8,6 +8,12 @@ export interface CreateOrderRequest {
   offerId: string;
 }
 
+export interface OrderTotals {
+  subtotalCents: number;
+  discountCents: number;
+  totalCents: number;
+}
+
 export function validateCreateOrderPayload(payload: unknown): { data?: CreateOrderRequest; error?: string } {
   if (!payload || typeof payload !== "object") {
     return { error: "بيانات الطلب غير صالحة." };
@@ -77,6 +83,35 @@ export function mapOfferTypeToAccessGrantType(offerType: BookOffer["type"]): Acc
   return offerType === "PURCHASE" ? AccessGrantType.PURCHASE : AccessGrantType.RENTAL;
 }
 
+export function calculateOrderTotals(input: { subtotalCents: number; discountCents?: number }): OrderTotals | null {
+  const subtotalCents = normalizeSafeMoneyCents(input.subtotalCents);
+  if (subtotalCents === null) {
+    return null;
+  }
+
+  const discountRaw = typeof input.discountCents === "number" ? input.discountCents : 0;
+  const discountCents = normalizeSafeMoneyCents(discountRaw);
+  if (discountCents === null) {
+    return null;
+  }
+
+  const boundedDiscount = Math.min(discountCents, subtotalCents);
+
+  return {
+    subtotalCents,
+    discountCents: boundedDiscount,
+    totalCents: subtotalCents - boundedDiscount,
+  };
+}
+
 function isLikelyId(value: string) {
   return CUID_PATTERN.test(value);
+}
+
+function normalizeSafeMoneyCents(value: number) {
+  if (!Number.isInteger(value) || value < 0) {
+    return null;
+  }
+
+  return value;
 }

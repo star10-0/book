@@ -15,6 +15,7 @@ export default function AdminDashboardPage() {
     { href: "/admin/categories", title: "التصنيفات", description: "تنظيم التصنيفات وربطها بالكتب." },
     { href: "/admin/orders", title: "الطلبات", description: "متابعة الطلبات وحالاتها." },
     { href: "/admin/payments", title: "المدفوعات", description: "مراجعة محاولات الدفع وحالتها." },
+    { href: "/admin/promo-codes", title: "أكواد الخصم", description: "إنشاء ومتابعة أكواد الخصم والاستخدامات." },
   ];
 
   return (

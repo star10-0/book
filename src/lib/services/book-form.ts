@@ -18,6 +18,7 @@ export type SharedBookFormValues = {
   allowReadingOnSite?: string;
   allowDownloading?: string;
   previewOnly?: string;
+  paidOnlyMode?: string;
   description?: string;
   metadata?: string;
   metadataLanguage?: string;
@@ -74,9 +75,14 @@ export function parseRentalDays(value: string) {
 }
 
 export function parseContentAccessPolicy(values: SharedBookFormValues) {
+  const paidOnlyMode = values.paidOnlyMode === "enabled";
   const previewOnly = values.previewOnly === "enabled";
   const allowDownloading = values.allowDownloading === "enabled";
   const allowReadingOnSite = values.allowReadingOnSite === "enabled";
+
+  if (paidOnlyMode) {
+    return ContentAccessPolicy.PAID_ONLY;
+  }
 
   if (previewOnly) {
     return ContentAccessPolicy.PREVIEW_ONLY;
@@ -202,6 +208,7 @@ export function buildBookInitialValues(input: {
         : "disabled",
     allowDownloading: input.contentAccessPolicy === ContentAccessPolicy.PUBLIC_DOWNLOAD ? "enabled" : "disabled",
     previewOnly: input.contentAccessPolicy === ContentAccessPolicy.PREVIEW_ONLY ? "enabled" : "disabled",
+    paidOnlyMode: input.contentAccessPolicy === ContentAccessPolicy.PAID_ONLY ? "enabled" : "disabled",
     description: input.descriptionAr ?? "",
     metadata: input.metadata ? JSON.stringify(input.metadata, null, 2) : "",
     metadataLanguage: typeof metadata?.language === "string" ? metadata.language : "",

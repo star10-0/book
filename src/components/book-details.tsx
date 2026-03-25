@@ -119,11 +119,11 @@ export function BookDetailsSection({
 
           <BookOffers offers={offers} />
 
-          {book.publicReadUrl || book.publicDownloadUrl ? (
-            <section aria-labelledby="book-content-access" className="space-y-3">
-              <h2 id="book-content-access" className="text-lg font-bold text-slate-900">
-                الوصول إلى المحتوى
-              </h2>
+          <section aria-labelledby="book-content-access" className="space-y-3">
+            <h2 id="book-content-access" className="text-lg font-bold text-slate-900">
+              الوصول إلى المحتوى
+            </h2>
+            {book.publicReadUrl || book.publicDownloadUrl ? (
               <div className="flex flex-wrap gap-3">
                 {book.publicReadUrl ? (
                   <Link
@@ -143,8 +143,12 @@ export function BookDetailsSection({
                   </Link>
                 ) : null}
               </div>
-            </section>
-          ) : null}
+            ) : (
+              <p className="rounded-xl border border-dashed border-slate-300 bg-slate-50 px-4 py-3 text-sm text-slate-600">
+                لا تتوفر قراءة أو تحميل مباشر لهذا الكتاب حاليًا. استخدم خيارات الشراء أو الإيجار للوصول إلى المحتوى داخل المكتبة.
+              </p>
+            )}
+          </section>
 
           <OrderSummaryCard bookId={book.id} bookTitle={book.title} offers={offers} />
 

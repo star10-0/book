@@ -179,3 +179,52 @@ test("grantAccessForPaidOrder rejects invalid rental duration", async () => {
     /INVALID_RENTAL_DAYS/,
   );
 });
+
+test("grantAccessForPaidOrder skips duplicate active purchase for same book", async () => {
+  const baseDate = new Date("2026-01-01T10:00:00.000Z");
+  const { created, tx } = createTxStub([{ id: "i-p", bookId: "b-1", offerType: OfferType.PURCHASE, rentalDays: null }]);
+
+  created.push({
+    id: "g-purchase",
+    userId: "u-1",
+    bookId: "b-1",
+    type: AccessGrantType.PURCHASE,
+    status: AccessGrantStatus.ACTIVE,
+    startsAt: new Date("2025-12-20T10:00:00.000Z"),
+  });
+
+  await grantAccessForPaidOrder(tx as never, {
+    orderId: "o-3",
+    userId: "u-1",
+    grantedAt: baseDate,
+  });
+
+  assert.equal(created.length, 1);
+  assert.equal(created[0].id, "g-purchase");
+});
+
+test("grantAccessForPaidOrder creates a new rental when existing rental is expired", async () => {
+  const baseDate = new Date("2026-01-10T10:00:00.000Z");
+  const { created, tx } = createTxStub([{ id: "i-r-new", bookId: "b-3", offerType: OfferType.RENTAL, rentalDays: 5 }]);
+
+  created.push({
+    id: "g-old-rental",
+    userId: "u-1",
+    bookId: "b-3",
+    type: AccessGrantType.RENTAL,
+    status: AccessGrantStatus.ACTIVE,
+    orderItemId: "old-item",
+    startsAt: new Date("2026-01-01T10:00:00.000Z"),
+    expiresAt: new Date("2026-01-05T10:00:00.000Z"),
+  });
+
+  await grantAccessForPaidOrder(tx as never, {
+    orderId: "o-4",
+    userId: "u-1",
+    grantedAt: baseDate,
+  });
+
+  assert.equal(created.length, 2);
+  const newest = created.find((grant) => grant.orderItemId === "i-r-new");
+  assert.equal(newest?.expiresAt?.toISOString(), new Date("2026-01-15T10:00:00.000Z").toISOString());
+});

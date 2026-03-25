@@ -1,20 +1,16 @@
 import { createHmac, timingSafeEqual } from "node:crypto";
-import { UserRole } from "@prisma/client";
 import { cookies } from "next/headers";
 import { redirect } from "next/navigation";
+import { isAdminRole, isCreatorOrAdminRole } from "@/lib/authz";
+import { assertServerEnv } from "@/lib/env";
 import { prisma } from "@/lib/prisma";
 
 const SESSION_COOKIE_NAME = "book_session";
 const SESSION_DURATION_SECONDS = 60 * 60 * 24 * 7;
 
 function getAuthSecret() {
-  const secret = process.env.AUTH_SECRET;
-
-  if (!secret) {
-    throw new Error("AUTH_SECRET is required for authentication.");
-  }
-
-  return secret;
+  assertServerEnv();
+  return process.env.AUTH_SECRET as string;
 }
 
 function base64UrlEncode(input: string) {
@@ -161,7 +157,7 @@ export async function requireUser(options?: { callbackUrl?: string }) {
 export async function requireAdmin(options?: { callbackUrl?: string }) {
   const user = await requireUser(options);
 
-  if (user.role !== UserRole.ADMIN) {
+  if (!isAdminRole(user.role)) {
     redirect("/");
   }
 
@@ -171,7 +167,7 @@ export async function requireAdmin(options?: { callbackUrl?: string }) {
 export async function requireCreator(options?: { callbackUrl?: string }) {
   const user = await requireUser(options);
 
-  if (user.role !== UserRole.CREATOR && user.role !== UserRole.ADMIN) {
+  if (!isCreatorOrAdminRole(user.role)) {
     redirect("/account/profile");
   }
 

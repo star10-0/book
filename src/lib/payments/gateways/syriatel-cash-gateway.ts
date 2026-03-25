@@ -1,5 +1,7 @@
 import { PaymentProvider } from "@prisma/client";
 import { createMockPaymentResult, verifyMockPaymentResult } from "@/lib/payments/gateways/mock-payment-gateway";
+import { GatewayConfigurationError } from "@/lib/payments/gateways/provider-http";
+import { getSyriatelCashIntegrationConfig } from "@/lib/payments/gateways/provider-integration";
 import type {
   CreatePaymentGatewayInput,
   CreatePaymentGatewayResult,
@@ -18,10 +20,22 @@ export class SyriatelCashGateway implements PaymentGateway {
   readonly provider = PaymentProvider.SYRIATEL_CASH;
 
   async createPayment(input: CreatePaymentGatewayInput): Promise<CreatePaymentGatewayResult> {
+    const integration = getSyriatelCashIntegrationConfig();
+
+    if (integration.mode === "live") {
+      throw new GatewayConfigurationError("Syriatel Cash live integration is not implemented yet.");
+    }
+
     return createMockPaymentResult("syriatel", input);
   }
 
   async verifyPayment(input: VerifyPaymentGatewayInput): Promise<VerifyPaymentGatewayResult> {
+    const integration = getSyriatelCashIntegrationConfig();
+
+    if (integration.mode === "live") {
+      throw new GatewayConfigurationError("Syriatel Cash live integration is not implemented yet.");
+    }
+
     return verifyMockPaymentResult("Syriatel Cash", input);
   }
 }

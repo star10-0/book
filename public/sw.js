@@ -1,11 +1,11 @@
-const SW_VERSION = "book-v2";
+const SW_VERSION = "book-v3";
 const STATIC_CACHE = `${SW_VERSION}-static`;
 const SHELL_CACHE = `${SW_VERSION}-shell`;
 
 const APP_SHELL_ROUTES = ["/", "/books", "/offline"];
 const STATIC_FILE_PATTERNS = [
   /\/(_next\/static)\//,
-  /\.(?:css|js|mjs|woff2?|ttf|otf)$/i,
+  /\.(?:css|js|mjs|woff2?|ttf|otf|svg|png|webmanifest)$/i,
 ];
 
 self.addEventListener("install", (event) => {

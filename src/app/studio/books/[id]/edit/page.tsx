@@ -18,10 +18,10 @@ function buildContentStatuses(files: { kind: FileKind }[], hasTextContent: boole
   const kinds = new Set(files.map((file) => file.kind));
 
   return [
-    kinds.has(FileKind.COVER_IMAGE) ? "تم رفع الغلاف" : "لا يوجد غلاف مرفوع",
-    kinds.has(FileKind.PDF) ? "PDF مرفوع" : "لا يوجد PDF مرفوع",
-    kinds.has(FileKind.EPUB) ? "EPUB مرفوع" : "لا يوجد EPUB مرفوع",
-    hasTextContent ? "المحتوى النصي محفوظ" : "لا يوجد محتوى نصي محفوظ",
+    { label: "رفع الغلاف", done: kinds.has(FileKind.COVER_IMAGE), doneText: "تم رفع الغلاف", emptyText: "لا يوجد غلاف مرفوع" },
+    { label: "رفع PDF", done: kinds.has(FileKind.PDF), doneText: "PDF مرفوع", emptyText: "لا يوجد PDF مرفوع" },
+    { label: "رفع EPUB", done: kinds.has(FileKind.EPUB), doneText: "EPUB مرفوع", emptyText: "لا يوجد EPUB مرفوع" },
+    { label: "كتابة المحتوى النصي", done: hasTextContent, doneText: "المحتوى النصي محفوظ", emptyText: "لا يوجد محتوى نصي محفوظ" },
   ];
 }
 
@@ -82,10 +82,17 @@ export default async function EditStudioBookPage({ params, searchParams }: EditS
   const contentStatuses = buildContentStatuses(files, Boolean(book.textContent?.trim()));
 
   return (
-    <div className="space-y-4">
+    <div className="space-y-4" dir="rtl">
       {query?.focus === "content" ? (
-        <section className="rounded-2xl border border-indigo-200 bg-indigo-50 p-4 text-sm font-semibold text-indigo-800">
-          ✅ تم إنشاء الكتاب. الخطوة التالية: أضف الغلاف وملف PDF/EPUB أو اكتب المحتوى النصي.
+        <section className="space-y-3 rounded-2xl border border-emerald-200 bg-emerald-50 p-4 text-sm text-emerald-900">
+          <p className="font-bold">✅ تم إنشاء الكتاب بنجاح.</p>
+          <p className="font-semibold">الخطوة التالية الآن هي إكمال المحتوى من نفس الصفحة:</p>
+          <ul className="space-y-1 text-xs">
+            <li>• رفع الغلاف</li>
+            <li>• رفع PDF</li>
+            <li>• رفع EPUB</li>
+            <li>• كتابة المحتوى النصي</li>
+          </ul>
         </section>
       ) : null}
 
@@ -105,14 +112,20 @@ export default async function EditStudioBookPage({ params, searchParams }: EditS
       >
         <div>
           <h2 className="text-xl font-bold text-slate-900">قسم المحتوى (الخطوة 2)</h2>
-          <p className="mt-1 text-sm text-slate-600">من هنا ترفع الغلاف وملفات القراءة، أو تكتب المحتوى النصي مباشرة.</p>
+          <p className="mt-1 text-sm text-slate-600">
+            بعد حفظ بيانات الكتاب، أكمل المحتوى من هنا: رفع الغلاف وملفات القراءة أو كتابة المحتوى النصي.
+          </p>
         </div>
 
-        <div className="flex flex-wrap gap-2">
-          {contentStatuses.map((status, index) => (
-            <span key={`${status}-${index}`} className="rounded-full bg-slate-100 px-3 py-1 text-xs font-semibold text-slate-700">
-              {status}
-            </span>
+        <div className="grid gap-3 sm:grid-cols-2 lg:grid-cols-4">
+          {contentStatuses.map((statusItem) => (
+            <article
+              key={statusItem.label}
+              className={`rounded-xl border p-3 text-xs ${statusItem.done ? "border-emerald-200 bg-emerald-50 text-emerald-800" : "border-amber-200 bg-amber-50 text-amber-800"}`}
+            >
+              <p className="font-bold">{statusItem.label}</p>
+              <p className="mt-1 font-semibold">{statusItem.done ? statusItem.doneText : statusItem.emptyText}</p>
+            </article>
           ))}
         </div>
 

@@ -18,6 +18,7 @@ export function PublicReaderShell({ bookTitle, source }: PublicReaderShellProps)
   const [controls, setControls] = useState<{ next: () => void; previous: () => void } | null>(null);
 
   const readerEngine = useMemo(() => getReaderEngine(source), [source]);
+  const isUnavailable = !source || !readerEngine;
 
   return (
     <section className="space-y-5 rounded-2xl bg-white p-5 shadow-sm ring-1 ring-slate-200 dark:bg-slate-950 dark:ring-slate-800">
@@ -29,28 +30,36 @@ export function PublicReaderShell({ bookTitle, source }: PublicReaderShellProps)
         </p>
       </header>
 
-      <ReaderToolbar
-        progressText={`${progressPercent.toFixed(1)}%`}
-        locator={locator}
-        theme={theme}
-        isSaving={false}
-        saveError={null}
-        canNavigate={Boolean(controls)}
-        onNext={() => controls?.next()}
-        onPrevious={() => controls?.previous()}
-        onThemeChange={setTheme}
-      />
+      {isUnavailable ? (
+        <div className="rounded-xl border border-dashed border-amber-300 bg-amber-50 p-4 text-sm text-amber-800">
+          لا يوجد محتوى قابل للعرض الآن. جرّب لاحقًا أو ارجع إلى صفحة الكتاب للاطلاع على خيارات الوصول.
+        </div>
+      ) : (
+        <>
+          <ReaderToolbar
+            progressText={`${progressPercent.toFixed(1)}%`}
+            locator={locator}
+            theme={theme}
+            isSaving={false}
+            saveError={null}
+            canNavigate={Boolean(controls)}
+            onNext={() => controls?.next()}
+            onPrevious={() => controls?.previous()}
+            onThemeChange={setTheme}
+          />
 
-      <ReaderViewport
-        source={source}
-        locator={locator}
-        theme={theme}
-        onLocationChange={(payload) => {
-          setLocator(payload.locator);
-          setProgressPercent(payload.progressPercent);
-        }}
-        onControlsReady={setControls}
-      />
+          <ReaderViewport
+            source={source}
+            locator={locator}
+            theme={theme}
+            onLocationChange={(payload) => {
+              setLocator(payload.locator);
+              setProgressPercent(payload.progressPercent);
+            }}
+            onControlsReady={setControls}
+          />
+        </>
+      )}
     </section>
   );
 }

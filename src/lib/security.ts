@@ -1,4 +1,5 @@
 import { NextResponse } from "next/server";
+import { checkRateLimit } from "@/lib/security/rate-limit";
 
 const SAME_ORIGIN_METHODS = new Set(["POST", "PUT", "PATCH", "DELETE"]);
 
@@ -39,6 +40,23 @@ export function isSameOriginMutation(request: Request) {
 
 export function rejectCrossOriginMutation() {
   return NextResponse.json({ message: "تم رفض الطلب لأسباب أمنية." }, { status: 403, headers: { "Cache-Control": "no-store" } });
+}
+
+export function rejectRateLimited(retryAfterSeconds: number) {
+  return NextResponse.json(
+    { message: "عدد الطلبات كبير جداً. يرجى المحاولة بعد قليل." },
+    {
+      status: 429,
+      headers: {
+        "Cache-Control": "no-store",
+        "Retry-After": String(retryAfterSeconds),
+      },
+    },
+  );
+}
+
+export function enforceRateLimit(input: { key: string; limit: number; windowMs: number }) {
+  return checkRateLimit(input);
 }
 
 export function jsonNoStore(body: unknown, init?: ResponseInit) {

@@ -44,6 +44,7 @@ export default async function AccountPaymentsPage() {
 
                 <p className="mt-2 text-sm text-slate-500">{formatArabicDate(attempt.createdAt)}</p>
                 <p className="mt-2 text-sm text-slate-600">الطلب المرتبط: #{attempt.order.id.slice(-6)}</p>
+                <p className="mt-1 text-xs text-slate-500">مرجع المزود: {attempt.providerReference ?? "سيظهر بعد إنشاء العملية"}</p>
                 <p className="mt-2 font-semibold text-indigo-700">{formatArabicCurrency(attempt.amountCents / 100, { currency: attempt.currency })}</p>
 
                 <div className="mt-4 flex gap-2">

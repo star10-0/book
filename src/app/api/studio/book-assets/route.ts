@@ -3,10 +3,13 @@ import { FileKind, StorageProvider, UserRole } from "@prisma/client";
 import { NextResponse } from "next/server";
 
 import { requireCreator } from "@/lib/auth-session";
+import { canManageCreatorBook } from "@/lib/authz";
 import { BOOK_ASSET_EXTENSIONS, BOOK_ASSET_MIME_TYPES, isSupportedAdminBookAssetKind } from "@/lib/files/book-asset-metadata";
 import { createStorageProvider } from "@/lib/files/storage-provider";
 import { validateFileSignature, validateUploadSize } from "@/lib/files/upload-validation";
+import { getClientIp } from "@/lib/observability/logger";
 import { prisma } from "@/lib/prisma";
+import { enforceRateLimit, isSameOriginMutation, rejectCrossOriginMutation, rejectRateLimited } from "@/lib/security";
 
 export const runtime = "nodejs";
 
@@ -36,8 +39,7 @@ function isAllowedFileForKind(kind: FileKind, fileName: string, mimeType: string
 async function canManageBook(userId: string, role: UserRole, bookId: string) {
   const book = await prisma.book.findUnique({ where: { id: bookId }, select: { id: true, creatorId: true } });
   if (!book) return null;
-  if (role === UserRole.ADMIN) return book;
-  return book.creatorId === userId ? book : null;
+  return canManageCreatorBook({ role, actorUserId: userId, bookCreatorId: book.creatorId }) ? book : null;
 }
 
 export async function GET(request: Request) {
@@ -79,6 +81,15 @@ export async function GET(request: Request) {
 export async function POST(request: Request) {
   const user = await requireCreator();
 
+  if (!isSameOriginMutation(request)) {
+    return rejectCrossOriginMutation();
+  }
+
+  const rateLimit = enforceRateLimit({ key: `studio:book-assets:upload:${getClientIp(request)}`, limit: 40, windowMs: 60_000 });
+  if (!rateLimit.allowed) {
+    return rejectRateLimited(rateLimit.retryAfterSeconds);
+  }
+
   const formData = await request.formData();
   const bookId = formData.get("bookId");
   const kind = parseKind(typeof formData.get("kind") === "string" ? (formData.get("kind") as string) : null);
@@ -91,12 +102,6 @@ export async function POST(request: Request) {
   const book = await canManageBook(user.id, user.role, bookId);
   if (!book) {
     return NextResponse.json({ error: "غير مسموح بالوصول لهذا الكتاب." }, { status: 403 });
-  }
-
-  const bookPolicy = await prisma.book.findUnique({ where: { id: book.id }, select: { contentAccessPolicy: true } });
-
-  if (!bookPolicy) {
-    return NextResponse.json({ error: "الكتاب المطلوب غير موجود." }, { status: 404 });
   }
 
   if (!isSupportedAdminBookAssetKind(kind)) {
@@ -119,8 +124,7 @@ export async function POST(request: Request) {
     return NextResponse.json({ error: "بصمة الملف لا تطابق نوعه المعلن." }, { status: 400 });
   }
 
-  const shouldBePublic =
-    kind === FileKind.COVER_IMAGE ? true : bookPolicy.contentAccessPolicy === "PUBLIC_READ" || bookPolicy.contentAccessPolicy === "PUBLIC_DOWNLOAD";
+  const shouldBePublic = kind === FileKind.COVER_IMAGE;
 
   const uploaded = await provider.uploadFile({
     bytes,
@@ -206,6 +210,15 @@ export async function POST(request: Request) {
 
 export async function DELETE(request: Request) {
   const user = await requireCreator();
+
+  if (!isSameOriginMutation(request)) {
+    return rejectCrossOriginMutation();
+  }
+
+  const rateLimit = enforceRateLimit({ key: `studio:book-assets:delete:${getClientIp(request)}`, limit: 40, windowMs: 60_000 });
+  if (!rateLimit.allowed) {
+    return rejectRateLimited(rateLimit.retryAfterSeconds);
+  }
 
   const url = new URL(request.url);
   const assetId = url.searchParams.get("assetId");

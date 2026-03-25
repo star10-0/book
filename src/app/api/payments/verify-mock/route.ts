@@ -1,8 +1,11 @@
+import { API_ERROR_CODES, jsonError, parseJsonBody } from "@/lib/api-response";
 import { getCurrentUser } from "@/lib/auth-session";
+import { logError, getClientIp, getRequestId } from "@/lib/observability/logger";
 import { GatewayConfigurationError, GatewayRequestError } from "@/lib/payments/gateways/provider-http";
+import { isPaymentError, PAYMENT_ERROR_CODES } from "@/lib/payments/errors";
 import { isMockPaymentVerificationEnabled } from "@/lib/payments/mock-mode";
 import { verifyPayment } from "@/lib/payments/payment-service";
-import { isSameOriginMutation, jsonNoStore, rejectCrossOriginMutation } from "@/lib/security";
+import { enforceRateLimit, isSameOriginMutation, jsonNoStore, rejectCrossOriginMutation, rejectRateLimited } from "@/lib/security";
 
 interface VerifyMockRequestBody {
   attemptId?: string;
@@ -10,6 +13,9 @@ interface VerifyMockRequestBody {
 }
 
 export async function POST(request: Request) {
+  const requestId = getRequestId(request);
+  const clientIp = getClientIp(request);
+
   if (!isMockPaymentVerificationEnabled()) {
     return jsonNoStore({ message: "مسار التحقق التجريبي غير متاح في هذه البيئة." }, { status: 404 });
   }
@@ -18,29 +24,32 @@ export async function POST(request: Request) {
     return rejectCrossOriginMutation();
   }
 
-  let body: VerifyMockRequestBody;
-
-  try {
-    body = (await request.json()) as VerifyMockRequestBody;
-  } catch {
-    return jsonNoStore({ message: "تعذر قراءة بيانات التحقق." }, { status: 400 });
+  const rateLimit = enforceRateLimit({ key: `payments:verify-mock:${clientIp}`, limit: 20, windowMs: 60_000 });
+  if (!rateLimit.allowed) {
+    return rejectRateLimited(rateLimit.retryAfterSeconds);
   }
+
+  const parsedBody = await parseJsonBody<VerifyMockRequestBody>(request, { invalidMessage: "تعذر قراءة بيانات التحقق." });
+  if ("error" in parsedBody) {
+    return parsedBody.error;
+  }
+  const body = parsedBody.data;
 
   const attemptId = body.attemptId?.trim();
   const mockOutcome = body.mockOutcome;
 
   if (!attemptId) {
-    return jsonNoStore({ message: "معرف محاولة الدفع مطلوب." }, { status: 400 });
+    return jsonError(API_ERROR_CODES.invalid_request, "معرف محاولة الدفع مطلوب.", 400);
   }
 
   if (mockOutcome && mockOutcome !== "paid" && mockOutcome !== "failed") {
-    return jsonNoStore({ message: "نتيجة المحاكاة غير صالحة." }, { status: 400 });
+    return jsonError(API_ERROR_CODES.invalid_request, "نتيجة المحاكاة غير صالحة.", 400);
   }
 
   const user = await getCurrentUser();
 
   if (!user) {
-    return jsonNoStore({ message: "يجب تسجيل الدخول أولاً." }, { status: 401 });
+    return jsonError(API_ERROR_CODES.unauthorized, "يجب تسجيل الدخول أولاً.", 401);
   }
 
   try {
@@ -60,11 +69,11 @@ export async function POST(request: Request) {
       },
     });
   } catch (error) {
-    if (error instanceof Error && error.message === "ATTEMPT_NOT_FOUND") {
+    if (isPaymentError(error, PAYMENT_ERROR_CODES.attemptNotFound)) {
       return jsonNoStore({ message: "محاولة الدفع غير موجودة." }, { status: 404 });
     }
 
-    if (error instanceof Error && error.message === "MISSING_PROVIDER_REFERENCE") {
+    if (isPaymentError(error, PAYMENT_ERROR_CODES.missingProviderReference)) {
       return jsonNoStore({ message: "بيانات مزود الدفع غير مكتملة لهذه المحاولة." }, { status: 409 });
     }
 
@@ -72,8 +81,20 @@ export async function POST(request: Request) {
       return jsonNoStore({ message: "حالة الدفع الحالية لا تسمح بالتحقق." }, { status: 409 });
     }
 
-    if (error instanceof Error && error.message === "MOCK_VERIFICATION_DISABLED") {
+    if (isPaymentError(error, PAYMENT_ERROR_CODES.attemptAlreadyVerifying)) {
+      return jsonNoStore({ message: "محاولة الدفع قيد التحقق حالياً. أعد المحاولة بعد لحظات." }, { status: 409 });
+    }
+
+    if (isPaymentError(error, PAYMENT_ERROR_CODES.orderNotPayable)) {
+      return jsonNoStore({ message: "لا يمكن التحقق من هذه المحاولة لأن الطلب لم يعد قابلاً للدفع." }, { status: 409 });
+    }
+
+    if (isPaymentError(error, PAYMENT_ERROR_CODES.mockVerificationDisabled)) {
       return jsonNoStore({ message: "التحقق التجريبي غير مفعّل على الخادم." }, { status: 403 });
+    }
+
+    if (isPaymentError(error, PAYMENT_ERROR_CODES.providerReferenceIntegrityMismatch)) {
+      return jsonNoStore({ message: "مرجع مزود الدفع لا يطابق سجل العملية." }, { status: 409 });
     }
 
     if (error instanceof GatewayConfigurationError) {
@@ -84,7 +105,7 @@ export async function POST(request: Request) {
       return jsonNoStore({ message: "تعذر التحقق من الدفع عبر مزود الخدمة حالياً." }, { status: 502 });
     }
 
-    console.error("Failed to verify payment", error);
-    return jsonNoStore({ message: "تعذر التحقق من الدفع حالياً. حاول لاحقاً." }, { status: 500 });
+    logError("Failed to verify payment", error, { route: "/api/payments/verify-mock", requestId, ip: clientIp, userId: user.id });
+    return jsonError(API_ERROR_CODES.server_error, "تعذر التحقق من الدفع حالياً. حاول لاحقاً.", 500);
   }
 }

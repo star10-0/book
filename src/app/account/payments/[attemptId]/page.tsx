@@ -63,6 +63,11 @@ export default async function AccountPaymentAttemptDetailsPage({ params }: Accou
             <dt className="text-slate-500">آخر تحقق</dt>
             <dd className="mt-1 text-slate-900">{attempt.verifiedAt ? formatArabicDate(attempt.verifiedAt) : "لم يتم بعد"}</dd>
           </div>
+          <div className="rounded-xl bg-slate-50 p-3 sm:col-span-2">
+            <dt className="text-slate-500">مرجع مزود الدفع</dt>
+            <dd className="mt-1 font-mono text-xs text-slate-900">{attempt.providerReference ?? "غير متوفر بعد"}</dd>
+          </div>
+
         </dl>
 
         {attempt.failureReason ? (
