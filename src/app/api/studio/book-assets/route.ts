@@ -85,7 +85,7 @@ export async function POST(request: Request) {
     return rejectCrossOriginMutation();
   }
 
-  const rateLimit = enforceRateLimit({ key: `studio:book-assets:upload:${getClientIp(request)}`, limit: 40, windowMs: 60_000 });
+  const rateLimit = await enforceRateLimit({ key: `studio:book-assets:upload:${getClientIp(request)}`, limit: 40, windowMs: 60_000 });
   if (!rateLimit.allowed) {
     return rejectRateLimited(rateLimit.retryAfterSeconds);
   }
@@ -215,7 +215,7 @@ export async function DELETE(request: Request) {
     return rejectCrossOriginMutation();
   }
 
-  const rateLimit = enforceRateLimit({ key: `studio:book-assets:delete:${getClientIp(request)}`, limit: 40, windowMs: 60_000 });
+  const rateLimit = await enforceRateLimit({ key: `studio:book-assets:delete:${getClientIp(request)}`, limit: 40, windowMs: 60_000 });
   if (!rateLimit.allowed) {
     return rejectRateLimited(rateLimit.retryAfterSeconds);
   }

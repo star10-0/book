@@ -403,6 +403,26 @@ export async function verifyPayment(input: VerifyPaymentInput) {
   });
 }
 
+
+export async function verifyPaymentByProviderReference(input: { provider: PaymentProvider; providerReference: string }) {
+  const attempt = await prisma.paymentAttempt.findFirst({
+    where: {
+      provider: input.provider,
+      providerReference: input.providerReference.trim(),
+    },
+    orderBy: { createdAt: "desc" },
+    select: { id: true, userId: true },
+  });
+
+  if (!attempt) {
+    paymentError(PAYMENT_ERROR_CODES.attemptNotFound);
+  }
+
+  return verifyPayment({
+    attemptId: attempt.id,
+    userId: attempt.userId,
+  });
+}
 function extractTransactionReference(payload: Prisma.JsonValue | null): string | undefined {
   if (!payload || typeof payload !== "object" || Array.isArray(payload)) {
     return undefined;

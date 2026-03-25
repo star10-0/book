@@ -40,7 +40,7 @@ export async function PATCH(request: Request, context: { params: Promise<{ acces
     return rejectCrossOriginMutation();
   }
 
-  const rateLimit = enforceRateLimit({ key: `reading-progress:update:${getClientIp(request)}`, limit: 120, windowMs: 60_000 });
+  const rateLimit = await enforceRateLimit({ key: `reading-progress:update:${getClientIp(request)}`, limit: 120, windowMs: 60_000 });
   if (!rateLimit.allowed) {
     return rejectRateLimited(rateLimit.retryAfterSeconds);
   }
