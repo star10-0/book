@@ -1,6 +1,6 @@
 import test from "node:test";
 import assert from "node:assert/strict";
-import { isOfferCurrentlyAvailable, validateCreateOrderPayload } from "@/lib/orders/create-order";
+import { calculateOrderTotals, isOfferCurrentlyAvailable, validateCreateOrderPayload } from "@/lib/orders/create-order";
 
 test("validateCreateOrderPayload trims valid ids", () => {
   const result = validateCreateOrderPayload({ bookId: " cly0000000000000000000001 ", offerId: " cly0000000000000000000002 " });
@@ -77,4 +77,26 @@ test("isOfferCurrentlyAvailable validates status, format, rental settings and sc
   assert.equal(unavailableFuture, false);
   assert.equal(unavailableBook, false);
   assert.equal(invalidRental, false);
+});
+
+test("calculateOrderTotals computes discounted and zero-cost totals safely", () => {
+  const discounted = calculateOrderTotals({ subtotalCents: 2_500, discountCents: 600 });
+  const free = calculateOrderTotals({ subtotalCents: 2_500, discountCents: 4_000 });
+
+  assert.deepEqual(discounted, {
+    subtotalCents: 2_500,
+    discountCents: 600,
+    totalCents: 1_900,
+  });
+  assert.deepEqual(free, {
+    subtotalCents: 2_500,
+    discountCents: 2_500,
+    totalCents: 0,
+  });
+});
+
+test("calculateOrderTotals rejects invalid monetary values", () => {
+  assert.equal(calculateOrderTotals({ subtotalCents: -1, discountCents: 0 }), null);
+  assert.equal(calculateOrderTotals({ subtotalCents: 1_000, discountCents: -10 }), null);
+  assert.equal(calculateOrderTotals({ subtotalCents: 99.5, discountCents: 0 }), null);
 });

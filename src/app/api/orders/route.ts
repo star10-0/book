@@ -1,8 +1,9 @@
-import { PaymentProvider, Prisma } from "@prisma/client";
+import { Prisma } from "@prisma/client";
 import { API_ERROR_CODES, jsonError, parseJsonBody } from "@/lib/api-response";
 import { getCurrentUser } from "@/lib/auth-session";
 import { logError, getClientIp, getRequestId } from "@/lib/observability/logger";
 import {
+  calculateOrderTotals,
   isOfferCurrentlyAvailable,
   mapOfferTypeToAccessGrantType,
   validateCreateOrderPayload,
@@ -111,13 +112,19 @@ export async function POST(request: Request) {
       );
     }
 
-    const created = await prisma.$transaction(async (tx) => {
+    const totals = calculateOrderTotals({ subtotalCents: offer.priceCents });
+    if (!totals) {
+      return jsonNoStore({ message: "تعذر تسعير هذا العرض حالياً." }, { status: 409 });
+    }
+
+    const createdOrder = await prisma.$transaction(async (tx) => {
       const order = await tx.order.create({
         data: {
           userId: user.id,
           currency: offer.currency,
-          subtotalCents: offer.priceCents,
-          totalCents: offer.priceCents,
+          subtotalCents: totals.subtotalCents,
+          discountCents: totals.discountCents,
+          totalCents: totals.totalCents,
           items: {
             create: {
               bookId: offer.bookId,
@@ -135,32 +142,18 @@ export async function POST(request: Request) {
         },
       });
 
-      const payment = await tx.payment.create({
-        data: {
-          userId: user.id,
-          orderId: order.id,
-          provider: PaymentProvider.MANUAL,
-          amountCents: order.totalCents,
-          currency: order.currency,
-          metadata: {
-            source: "authenticated-checkout",
-            note: "TODO(payment): replace MANUAL stub with real provider session creation.",
-          },
-        },
-      });
-
-      return { order, payment };
+      return order;
     });
 
     return jsonNoStore(
       {
         message: "تم إنشاء الطلب بنجاح.",
         order: {
-          id: created.order.id,
-          status: created.order.status,
-          totalCents: created.order.totalCents,
-          currency: created.order.currency,
-          items: created.order.items.map((item) => ({
+          id: createdOrder.id,
+          status: createdOrder.status,
+          totalCents: createdOrder.totalCents,
+          currency: createdOrder.currency,
+          items: createdOrder.items.map((item) => ({
             id: item.id,
             titleSnapshot: item.titleSnapshot,
             offerType: item.offerType,
@@ -168,13 +161,8 @@ export async function POST(request: Request) {
             rentalDays: item.rentalDays,
           })),
         },
-        payment: {
-          id: created.payment.id,
-          status: created.payment.status,
-          provider: created.payment.provider,
-        },
-        checkoutUrl: `/checkout/${created.order.id}`,
-        summaryUrl: `/orders/${created.order.id}/summary`,
+        checkoutUrl: `/checkout/${createdOrder.id}`,
+        summaryUrl: `/orders/${createdOrder.id}/summary`,
       },
       { status: 201 },
     );

@@ -79,6 +79,10 @@ export async function POST(request: Request) {
       return jsonNoStore({ message: "مرجع مزود الدفع غير متاح بعد. أعد إنشاء المحاولة." }, { status: 409 });
     }
 
+    if (isPaymentError(error, PAYMENT_ERROR_CODES.zeroAmountOrder)) {
+      return jsonNoStore({ message: "هذا الطلب مجاني بالكامل ولا يتطلب إرسال إثبات دفع." }, { status: 409 });
+    }
+
     logError("Failed to submit payment proof", error, { route: "/api/payments/submit-proof", requestId, ip: clientIp, userId: user.id });
     return jsonError(API_ERROR_CODES.server_error, "تعذر إرسال إثبات الدفع حالياً. حاول لاحقاً.", 500);
   }

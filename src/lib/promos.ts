@@ -1,5 +1,6 @@
 import { Prisma, PromoCodeAppliesTo, PromoCodeAudience, PromoCodeType } from "@prisma/client";
 import { grantAccessForPaidOrder } from "@/lib/access-grants";
+import { calculateOrderTotals } from "@/lib/orders/create-order";
 import { prisma } from "@/lib/prisma";
 
 type PromoErrorCode =
@@ -15,6 +16,7 @@ type PromoErrorCode =
   | "PROMO_AUDIENCE_RESTRICTED"
   | "PROMO_SCOPE_RESTRICTED"
   | "PROMO_CURRENCY_MISMATCH"
+  | "PROMO_LOCKED_BY_PAYMENT_ATTEMPT"
   | "ORDER_NOT_FREE";
 
 export class PromoError extends Error {
@@ -125,9 +127,16 @@ function validatePromoForOrder(input: {
   }
 
   const discountCents = Math.min(order.subtotalCents, computeDiscountCents({ type: promo.type, value: promo.value, baseAmountCents: order.subtotalCents }));
-  const finalTotalCents = Math.max(0, order.subtotalCents - discountCents);
+  const totals = calculateOrderTotals({
+    subtotalCents: order.subtotalCents,
+    discountCents,
+  });
 
-  return { discountCents, finalTotalCents };
+  if (!totals) {
+    throw new PromoError("PROMO_MINIMUM_NOT_MET", "تعذر احتساب قيمة الطلب بعد الخصم.");
+  }
+
+  return { discountCents: totals.discountCents, finalTotalCents: totals.totalCents };
 }
 
 export async function applyPromoCodeToOrder(input: { orderId: string; userId: string; code: string }) {
@@ -168,6 +177,23 @@ export async function applyPromoCodeToOrder(input: { orderId: string; userId: st
     if (!user || !order) throw new PromoError("ORDER_NOT_FOUND", "الطلب غير موجود.");
     if (order.status !== "PENDING") throw new PromoError("ORDER_NOT_PENDING", "لا يمكن تعديل رمز خصم لطلب غير معلق.");
     if (!promo) throw new PromoError("INVALID_CODE", "رمز الخصم غير صحيح.");
+    const activePaymentAttempt = await tx.paymentAttempt.findFirst({
+      where: {
+        orderId: order.id,
+        userId: user.id,
+        status: {
+          in: ["SUBMITTED", "VERIFYING", "PAID"],
+        },
+      },
+      select: { id: true, status: true },
+    });
+
+    if (activePaymentAttempt) {
+      throw new PromoError(
+        "PROMO_LOCKED_BY_PAYMENT_ATTEMPT",
+        "لا يمكن تغيير رمز الخصم بعد بدء عملية الدفع. أنشئ طلباً جديداً إذا أردت تعديل السعر.",
+      );
+    }
 
     const [totalUses, userUses] = await Promise.all([
       tx.promoRedemption.count({ where: { promoCodeId: promo.id, status: { in: ["APPLIED", "REDEEMED"] } } }),

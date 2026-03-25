@@ -80,6 +80,10 @@ export async function POST(request: Request) {
       return jsonNoStore({ message: "لا يمكن دفع هذا الطلب حالياً." }, { status: 409 });
     }
 
+    if (isPaymentError(error, PAYMENT_ERROR_CODES.zeroAmountOrder)) {
+      return jsonNoStore({ message: "هذا الطلب مجاني بالكامل. استخدم إتمام الطلب المجاني بدلاً من الدفع الخارجي." }, { status: 409 });
+    }
+
     if (error instanceof Error && error.message.startsWith("No payment gateway")) {
       return jsonNoStore({ message: "مزود الدفع غير مدعوم حالياً." }, { status: 400 });
     }

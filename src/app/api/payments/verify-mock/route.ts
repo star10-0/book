@@ -85,6 +85,10 @@ export async function POST(request: Request) {
       return jsonNoStore({ message: "محاولة الدفع قيد التحقق حالياً. أعد المحاولة بعد لحظات." }, { status: 409 });
     }
 
+    if (isPaymentError(error, PAYMENT_ERROR_CODES.orderNotPayable)) {
+      return jsonNoStore({ message: "لا يمكن التحقق من هذه المحاولة لأن الطلب لم يعد قابلاً للدفع." }, { status: 409 });
+    }
+
     if (isPaymentError(error, PAYMENT_ERROR_CODES.mockVerificationDisabled)) {
       return jsonNoStore({ message: "التحقق التجريبي غير مفعّل على الخادم." }, { status: 403 });
     }
