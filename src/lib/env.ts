@@ -67,21 +67,39 @@ function validateEnvironment(): EnvIssue[] {
     });
   }
 
-  const paymentMode = (readEnv("PAYMENT_GATEWAY_MODE") ?? "mock").toLowerCase();
-  if (paymentMode !== "mock" && paymentMode !== "live") {
+  const rawPaymentMode = readEnv("PAYMENT_GATEWAY_MODE");
+  if (nodeEnv === "production" && !rawPaymentMode) {
     issues.push({
-      severity: "warning",
+      severity: "error",
       key: "PAYMENT_GATEWAY_MODE",
-      message: "PAYMENT_GATEWAY_MODE should be either 'mock' or 'live'. Falling back to mock.",
+      message: "PAYMENT_GATEWAY_MODE is required in production.",
     });
   }
 
-  const storageProvider = (readEnv("BOOK_STORAGE_PROVIDER") ?? "local").toLowerCase();
+  const paymentMode = (rawPaymentMode ?? "mock").toLowerCase();
+  if (paymentMode !== "mock" && paymentMode !== "live") {
+    issues.push({
+      severity: nodeEnv === "production" ? "error" : "warning",
+      key: "PAYMENT_GATEWAY_MODE",
+      message: "PAYMENT_GATEWAY_MODE should be either 'mock' or 'live'.",
+    });
+  }
+
+  const rawStorageProvider = readEnv("BOOK_STORAGE_PROVIDER");
+  if (nodeEnv === "production" && !rawStorageProvider) {
+    issues.push({
+      severity: "error",
+      key: "BOOK_STORAGE_PROVIDER",
+      message: "BOOK_STORAGE_PROVIDER is required in production.",
+    });
+  }
+
+  const storageProvider = (rawStorageProvider ?? "local").toLowerCase();
   if (!["local", "s3", "r2"].includes(storageProvider)) {
     issues.push({
-      severity: "warning",
+      severity: nodeEnv === "production" ? "error" : "warning",
       key: "BOOK_STORAGE_PROVIDER",
-      message: "BOOK_STORAGE_PROVIDER should be one of: local, s3, r2. Falling back to local.",
+      message: "BOOK_STORAGE_PROVIDER should be one of: local, s3, r2.",
     });
   }
 
@@ -96,19 +114,39 @@ function validateEnvironment(): EnvIssue[] {
   const nextAuthUrl = readEnv("NEXTAUTH_URL");
   if (nodeEnv === "production" && !nextAuthUrl) {
     issues.push({
-      severity: "warning",
+      severity: "error",
       key: "NEXTAUTH_URL",
-      message: "NEXTAUTH_URL is recommended in production for consistent callback/origin behavior.",
+      message: "NEXTAUTH_URL is required in production.",
     });
   }
 
+  if (nextAuthUrl) {
+    try {
+      new URL(nextAuthUrl);
+    } catch {
+      issues.push({
+        severity: nodeEnv === "production" ? "error" : "warning",
+        key: "NEXTAUTH_URL",
+        message: "NEXTAUTH_URL must be a valid absolute URL.",
+      });
+    }
+  }
+
   const appBaseUrl = readEnv("APP_BASE_URL");
+  if (nodeEnv === "production" && !appBaseUrl) {
+    issues.push({
+      severity: "error",
+      key: "APP_BASE_URL",
+      message: "APP_BASE_URL is required in production.",
+    });
+  }
+
   if (appBaseUrl) {
     try {
       new URL(appBaseUrl);
     } catch {
       issues.push({
-        severity: "warning",
+        severity: nodeEnv === "production" ? "error" : "warning",
         key: "APP_BASE_URL",
         message: "APP_BASE_URL must be a valid absolute URL.",
       });
@@ -158,6 +196,11 @@ export function validateServerEnvOnce(logger?: Pick<Console, "warn" | "error">) 
   if (!result.isValid) {
     for (const error of result.errors) {
       output.error(`[env] ${error.key}: ${error.message}`);
+    }
+
+    if (getNodeEnv() === "production") {
+      const details = result.errors.map((issue) => `${issue.key}: ${issue.message}`).join("; ");
+      throw new Error(`Invalid server environment configuration. ${details}`);
     }
   }
 }

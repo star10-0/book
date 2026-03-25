@@ -16,7 +16,9 @@
     "prisma:studio": "prisma studio",
     "icons:generate": "tsx scripts/generate-pwa-icons.ts",
     "test": "tsx --test src/**/*.test.ts",
-    "pretypecheck": "prisma generate"
+    "pretypecheck": "prisma generate",
+    "prisma:migrate:deploy": "prisma migrate deploy",
+    "start:prod": "npm run prisma:migrate:deploy && next start"
   },
   "prisma": {
     "seed": "tsx prisma/seed.ts"
