@@ -3,7 +3,7 @@ import { AdminPageCard, AdminPageHeader } from "@/components/admin/admin-page";
 import { formatArabicDate } from "@/lib/formatters/intl";
 import { requireAdmin } from "@/lib/auth-session";
 import { prisma } from "@/lib/prisma";
-import { createPromoCodeAction, togglePromoCodeAction } from "./actions";
+import { createPromoCodeAction, togglePromoCodeAction, updatePromoCodeAction } from "./actions";
 
 export default async function AdminPromoCodesPage() {
   await requireAdmin({ callbackUrl: "/admin/promo-codes" });
@@ -130,6 +130,67 @@ export default async function AdminPromoCodesPage() {
                   </ul>
                 )}
               </div>
+
+              <details className="mt-3 rounded-lg border border-slate-200 p-3">
+                <summary className="cursor-pointer font-semibold text-indigo-700">تعديل الكود</summary>
+                <form action={updatePromoCodeAction} className="mt-3 grid gap-2 md:grid-cols-2">
+                  <input type="hidden" name="promoCodeId" value={code.id} />
+                  <input name="code" required defaultValue={code.code} className="rounded-xl border border-slate-300 px-3 py-2" />
+                  <input name="internalLabel" defaultValue={code.internalLabel ?? ""} placeholder="اسم داخلي" className="rounded-xl border border-slate-300 px-3 py-2" />
+
+                  <select name="type" defaultValue={code.type} className="rounded-xl border border-slate-300 px-3 py-2">
+                    {Object.values(PromoCodeType).map((type) => (
+                      <option key={type} value={type}>{type}</option>
+                    ))}
+                  </select>
+                  <input name="value" type="number" defaultValue={code.value ?? ""} placeholder="قيمة الخصم" className="rounded-xl border border-slate-300 px-3 py-2" />
+
+                  <select name="audience" defaultValue={code.audience} className="rounded-xl border border-slate-300 px-3 py-2">
+                    {Object.values(PromoCodeAudience).map((audience) => (
+                      <option key={audience} value={audience}>{audience}</option>
+                    ))}
+                  </select>
+                  <select name="appliesTo" defaultValue={code.appliesTo} className="rounded-xl border border-slate-300 px-3 py-2">
+                    {Object.values(PromoCodeAppliesTo).map((target) => (
+                      <option key={target} value={target}>{target}</option>
+                    ))}
+                  </select>
+
+                  <input name="maxTotalUses" type="number" defaultValue={code.maxTotalUses ?? ""} placeholder="أقصى استخدام إجمالي" className="rounded-xl border border-slate-300 px-3 py-2" />
+                  <input name="maxUsesPerUser" type="number" defaultValue={code.maxUsesPerUser ?? ""} placeholder="أقصى استخدام لكل مستخدم" className="rounded-xl border border-slate-300 px-3 py-2" />
+                  <input name="minimumAmountCents" type="number" defaultValue={code.minimumAmountCents ?? ""} placeholder="الحد الأدنى (سنت)" className="rounded-xl border border-slate-300 px-3 py-2" />
+
+                  <select name="currency" defaultValue={code.currency ?? ""} className="rounded-xl border border-slate-300 px-3 py-2">
+                    <option value="">بدون تقييد عملة</option>
+                    <option value="SYP">SYP</option>
+                    <option value="USD">USD</option>
+                  </select>
+
+                  <input name="startsAt" type="datetime-local" defaultValue={code.startsAt ? code.startsAt.toISOString().slice(0, 16) : ""} className="rounded-xl border border-slate-300 px-3 py-2" />
+                  <input name="expiresAt" type="datetime-local" defaultValue={code.expiresAt ? code.expiresAt.toISOString().slice(0, 16) : ""} className="rounded-xl border border-slate-300 px-3 py-2" />
+
+                  <select name="organizationId" defaultValue={code.organizationId ?? ""} className="rounded-xl border border-slate-300 px-3 py-2">
+                    <option value="">بدون مؤسسة</option>
+                    {organizations.map((organization) => (
+                      <option key={organization.id} value={organization.id}>{organization.name}</option>
+                    ))}
+                  </select>
+                  <select name="creatorId" defaultValue={code.creatorId ?? ""} className="rounded-xl border border-slate-300 px-3 py-2">
+                    <option value="">بدون تقييد كاتب</option>
+                    {creators.map((creator) => (
+                      <option key={creator.id} value={creator.id}>{creator.email}</option>
+                    ))}
+                  </select>
+
+                  <textarea name="notes" defaultValue={code.notes ?? ""} rows={2} className="rounded-xl border border-slate-300 px-3 py-2 md:col-span-2" />
+                  <label className="flex items-center gap-2 text-sm text-slate-700">
+                    <input type="checkbox" name="isActive" defaultChecked={code.isActive} /> مفعل
+                  </label>
+                  <button type="submit" className="rounded-xl bg-indigo-600 px-4 py-2 font-semibold text-white md:justify-self-start">
+                    حفظ التعديلات
+                  </button>
+                </form>
+              </details>
             </article>
           ))}
         </div>

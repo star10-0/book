@@ -17,13 +17,28 @@ function parseOptionalDate(value: FormDataEntryValue | null) {
   return Number.isNaN(parsed.getTime()) ? null : parsed;
 }
 
+function parsePromoType(value: FormDataEntryValue | null, fallback: PromoCodeType) {
+  const parsed = String(value ?? fallback) as PromoCodeType;
+  return Object.values(PromoCodeType).includes(parsed) ? parsed : fallback;
+}
+
+function parsePromoAudience(value: FormDataEntryValue | null, fallback: PromoCodeAudience) {
+  const parsed = String(value ?? fallback) as PromoCodeAudience;
+  return Object.values(PromoCodeAudience).includes(parsed) ? parsed : fallback;
+}
+
+function parsePromoAppliesTo(value: FormDataEntryValue | null, fallback: PromoCodeAppliesTo) {
+  const parsed = String(value ?? fallback) as PromoCodeAppliesTo;
+  return Object.values(PromoCodeAppliesTo).includes(parsed) ? parsed : fallback;
+}
+
 export async function createPromoCodeAction(formData: FormData) {
   const user = await requireAdmin({ callbackUrl: "/admin/promo-codes" });
 
   const code = String(formData.get("code") ?? "").trim().toUpperCase();
-  const type = String(formData.get("type") ?? "FREE") as PromoCodeType;
-  const audience = String(formData.get("audience") ?? "PUBLIC") as PromoCodeAudience;
-  const appliesTo = String(formData.get("appliesTo") ?? "ANY") as PromoCodeAppliesTo;
+  const type = parsePromoType(formData.get("type"), PromoCodeType.FREE);
+  const audience = parsePromoAudience(formData.get("audience"), PromoCodeAudience.PUBLIC);
+  const appliesTo = parsePromoAppliesTo(formData.get("appliesTo"), PromoCodeAppliesTo.ANY);
 
   if (!code) return;
 
@@ -65,6 +80,44 @@ export async function togglePromoCodeAction(formData: FormData) {
   await prisma.promoCode.update({
     where: { id: promoCodeId },
     data: { isActive: !promo.isActive },
+  });
+
+  revalidatePath("/admin/promo-codes");
+}
+
+export async function updatePromoCodeAction(formData: FormData) {
+  await requireAdmin({ callbackUrl: "/admin/promo-codes" });
+
+  const promoCodeId = String(formData.get("promoCodeId") ?? "").trim();
+  if (!promoCodeId) return;
+
+  const code = String(formData.get("code") ?? "").trim().toUpperCase();
+  if (!code) return;
+
+  const type = parsePromoType(formData.get("type"), PromoCodeType.FREE);
+  const audience = parsePromoAudience(formData.get("audience"), PromoCodeAudience.PUBLIC);
+  const appliesTo = parsePromoAppliesTo(formData.get("appliesTo"), PromoCodeAppliesTo.ANY);
+
+  await prisma.promoCode.update({
+    where: { id: promoCodeId },
+    data: {
+      code,
+      internalLabel: String(formData.get("internalLabel") ?? "") || null,
+      notes: String(formData.get("notes") ?? "") || null,
+      type,
+      value: parseOptionalInt(formData.get("value")),
+      isActive: String(formData.get("isActive") ?? "") === "on",
+      startsAt: parseOptionalDate(formData.get("startsAt")),
+      expiresAt: parseOptionalDate(formData.get("expiresAt")),
+      maxTotalUses: parseOptionalInt(formData.get("maxTotalUses")),
+      maxUsesPerUser: parseOptionalInt(formData.get("maxUsesPerUser")),
+      minimumAmountCents: parseOptionalInt(formData.get("minimumAmountCents")),
+      currency: (String(formData.get("currency") ?? "") || null) as "SYP" | "USD" | null,
+      audience,
+      appliesTo,
+      organizationId: String(formData.get("organizationId") ?? "") || null,
+      creatorId: String(formData.get("creatorId") ?? "") || null,
+    },
   });
 
   revalidatePath("/admin/promo-codes");
