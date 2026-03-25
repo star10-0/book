@@ -9,6 +9,7 @@ const navItems = [
   { href: "/studio/books/new", label: "أضف كتابًا", highlight: true },
   { href: "/studio/orders", label: "الطلبات" },
   { href: "/studio/payments", label: "المدفوعات" },
+  { href: "/studio/promo-codes", label: "أكواد الخصم" },
   { href: "/studio/analytics", label: "التحليلات" },
   { href: "/studio/profile", label: "ملف الكاتب" },
 ];

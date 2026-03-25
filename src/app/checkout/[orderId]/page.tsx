@@ -27,6 +27,9 @@ export default async function CheckoutPage({ params }: CheckoutPageProps) {
         orderBy: { createdAt: "desc" },
         take: 1,
       },
+      promoCode: {
+        select: { code: true },
+      },
     },
   });
 
@@ -58,6 +61,8 @@ export default async function CheckoutPage({ params }: CheckoutPageProps) {
           currency={order.currency}
           subtotalCents={order.subtotalCents}
           totalCents={order.totalCents}
+          discountCents={order.discountCents}
+          promoCode={order.promoCode?.code}
           createdAt={order.createdAt}
           items={order.items}
         />
@@ -65,6 +70,10 @@ export default async function CheckoutPage({ params }: CheckoutPageProps) {
         <OrderPaymentPanel
           orderId={order.id}
           isPayable={order.status === "PENDING"}
+          totalCents={order.totalCents}
+          currency={order.currency}
+          discountCents={order.discountCents}
+          appliedPromoCode={order.promoCode?.code}
           initialAttemptId={latestAttempt?.id}
           initialAttemptStatus={latestAttempt?.status}
         />

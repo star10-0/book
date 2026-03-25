@@ -180,3 +180,22 @@ npm run lint
 npm run typecheck
 npm run test
 ```
+
+## Promo Code / Discount System
+
+The platform now includes a server-validated promo system for checkout with:
+
+- `FREE`, `PERCENT`, and `FIXED` promo types.
+- Redemption tracking per user/order/payment.
+- Institution and creator restrictions.
+- Scope restrictions (`PURCHASE`, `RENTAL`, `PUBLISHING_FEE`, `ANY`).
+- Free-order internal completion flow (no external gateway call).
+
+### Management
+
+- Admin management: `/admin/promo-codes`
+- Creator management: `/studio/promo-codes`
+
+### Checkout usage
+
+Users enter promo codes on the checkout order payment panel (`/checkout/[orderId]`). Totals are always recalculated on the server before payment attempt creation.

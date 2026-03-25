@@ -10,6 +10,7 @@ import {
 import { grantAccessForPaidOrder } from "@/lib/access-grants";
 import { normalizeNonNegativeMoneyCents, normalizeProviderReference } from "@/lib/services/invariants";
 import { PAYMENT_ERROR_CODES, paymentError } from "@/lib/payments/errors";
+import { markPromoRedemptionsRedeemed } from "@/lib/promos";
 
 export interface CreatePaymentForOrderInput {
   orderId: string;
@@ -367,6 +368,12 @@ export async function verifyPayment(input: VerifyPaymentInput) {
         orderId: attempt.orderId,
         userId: attempt.userId,
         grantedAt: new Date(),
+      });
+
+      await markPromoRedemptionsRedeemed(tx, {
+        orderId: attempt.orderId,
+        paymentId: attempt.paymentId,
+        at: new Date(),
       });
     }
 
