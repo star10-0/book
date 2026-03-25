@@ -19,7 +19,7 @@ export async function POST(request: Request) {
     return rejectCrossOriginMutation();
   }
 
-  const rateLimit = enforceRateLimit({ key: `orders:create:${clientIp}`, limit: 30, windowMs: 60_000 });
+  const rateLimit = await enforceRateLimit({ key: `orders:create:${clientIp}`, limit: 30, windowMs: 60_000 });
   if (!rateLimit.allowed) {
     return rejectRateLimited(rateLimit.retryAfterSeconds);
   }

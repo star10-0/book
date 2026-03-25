@@ -85,6 +85,15 @@ function validateEnvironment(): EnvIssue[] {
     });
   }
 
+
+  const allowMockVerification = (readEnv("ALLOW_MOCK_PAYMENT_VERIFICATION") ?? "false").toLowerCase();
+  if (nodeEnv === "production" && allowMockVerification === "true") {
+    issues.push({
+      severity: "error",
+      key: "ALLOW_MOCK_PAYMENT_VERIFICATION",
+      message: "ALLOW_MOCK_PAYMENT_VERIFICATION must remain false in production.",
+    });
+  }
   const rawStorageProvider = readEnv("BOOK_STORAGE_PROVIDER");
   if (nodeEnv === "production" && !rawStorageProvider) {
     issues.push({

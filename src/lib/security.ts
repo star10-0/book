@@ -55,8 +55,8 @@ export function rejectRateLimited(retryAfterSeconds: number) {
   );
 }
 
-export function enforceRateLimit(input: { key: string; limit: number; windowMs: number }) {
-  return checkRateLimit(input);
+export async function enforceRateLimit(input: { key: string; limit: number; windowMs: number }) {
+  return await checkRateLimit(input);
 }
 
 export function jsonNoStore(body: unknown, init?: ResponseInit) {

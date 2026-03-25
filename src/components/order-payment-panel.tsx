@@ -181,7 +181,7 @@ export function OrderPaymentPanel({
     });
   };
 
-  const verifyMock = (mockOutcome: "paid" | "failed") => {
+  const verifyPaymentStatus = () => {
     if (!attemptId) {
       setMessage("لا توجد محاولة دفع للتحقق.");
       return;
@@ -190,12 +190,11 @@ export function OrderPaymentPanel({
     startTransition(async () => {
       setMessage("");
 
-      const response = await fetch("/api/payments/verify-mock", {
+      const response = await fetch("/api/payments/verify", {
         method: "POST",
         headers: { "Content-Type": "application/json" },
         body: JSON.stringify({
           attemptId,
-          mockOutcome,
         }),
       });
 
@@ -205,7 +204,7 @@ export function OrderPaymentPanel({
       };
 
       if (!response.ok || !payload.attempt) {
-        setMessage(payload.message ?? "تعذر تنفيذ التحقق التجريبي.");
+        setMessage(payload.message ?? "تعذر تنفيذ التحقق من الدفع.");
         return;
       }
 
@@ -213,8 +212,10 @@ export function OrderPaymentPanel({
 
       if (payload.attempt.status === "PAID") {
         setMessage("تم تأكيد الدفع بنجاح.");
-      } else {
+      } else if (payload.attempt.status === "FAILED") {
         setMessage(payload.attempt.failureReason ?? "فشل التحقق من عملية الدفع.");
+      } else {
+        setMessage("تم تحديث حالة التحقق، ما تزال العملية قيد المتابعة.");
       }
 
       router.refresh();
@@ -292,7 +293,7 @@ export function OrderPaymentPanel({
 
           <div className="mt-4 space-y-3">
             <label className="block text-sm font-semibold text-slate-800" htmlFor="transaction-reference">
-              مرجع العملية (تجريبي)
+              مرجع العملية
             </label>
             <input
               id="transaction-reference"
@@ -335,19 +336,11 @@ export function OrderPaymentPanel({
             </button>
             <button
               type="button"
-              onClick={() => verifyMock("paid")}
+              onClick={verifyPaymentStatus}
               disabled={isPending || !attemptId || attemptStatus === "PAID" || attemptStatus === "FAILED"}
               className="rounded-xl border border-emerald-200 bg-emerald-50 px-4 py-2 text-sm font-semibold text-emerald-700 disabled:cursor-not-allowed disabled:border-slate-200 disabled:bg-slate-100 disabled:text-slate-400"
             >
-              محاكاة نجاح
-            </button>
-            <button
-              type="button"
-              onClick={() => verifyMock("failed")}
-              disabled={isPending || !attemptId || attemptStatus === "PAID" || attemptStatus === "FAILED"}
-              className="rounded-xl border border-rose-200 bg-rose-50 px-4 py-2 text-sm font-semibold text-rose-700 disabled:cursor-not-allowed disabled:border-slate-200 disabled:bg-slate-100 disabled:text-slate-400"
-            >
-              محاكاة فشل
+              تحقق من حالة الدفع
             </button>
           </div>
         </>
