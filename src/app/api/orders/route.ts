@@ -1,4 +1,4 @@
-import { PaymentProvider } from "@prisma/client";
+import { PaymentProvider, Prisma } from "@prisma/client";
 import { API_ERROR_CODES, jsonError, parseJsonBody } from "@/lib/api-response";
 import { getCurrentUser } from "@/lib/auth-session";
 import { logError, getClientIp, getRequestId } from "@/lib/observability/logger";
@@ -63,6 +63,10 @@ export async function POST(request: Request) {
 
     if (!offer || !isOfferCurrentlyAvailable(offer, now)) {
       return jsonNoStore({ message: "العرض المحدد غير متاح حالياً." }, { status: 404 });
+    }
+
+    if (offer.priceCents < 0) {
+      return jsonNoStore({ message: "سعر العرض غير صالح حالياً. يرجى اختيار عرض آخر." }, { status: 409 });
     }
 
     const [activeGrant, existingPendingOrder] = await Promise.all([
@@ -175,6 +179,16 @@ export async function POST(request: Request) {
       { status: 201 },
     );
   } catch (error) {
+    if (error instanceof Prisma.PrismaClientKnownRequestError) {
+      if (error.code === "P2003" || error.code === "P2004") {
+        return jsonNoStore({ message: "تعذر إنشاء الطلب بسبب تعارض في بيانات العرض. أعد تحميل الصفحة وجرب مرة أخرى." }, { status: 409 });
+      }
+
+      if (error.code === "P2025") {
+        return jsonNoStore({ message: "تعذر العثور على بيانات الطلب المطلوبة." }, { status: 404 });
+      }
+    }
+
     logError("Failed to create order", error, { route: "/api/orders", requestId, ip: clientIp, userId: user.id });
     return jsonError(API_ERROR_CODES.server_error, "حدث خطأ أثناء إنشاء الطلب. يرجى المحاولة لاحقاً.", 500);
   }
