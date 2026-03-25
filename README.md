@@ -10,31 +10,7 @@
 - Prisma + PostgreSQL
 - Cookie-based credentials authentication (signed HTTP-only session cookie)
 
-## Architecture Summary
-
-- **UI layer (`src/app`, `src/components`)**: server components by default, client components only for interactivity.
-- **Domain/services (`src/lib`)**:
-  - authentication/session handling
-  - order and payment orchestration
-  - access grants and reader helpers
-  - storage abstractions and validation
-- **Persistence**: Prisma schema for users, catalog, offers, orders, payment attempts, access grants, and reading progress.
-- **APIs (`src/app/api/*`)**: focused route handlers for checkout, payments, and reading progress.
-
-## Production Readiness — Sprint 8 updates
-
-This sprint improved production safety without broad UI redesign:
-
-- Stronger runtime environment validation with explicit warnings/errors.
-- Structured logging utility for safer operational diagnostics.
-- Baseline abuse controls via in-memory rate limiting on sensitive auth/payment/order paths.
-- Better deployment documentation and explicit required environment variables.
-- Safer SEO host handling via `APP_BASE_URL` for metadata, sitemap, robots, and JSON-LD.
-- Minor PWA cache consistency update for static assets (manifest/icons).
-
----
-
-## Quick Start
+## Quick Start (Local Development)
 
 1. Install dependencies:
 
@@ -56,156 +32,151 @@ This sprint improved production safety without broad UI redesign:
    npm run dev
    ```
 
-> Seed currently creates an admin account (`admin@book.local` / `AdminPass123!`). Create reader accounts through sign-up.
+> Seed currently creates an admin account (`admin@book.local` / `AdminPass123!`).
 
----
+## Production Deployment Model (Current Recommendation)
 
-## Required environment variables
+Current production recommendation is **Docker/VPS with persistent local volumes** because:
 
-These are required for reliable non-test runtime:
+- uploads are still written to local filesystem paths,
+- protected reader files are streamed from private local storage,
+- S3/R2 adapters are present but not fully ready for production migration,
+- live payment providers are not implemented yet.
+
+## Production Environment Variables
+
+The app validates these settings at runtime and fails fast in production when required values are missing/invalid.
+
+### Required in production
 
 - `DATABASE_URL`
-- `AUTH_SECRET` (at least 32 chars in production)
-- `NEXTAUTH_SECRET`
-- `NEXTAUTH_URL`
-- `APP_BASE_URL` (canonical HTTPS origin for production)
+- `AUTH_SECRET` (minimum 32 chars)
+- `NEXTAUTH_URL` (absolute HTTPS URL)
+- `APP_BASE_URL` (absolute HTTPS URL)
+- `BOOK_STORAGE_PROVIDER` (`local` | `s3` | `r2`)
+- `PAYMENT_GATEWAY_MODE` (`mock` | `live`)
 
-## Environment variables by concern
+### Strongly recommended
 
-### Runtime + Auth
+- `NEXTAUTH_SECRET` (keep equal to `AUTH_SECRET` for consistency)
+- `PORT` (optional; default `3000`)
+
+### Payment safety guardrails
+
+- Keep `PAYMENT_GATEWAY_MODE=mock` for first production rollout.
+- Keep `ALLOW_MOCK_PAYMENT_VERIFICATION=false` on staging/production.
+- Mock verification endpoint is only available when:
+  - `NODE_ENV` is `development` or `test`,
+  - `PAYMENT_GATEWAY_MODE=mock`,
+  - `ALLOW_MOCK_PAYMENT_VERIFICATION=true`.
+
+Use `.env.production.example` as the baseline template.
+
+## Docker Files
+
+- `Dockerfile`: production build + runtime image
+- `docker-compose.yml`: app + PostgreSQL + persistent volumes
+- `.dockerignore`: reduces build context
+
+## Persistent Volume Requirements
+
+You must persist these paths for Docker/VPS deployment:
+
+- `/app/public/uploads` → maps to project `public/uploads`
+- `/app/storage/private/uploads` → maps to project `storage/private/uploads`
+
+If you use bundled PostgreSQL via compose, also persist:
+
+- `/var/lib/postgresql/data`
+
+## Prisma Production Flow
+
+Production migration command:
 
 ```bash
-DATABASE_URL="postgresql://..."
-AUTH_SECRET="..."
-NEXTAUTH_SECRET="..."
-NEXTAUTH_URL="https://your-domain.example"
-APP_BASE_URL="https://your-domain.example"
+npm run prisma:migrate:deploy
 ```
 
-### Storage
+Do **not** run `prisma migrate dev` in production.
 
-```bash
-# local | s3 | r2
-BOOK_STORAGE_PROVIDER="local"
-```
+### Migration/startup order
 
-> `local` storage is acceptable in development, but not ideal for production on ephemeral hosts.
+1. Start PostgreSQL and wait for readiness.
+2. Run `prisma migrate deploy`.
+3. Start the Next.js server.
 
-### Payments
+In Docker this project uses `npm run start:prod`, which runs migrate deploy before `next start`.
 
-```bash
-# mock | live
-PAYMENT_GATEWAY_MODE="mock"
-ALLOW_MOCK_PAYMENT_VERIFICATION="false"
+## Staging / Production (Docker Compose)
 
-# Sham Cash
-SHAM_CASH_API_BASE_URL="..."
-SHAM_CASH_API_KEY="..."
-SHAM_CASH_MERCHANT_ID="..."
-SHAM_CASH_CREATE_PAYMENT_PATH="/payments/create"
-SHAM_CASH_VERIFY_PAYMENT_PATH="/payments/verify"
-SHAM_CASH_TIMEOUT_MS="10000"
+1. Copy env template and fill real values:
 
-# Syriatel Cash
-SYRIATEL_CASH_API_BASE_URL="..."
-SYRIATEL_CASH_API_KEY="..."
-SYRIATEL_CASH_MERCHANT_ID="..."
-SYRIATEL_CASH_CREATE_PAYMENT_PATH="/payments/create"
-SYRIATEL_CASH_VERIFY_PAYMENT_PATH="/payments/verify"
-SYRIATEL_CASH_TIMEOUT_MS="10000"
-```
+   ```bash
+   cp .env.production.example .env.production
+   ```
 
----
+2. Build and start:
 
-## Deployment notes
+   ```bash
+   docker compose --env-file .env.production up -d --build
+   ```
 
-- Use Node.js 20+ and a managed PostgreSQL service.
-- Run `npm run build` in CI and deploy only on successful lint/typecheck/test.
-- Ensure Prisma migrations are applied before switching live traffic.
-- Use HTTPS in production and set `APP_BASE_URL` to the final canonical domain.
-- Keep `PAYMENT_GATEWAY_MODE=mock` outside live rollout until real provider integrations and reconciliation jobs are complete.
+3. Check logs:
 
-### Suggested rollout flow
+   ```bash
+   docker compose logs -f app
+   ```
 
-1. Deploy to staging.
-2. Run smoke tests for auth, checkout, payment attempt flow, and reader access.
-3. Run DB backup snapshot.
-4. Deploy production.
-5. Verify monitoring/alerts and payment queue behavior.
+4. Open app at `http://<server-ip>:3000` (or behind your reverse proxy TLS domain).
 
----
+## VPS Rollout Checklist
 
-## Storage assumptions and caveats
+1. Provision VPS (Ubuntu/Debian), install Docker + Docker Compose plugin.
+2. Clone repo on VPS.
+3. Create `.env.production` from `.env.production.example`.
+4. Ensure domain + TLS reverse proxy are configured (Nginx/Caddy/Traefik).
+5. Run `docker compose up -d --build`.
+6. Smoke-test:
+   - sign in
+   - create order
+   - payment attempt lifecycle in mock mode
+   - reader access for purchased/rented content
+   - protected asset URLs return `403` for unauthorized users.
 
-Current local provider writes:
-
-- public assets: `public/uploads/*`
-- private assets: `storage/private/uploads/*`
-
-Production caveat:
-
-- Container/dyno filesystem may be ephemeral.
-- Use object storage (`s3`/`r2`) before scaling production traffic.
-- Keep a migration plan for existing local files before switching providers.
-
----
-
-## Monitoring, logging, and backup guidance
-
-### Logging
-
-- Route-level failures in sensitive endpoints are now logged using structured JSON.
-- Avoid logging secrets, payment tokens, API keys, or raw credentials.
-- Forward logs to your platform aggregator (e.g., Datadog, ELK, Cloud logging).
-
-### Monitoring (minimum)
-
-- Uptime checks for `/`, `/books`, and one authenticated API probe.
-- Error-rate alerts on `/api/orders`, `/api/payments/create`, `/api/payments/submit-proof`, `/api/payments/verify-mock`.
-- Latency SLO tracking for checkout and payment endpoints.
+## Backup, Restore, and Rollback Basics
 
 ### Backups
 
-- Daily PostgreSQL backups with retention policy.
-- Before each production migration: on-demand snapshot.
-- Quarterly restore drill to a staging environment.
-- Document RPO/RTO targets and validate them with drills.
+- PostgreSQL: daily backup + retention policy.
+- File volumes: snapshot both uploads volumes on same schedule:
+  - `public/uploads`
+  - `storage/private/uploads`
+- Always take an on-demand DB + file snapshot before deployment.
 
----
+### Restore expectations
 
-## Rate limiting and abuse prevention status
+- Restore DB backup and both file volumes from the same backup window.
+- Run integrity smoke tests (login, library, reader streaming, recent orders).
 
-Implemented baseline controls:
+### Rollback basics
 
-- Auth server actions: sign-in/sign-up in-memory limits.
-- Sensitive APIs: order creation + payment-related endpoints have per-IP in-memory limits.
-- Asset mutation APIs: admin/studio upload and delete endpoints enforce same-origin mutation checks and per-IP limits.
-- Reader state API: reading progress updates enforce same-origin mutation checks and per-IP limits.
+- Keep previous app image tag available.
+- Roll back app image first if release is bad.
+- If migration changed schema incompatibly, restore database snapshot and aligned file volumes.
 
-Important limitation:
+## Current Limitations Before True Public Launch
 
-- In-memory rate limiting is per-process and resets on restart.
-- For production scale, move to shared storage backed limits (Redis/KV) and add WAF/bot rules.
+- Live Sham Cash and Syriatel Cash integrations are placeholders.
+- `PAYMENT_GATEWAY_MODE=live` currently throws configuration errors intentionally.
+- Distributed/shared rate limiting (Redis/KV) is not yet implemented.
+- Object storage migration plan (S3/R2) should be completed before horizontal scaling.
 
----
+## Validation Commands
 
-## SEO & PWA notes
-
-- Canonical host now comes from `APP_BASE_URL`.
-- `robots.txt` and `sitemap.xml` use the same canonical base URL.
-- Book detail metadata now includes canonical + OpenGraph URL.
-- Service worker static caching now includes manifest and icon asset extensions for consistency.
-
----
-
-## Validation commands
-
-Run these after meaningful changes:
+Run after meaningful changes:
 
 ```bash
 npm run lint
 npm run typecheck
 npm run test
 ```
-
-> `typecheck` runs `prisma generate` first.
