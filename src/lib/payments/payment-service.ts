@@ -63,6 +63,10 @@ export async function createPaymentForOrder(input: CreatePaymentForOrderInput) {
           paymentError(PAYMENT_ERROR_CODES.invalidOrderTotal);
         }
 
+        if (order.totalCents === 0) {
+          paymentError(PAYMENT_ERROR_CODES.zeroAmountOrder);
+        }
+
         const existingAttempt = await tx.paymentAttempt.findFirst({
           where: {
             orderId: order.id,
@@ -191,6 +195,10 @@ export async function submitPaymentProof(input: SubmitPaymentProofInput) {
     paymentError(PAYMENT_ERROR_CODES.attemptNotSubmittable);
   }
 
+  if (attempt.amountCents === 0) {
+    paymentError(PAYMENT_ERROR_CODES.zeroAmountOrder);
+  }
+
   if (!attempt.providerReference) {
     paymentError(PAYMENT_ERROR_CODES.missingProviderReference);
   }
@@ -248,6 +256,10 @@ export async function verifyPayment(input: VerifyPaymentInput) {
 
   if (attempt.status === "PAID" || attempt.status === "FAILED") {
     return attempt;
+  }
+
+  if (attempt.order.status !== "PENDING") {
+    paymentError(PAYMENT_ERROR_CODES.orderNotPayable);
   }
 
   const verifyingStatus: PaymentAttemptStatus = "VERIFYING";
