@@ -195,6 +195,16 @@ export async function submitPaymentProof(input: SubmitPaymentProofInput) {
     paymentError(PAYMENT_ERROR_CODES.missingProviderReference);
   }
 
+  const existingTransactionReference = extractTransactionReference(attempt.requestPayload);
+  const normalizedTransactionReference = input.transactionReference.trim();
+
+  if (
+    existingTransactionReference &&
+    existingTransactionReference.toLowerCase() !== normalizedTransactionReference.toLowerCase()
+  ) {
+    paymentError(PAYMENT_ERROR_CODES.paymentProofImmutable);
+  }
+
   const existingPayload =
     attempt.requestPayload && typeof attempt.requestPayload === "object" && !Array.isArray(attempt.requestPayload)
       ? (attempt.requestPayload as Record<string, unknown>)
@@ -203,7 +213,7 @@ export async function submitPaymentProof(input: SubmitPaymentProofInput) {
   const requestPayload: Prisma.InputJsonValue = {
     ...existingPayload,
     source: "api/payments/submit-proof",
-    transactionReference: input.transactionReference.trim(),
+    transactionReference: existingTransactionReference ?? normalizedTransactionReference,
     proofNote: input.proofNote?.trim() || null,
     submittedAt: new Date().toISOString(),
   };
