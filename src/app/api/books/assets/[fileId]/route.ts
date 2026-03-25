@@ -14,19 +14,38 @@ type BookAssetRouteParams = {
 };
 
 function resolveLocalAssetPath(storageKey: string) {
-  const privatePath = path.join(process.cwd(), "storage", "private", "uploads", storageKey);
-  return { privatePath };
+  const normalized = storageKey.replace(/^\/+/, "");
+  const privatePath = path.join(process.cwd(), "storage", "private", "uploads", normalized);
+  const publicPath = path.join(process.cwd(), "public", "uploads", normalized);
+
+  return { privatePath, publicPath };
 }
 
 async function resolveReadableLocalPath(storageKey: string) {
-  const { privatePath } = resolveLocalAssetPath(storageKey);
+  const normalizedCandidates = Array.from(
+    new Set([
+      storageKey,
+      storageKey.replace(/^\/+/, ""),
+      storageKey.replace(/^\/?storage\/private\/uploads\/+/, ""),
+      storageKey.replace(/^\/?public\/uploads\/+/, ""),
+    ]),
+  );
 
-  try {
-    await access(privatePath);
-    return privatePath;
-  } catch {
-    return null;
+  for (const candidate of normalizedCandidates) {
+    const { privatePath, publicPath } = resolveLocalAssetPath(candidate);
+
+    try {
+      await access(privatePath);
+      return privatePath;
+    } catch {}
+
+    try {
+      await access(publicPath);
+      return publicPath;
+    } catch {}
   }
+
+  return null;
 }
 
 function userCanReadByPolicy(policy: ContentAccessPolicy) {
@@ -70,7 +89,7 @@ export async function GET(_request: Request, { params }: BookAssetRouteParams) {
   });
 
   if (!file || (file.kind !== FileKind.PDF && file.kind !== FileKind.EPUB)) {
-    return jsonNoStore({ message: "الملف المطلوب غير متاح." }, { status: 404 });
+    return jsonNoStore({ message: "معرّف ملف القراءة غير صالح أو غير موجود." }, { status: 404 });
   }
 
   const user = await getCurrentUser();
@@ -90,7 +109,12 @@ export async function GET(_request: Request, { params }: BookAssetRouteParams) {
   const filePath = await resolveReadableLocalPath(file.storageKey);
 
   if (!filePath) {
-    return jsonNoStore({ message: "تعذر العثور على الملف." }, { status: 404 });
+    return jsonNoStore(
+      {
+        message: "سجل الملف موجود لكن الملف الفعلي مفقود من التخزين.",
+      },
+      { status: 500 },
+    );
   }
 
   const stream = createReadStream(filePath);
