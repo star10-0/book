@@ -83,6 +83,9 @@ Startup validation runs via `src/instrumentation.ts` and `src/lib/env.ts`.
 
 ### Required when `PAYMENT_GATEWAY_MODE=live`
 
+At least one live provider must be fully configured:
+
+**Sham Cash (if enabled/selected)**
 - `SHAM_CASH_API_BASE_URL`
 - `SHAM_CASH_API_KEY`
 - `SHAM_CASH_MERCHANT_ID`
@@ -90,6 +93,8 @@ Startup validation runs via `src/instrumentation.ts` and `src/lib/env.ts`.
 - `SHAM_CASH_CREATE_PAYMENT_PATH`
 - `SHAM_CASH_VERIFY_PAYMENT_PATH`
 - `SHAM_CASH_WEBHOOK_SECRET`
+
+**Syriatel Cash (if enabled/selected)**
 - `SYRIATEL_CASH_API_BASE_URL`
 - `SYRIATEL_CASH_API_KEY`
 - `SYRIATEL_CASH_MERCHANT_ID`
