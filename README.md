@@ -70,6 +70,7 @@ Startup validation runs via `src/instrumentation.ts` and `src/lib/env.ts`.
 - `APP_BASE_URL` (absolute URL)
 - `BOOK_STORAGE_PROVIDER` (`local` | `s3` | `r2`)
 - `PAYMENT_GATEWAY_MODE` (`mock` | `live`)
+- `PAYMENT_LIVE_PROVIDERS` (comma-separated: `SHAM_CASH`, `SYRIATEL_CASH`) when live mode is used
 - `ALLOW_MOCK_PAYMENTS=false` in production
 - `ALLOW_MOCK_PAYMENT_VERIFICATION=false` in production
 - `KV_REST_API_URL`
@@ -83,7 +84,7 @@ Startup validation runs via `src/instrumentation.ts` and `src/lib/env.ts`.
 
 ### Required when `PAYMENT_GATEWAY_MODE=live`
 
-At least one live provider must be fully configured:
+Select at least one provider via `PAYMENT_LIVE_PROVIDERS` and fully configure only the selected providers.
 
 **Sham Cash (if enabled/selected)**
 - `SHAM_CASH_API_BASE_URL`

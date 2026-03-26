@@ -1,6 +1,6 @@
 import assert from "node:assert/strict";
 import test from "node:test";
-import { getProviderIntegrationConfig } from "@/lib/payments/gateways/provider-integration";
+import { getProviderIntegrationConfig, parseSelectedLiveProviders } from "@/lib/payments/gateways/provider-integration";
 
 test("getProviderIntegrationConfig reports missing env for Sham Cash only", () => {
   const originalEnv = { ...process.env };
@@ -39,6 +39,32 @@ test("getProviderIntegrationConfig reports missing env for Syriatel Cash only", 
   assert.equal(integration.mode, "live");
   assert.equal(integration.isLiveConfigured, false);
   assert.deepEqual(integration.missingEnvKeys, ["SYRIATEL_CASH_DESTINATION_ACCOUNT"]);
+
+  process.env = originalEnv;
+});
+
+test("parseSelectedLiveProviders defaults to all providers when env is missing", () => {
+  const originalEnv = { ...process.env };
+  delete process.env.PAYMENT_LIVE_PROVIDERS;
+
+  const selection = parseSelectedLiveProviders();
+
+  assert.deepEqual(selection.selectedProviders, ["SHAM_CASH", "SYRIATEL_CASH"]);
+  assert.deepEqual(selection.invalidProviders, []);
+  assert.equal(selection.source, "default");
+
+  process.env = originalEnv;
+});
+
+test("parseSelectedLiveProviders accepts CSV and reports invalid entries", () => {
+  const originalEnv = { ...process.env };
+  process.env.PAYMENT_LIVE_PROVIDERS = " sham_cash,invalid_value, SHAM_CASH ";
+
+  const selection = parseSelectedLiveProviders();
+
+  assert.deepEqual(selection.selectedProviders, ["SHAM_CASH"]);
+  assert.deepEqual(selection.invalidProviders, ["INVALID_VALUE"]);
+  assert.equal(selection.source, "env");
 
   process.env = originalEnv;
 });

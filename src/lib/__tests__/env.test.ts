@@ -91,8 +91,9 @@ test("validateServerEnv requires production deployment vars", () => {
   else delete process.env.DATABASE_URL;
 });
 
-test("validateServerEnv in live mode requires at least one fully configured live payment provider", () => {
+test("validateServerEnv in live mode requires selected live provider env vars only", () => {
   const originalPaymentMode = process.env.PAYMENT_GATEWAY_MODE;
+  const originalLiveProviders = process.env.PAYMENT_LIVE_PROVIDERS;
   const originalShamBaseUrl = process.env.SHAM_CASH_API_BASE_URL;
   const originalShamApiKey = process.env.SHAM_CASH_API_KEY;
   const originalShamMerchantId = process.env.SHAM_CASH_MERCHANT_ID;
@@ -108,6 +109,7 @@ test("validateServerEnv in live mode requires at least one fully configured live
   const originalSyriatelVerifyPath = process.env.SYRIATEL_CASH_VERIFY_PAYMENT_PATH;
 
   process.env.PAYMENT_GATEWAY_MODE = "live";
+  process.env.PAYMENT_LIVE_PROVIDERS = "SHAM_CASH";
   delete process.env.SHAM_CASH_API_BASE_URL;
   delete process.env.SHAM_CASH_API_KEY;
   delete process.env.SHAM_CASH_MERCHANT_ID;
@@ -123,16 +125,16 @@ test("validateServerEnv in live mode requires at least one fully configured live
   delete process.env.SYRIATEL_CASH_VERIFY_PAYMENT_PATH;
 
   const result = validateServerEnv();
-  assert.ok(
-    result.issues.some(
-      (issue) =>
-        issue.key === "PAYMENT_GATEWAY_MODE" &&
-        issue.message.includes("at least one fully configured provider"),
-    ),
-  );
+  assert.ok(result.issues.some((issue) => issue.key === "SHAM_CASH_API_BASE_URL"));
+  assert.ok(result.issues.some((issue) => issue.key === "SHAM_CASH_DESTINATION_ACCOUNT"));
+  assert.ok(result.issues.some((issue) => issue.key === "SHAM_CASH_WEBHOOK_SECRET"));
+  assert.equal(result.issues.some((issue) => issue.key === "SYRIATEL_CASH_API_BASE_URL"), false);
 
   if (typeof originalPaymentMode === "string") process.env.PAYMENT_GATEWAY_MODE = originalPaymentMode;
   else delete process.env.PAYMENT_GATEWAY_MODE;
+
+  if (typeof originalLiveProviders === "string") process.env.PAYMENT_LIVE_PROVIDERS = originalLiveProviders;
+  else delete process.env.PAYMENT_LIVE_PROVIDERS;
 
   if (typeof originalShamBaseUrl === "string") process.env.SHAM_CASH_API_BASE_URL = originalShamBaseUrl;
   else delete process.env.SHAM_CASH_API_BASE_URL;
@@ -172,6 +174,24 @@ test("validateServerEnv in live mode requires at least one fully configured live
 
   if (typeof originalSyriatelVerifyPath === "string") process.env.SYRIATEL_CASH_VERIFY_PAYMENT_PATH = originalSyriatelVerifyPath;
   else delete process.env.SYRIATEL_CASH_VERIFY_PAYMENT_PATH;
+});
+
+test("validateServerEnv reports invalid PAYMENT_LIVE_PROVIDERS entries", () => {
+  const originalPaymentMode = process.env.PAYMENT_GATEWAY_MODE;
+  const originalLiveProviders = process.env.PAYMENT_LIVE_PROVIDERS;
+
+  process.env.PAYMENT_GATEWAY_MODE = "live";
+  process.env.PAYMENT_LIVE_PROVIDERS = "SHAM_CASH,UNKNOWN_PROVIDER";
+
+  const result = validateServerEnv();
+
+  assert.ok(result.issues.some((issue) => issue.key === "PAYMENT_LIVE_PROVIDERS" && issue.message.includes("unsupported providers")));
+
+  if (typeof originalPaymentMode === "string") process.env.PAYMENT_GATEWAY_MODE = originalPaymentMode;
+  else delete process.env.PAYMENT_GATEWAY_MODE;
+
+  if (typeof originalLiveProviders === "string") process.env.PAYMENT_LIVE_PROVIDERS = originalLiveProviders;
+  else delete process.env.PAYMENT_LIVE_PROVIDERS;
 });
 
 

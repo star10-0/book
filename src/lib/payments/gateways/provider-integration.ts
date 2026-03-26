@@ -4,6 +4,8 @@ const GATEWAY_MODE_ENV = "PAYMENT_GATEWAY_MODE";
 
 export type GatewayExecutionMode = "mock" | "live";
 export type SupportedLiveProvider = "SHAM_CASH" | "SYRIATEL_CASH";
+const LIVE_PROVIDERS_ENV = "PAYMENT_LIVE_PROVIDERS";
+const SUPPORTED_LIVE_PROVIDERS: readonly SupportedLiveProvider[] = ["SHAM_CASH", "SYRIATEL_CASH"];
 
 export interface ProviderIntegrationConfig {
   provider: SupportedLiveProvider;
@@ -11,6 +13,12 @@ export interface ProviderIntegrationConfig {
   mode: GatewayExecutionMode;
   isLiveConfigured: boolean;
   missingEnvKeys: string[];
+}
+
+export interface LiveProviderSelectionResult {
+  selectedProviders: SupportedLiveProvider[];
+  invalidProviders: string[];
+  source: "default" | "env";
 }
 
 const LIVE_PROVIDER_REQUIRED_ENV: Record<SupportedLiveProvider, readonly string[]> = {
@@ -49,6 +57,55 @@ function readMode(): GatewayExecutionMode {
 
 function hasEnv(name: string) {
   return typeof process.env[name] === "string" && process.env[name]!.trim().length > 0;
+}
+
+function isSupportedLiveProvider(value: string): value is SupportedLiveProvider {
+  return (SUPPORTED_LIVE_PROVIDERS as readonly string[]).includes(value);
+}
+
+export function getLiveProvidersEnvKey(): string {
+  return LIVE_PROVIDERS_ENV;
+}
+
+export function getSupportedLiveProviders(): readonly SupportedLiveProvider[] {
+  return SUPPORTED_LIVE_PROVIDERS;
+}
+
+export function parseSelectedLiveProviders(): LiveProviderSelectionResult {
+  const rawValue = process.env[LIVE_PROVIDERS_ENV]?.trim();
+
+  if (!rawValue) {
+    return {
+      selectedProviders: [...SUPPORTED_LIVE_PROVIDERS],
+      invalidProviders: [],
+      source: "default",
+    };
+  }
+
+  const values = rawValue
+    .split(",")
+    .map((item) => item.trim().toUpperCase())
+    .filter(Boolean);
+
+  const selectedProviders: SupportedLiveProvider[] = [];
+  const invalidProviders: string[] = [];
+
+  for (const value of values) {
+    if (isSupportedLiveProvider(value)) {
+      if (!selectedProviders.includes(value)) {
+        selectedProviders.push(value);
+      }
+      continue;
+    }
+
+    invalidProviders.push(value);
+  }
+
+  return {
+    selectedProviders,
+    invalidProviders,
+    source: "env",
+  };
 }
 
 export function getRequiredLiveEnvKeys(provider: SupportedLiveProvider): readonly string[] {
