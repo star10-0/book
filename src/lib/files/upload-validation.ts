@@ -1,5 +1,6 @@
 import path from "node:path";
 import { FileKind } from "@prisma/client";
+import { BOOK_ASSET_EXTENSIONS, BOOK_ASSET_MIME_TYPES } from "@/lib/files/book-asset-metadata";
 
 const MAX_UPLOAD_SIZE_BYTES: Record<FileKind, number> = {
   [FileKind.COVER_IMAGE]: 5 * 1024 * 1024,
@@ -8,6 +9,14 @@ const MAX_UPLOAD_SIZE_BYTES: Record<FileKind, number> = {
   [FileKind.AUDIO]: 50 * 1024 * 1024,
   [FileKind.SAMPLE]: 5 * 1024 * 1024,
 };
+
+type DetectedMime = "application/pdf" | "application/epub+zip" | "image/jpeg" | "image/png" | "image/webp" | "unknown";
+
+export type UploadValidationErrorCode =
+  | "EMPTY_OR_OVERSIZE"
+  | "UNSUPPORTED_EXTENSION_OR_MIME"
+  | "MIME_SIGNATURE_MISMATCH"
+  | "INVALID_SIGNATURE";
 
 function matchesPdfSignature(bytes: Uint8Array) {
   return bytes.length >= 5 && bytes[0] === 0x25 && bytes[1] === 0x50 && bytes[2] === 0x44 && bytes[3] === 0x46 && bytes[4] === 0x2d;
@@ -56,40 +65,40 @@ function matchesEpubSignature(bytes: Uint8Array) {
   return containsAscii(probeSlice, "application/epub+zip");
 }
 
-function matchesCoverSignature(bytes: Uint8Array, extension: string) {
-  if (extension === ".jpg" || extension === ".jpeg") {
-    return bytes.length >= 3 && bytes[0] === 0xff && bytes[1] === 0xd8 && bytes[2] === 0xff;
+function matchesJpegSignature(bytes: Uint8Array) {
+  return bytes.length >= 3 && bytes[0] === 0xff && bytes[1] === 0xd8 && bytes[2] === 0xff;
+}
+
+function matchesPngSignature(bytes: Uint8Array) {
+  return bytes.length >= 8 && bytes[0] === 0x89 && bytes[1] === 0x50 && bytes[2] === 0x4e && bytes[3] === 0x47 && bytes[4] === 0x0d && bytes[5] === 0x0a && bytes[6] === 0x1a && bytes[7] === 0x0a;
+}
+
+function matchesWebpSignature(bytes: Uint8Array) {
+  return bytes.length >= 12 && bytes[0] === 0x52 && bytes[1] === 0x49 && bytes[2] === 0x46 && bytes[3] === 0x46 && bytes[8] === 0x57 && bytes[9] === 0x45 && bytes[10] === 0x42 && bytes[11] === 0x50;
+}
+
+export function detectMimeBySignature(bytes: Uint8Array): DetectedMime {
+  if (matchesPdfSignature(bytes)) {
+    return "application/pdf";
   }
 
-  if (extension === ".png") {
-    return (
-      bytes.length >= 8 &&
-      bytes[0] === 0x89 &&
-      bytes[1] === 0x50 &&
-      bytes[2] === 0x4e &&
-      bytes[3] === 0x47 &&
-      bytes[4] === 0x0d &&
-      bytes[5] === 0x0a &&
-      bytes[6] === 0x1a &&
-      bytes[7] === 0x0a
-    );
+  if (matchesEpubSignature(bytes)) {
+    return "application/epub+zip";
   }
 
-  if (extension === ".webp") {
-    return (
-      bytes.length >= 12 &&
-      bytes[0] === 0x52 &&
-      bytes[1] === 0x49 &&
-      bytes[2] === 0x46 &&
-      bytes[3] === 0x46 &&
-      bytes[8] === 0x57 &&
-      bytes[9] === 0x45 &&
-      bytes[10] === 0x42 &&
-      bytes[11] === 0x50
-    );
+  if (matchesJpegSignature(bytes)) {
+    return "image/jpeg";
   }
 
-  return false;
+  if (matchesPngSignature(bytes)) {
+    return "image/png";
+  }
+
+  if (matchesWebpSignature(bytes)) {
+    return "image/webp";
+  }
+
+  return "unknown";
 }
 
 export function validateUploadSize(kind: FileKind, sizeBytes: number) {
@@ -104,16 +113,73 @@ export function validateFileSignature(kind: FileKind, fileName: string, bytes: U
   const extension = path.extname(fileName).toLowerCase();
 
   if (kind === FileKind.PDF) {
-    return matchesPdfSignature(bytes);
+    return extension === ".pdf" && matchesPdfSignature(bytes);
   }
 
   if (kind === FileKind.EPUB) {
-    return matchesEpubSignature(bytes);
+    return extension === ".epub" && matchesEpubSignature(bytes);
   }
 
   if (kind === FileKind.COVER_IMAGE) {
-    return matchesCoverSignature(bytes, extension);
+    if (extension === ".jpg" || extension === ".jpeg") {
+      return matchesJpegSignature(bytes);
+    }
+
+    if (extension === ".png") {
+      return matchesPngSignature(bytes);
+    }
+
+    if (extension === ".webp") {
+      return matchesWebpSignature(bytes);
+    }
+
+    return false;
   }
 
   return true;
+}
+
+export function validateUploadPayload(input: { kind: FileKind; fileName: string; mimeType: string; sizeBytes: number; bytes: Uint8Array }) {
+  const sizeValidation = validateUploadSize(input.kind, input.sizeBytes);
+
+  if (!sizeValidation.ok) {
+    return { ok: false as const, code: "EMPTY_OR_OVERSIZE" as const, maxBytes: sizeValidation.maxBytes };
+  }
+
+  const kindKey = input.kind as keyof typeof BOOK_ASSET_MIME_TYPES;
+  const allowedMimes = BOOK_ASSET_MIME_TYPES[kindKey] ?? [];
+  const allowedExtensions = BOOK_ASSET_EXTENSIONS[kindKey] ?? [];
+  const extension = path.extname(input.fileName).toLowerCase();
+
+  if (!allowedMimes.includes(input.mimeType) || !allowedExtensions.includes(extension)) {
+    return { ok: false as const, code: "UNSUPPORTED_EXTENSION_OR_MIME" as const, maxBytes: sizeValidation.maxBytes };
+  }
+
+  if (!validateFileSignature(input.kind, input.fileName, input.bytes)) {
+    return { ok: false as const, code: "INVALID_SIGNATURE" as const, maxBytes: sizeValidation.maxBytes };
+  }
+
+  const detected = detectMimeBySignature(input.bytes);
+
+  if (detected === "unknown" || !allowedMimes.includes(detected)) {
+    return { ok: false as const, code: "MIME_SIGNATURE_MISMATCH" as const, maxBytes: sizeValidation.maxBytes };
+  }
+
+  return { ok: true as const, maxBytes: sizeValidation.maxBytes };
+}
+
+export function getUploadValidationArabicMessage(errorCode: UploadValidationErrorCode, maxBytes: number) {
+  if (errorCode === "EMPTY_OR_OVERSIZE") {
+    return `حجم الملف غير صالح أو يتجاوز الحد المسموح (${Math.floor(maxBytes / (1024 * 1024))}MB).`;
+  }
+
+  if (errorCode === "UNSUPPORTED_EXTENSION_OR_MIME") {
+    return "صيغة الملف أو نوع MIME غير مدعوم لهذا النوع.";
+  }
+
+  if (errorCode === "MIME_SIGNATURE_MISMATCH") {
+    return "نوع الملف الفعلي لا يطابق النوع المصرّح به. يرجى رفع ملف صالح.";
+  }
+
+  return "بصمة الملف لا تطابق نوعه المعلن.";
 }

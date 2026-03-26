@@ -159,7 +159,7 @@ export default async function BookDetailsPage({ params }: BookDetailsPageProps) 
             metadata: book.metadata,
             publicReadUrl: contentAccess.canReadPublicly || contentAccess.canReadPreview ? `/books/${book.slug}/read` : null,
             publicReadLabel: contentAccess.canReadPreview ? "قراءة عينة" : "اقرأ الآن",
-            publicDownloadUrl: contentAccess.canDownloadPublicly && contentAccess.readableFile ? `/api/books/assets/${contentAccess.readableFile.id}` : null,
+            publicDownloadUrl: contentAccess.canDownloadPublicly && contentAccess.readableFile ? `/api/books/assets/${contentAccess.readableFile.id}?download=1` : null,
           }}
           offers={book.offers}
           averageRating={averageRating}
