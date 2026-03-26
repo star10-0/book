@@ -1,7 +1,7 @@
 import { Prisma } from "@prisma/client";
 import { API_ERROR_CODES, jsonError, parseJsonBody } from "@/lib/api-response";
 import { getCurrentUser } from "@/lib/auth-session";
-import { logError, getClientIp, getRequestId } from "@/lib/observability/logger";
+import { logError, logWarn, getClientIp, getRequestId } from "@/lib/observability/logger";
 import {
   calculateOrderTotals,
   isOfferCurrentlyAvailable,
@@ -21,8 +21,16 @@ export async function POST(request: Request) {
 
   const rateLimit = await enforceRateLimit({ key: `orders:create:${clientIp}`, limit: 30, windowMs: 60_000, requireDistributedInProduction: true });
   if (!rateLimit.allowed) {
-    if (rateLimit.reason === "RATE_LIMIT_BACKEND_UNAVAILABLE") {
-      return rejectRateLimitUnavailable();
+    if (rateLimit.reason === "RATE_LIMIT_BACKEND_UNAVAILABLE" || rateLimit.reason === "RATE_LIMIT_ENV_MISCONFIG") {
+      logWarn("Order rate limit unavailable", {
+        route: "/api/orders",
+        requestId,
+        ip: clientIp,
+        reason: rateLimit.reason,
+        details: rateLimit.details,
+        backend: rateLimit.backend,
+      });
+      return rejectRateLimitUnavailable(rateLimit.reason);
     }
     return rejectRateLimited(rateLimit.retryAfterSeconds);
   }
