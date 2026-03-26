@@ -69,6 +69,7 @@ The app validates environment variables at server startup (`src/instrumentation.
 - `NEXTAUTH_URL` (absolute URL)
 - `APP_BASE_URL` (absolute URL)
 - `BOOK_STORAGE_PROVIDER` (`local` | `s3` | `r2`)
+- `BOOK_STORAGE_S3_ACCESS_KEY_ID`, `BOOK_STORAGE_S3_SECRET_ACCESS_KEY`, `BOOK_STORAGE_S3_PUBLIC_BUCKET` (when `BOOK_STORAGE_PROVIDER=s3|r2`)
 - `PAYMENT_GATEWAY_MODE` (`mock` | `live`)
 - `KV_REST_API_URL`
 - `KV_REST_API_TOKEN`
@@ -132,6 +133,17 @@ When using bundled Postgres, also persist:
 - `POSTGRES_DATA_PATH`
 
 This keeps **local filesystem storage** viable for single-VPS production rollouts.
+
+## Object Storage (S3 / compatible)
+
+The app now supports real object storage for uploads and protected reader files.
+
+- `BOOK_STORAGE_PROVIDER=s3|r2` enables S3-compatible mode.
+- `BOOK_STORAGE_S3_ENDPOINT` is optional (use it for R2/MinIO/other compatible providers).
+- Cover images (`COVER_IMAGE`) are stored in the public bucket and can expose `BOOK_STORAGE_PUBLIC_BASE_URL`.
+- Reader assets (`PDF`/`EPUB`) are stored in private storage and delivered through short-lived signed URLs after access checks.
+- Local storage remains fully supported via `BOOK_STORAGE_PROVIDER=local`.
+
 
 ---
 
@@ -232,7 +244,7 @@ Use external `DATABASE_URL` in `.env.production`.
 
 Before true large-scale public launch:
 
-1. `BOOK_STORAGE_PROVIDER=local` is VPS-friendly but not ideal for horizontal scaling (shared object storage migration still pending).
+1. Object storage is available (`BOOK_STORAGE_PROVIDER=s3|r2`), but production must still enforce secure key rotation and bucket-level policies.
 2. Syriatel Cash live integration is still placeholder.
 3. Full production observability stack (centralized logs/metrics/alerts) is not yet codified in this repo.
 4. Disaster recovery is documented, but automated backup verification is still an operational responsibility.

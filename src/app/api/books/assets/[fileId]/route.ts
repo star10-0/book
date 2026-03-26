@@ -5,6 +5,7 @@ import { Readable } from "node:stream";
 import { AccessGrantStatus, FileKind, StorageProvider } from "@prisma/client";
 import { getCurrentUser } from "@/lib/auth-session";
 import { canAccessProtectedAsset, resolveAssetDisposition } from "@/lib/files/protected-asset-policy";
+import { createStorageProvider } from "@/lib/files/storage-provider";
 import { prisma } from "@/lib/prisma";
 import { jsonNoStore } from "@/lib/security";
 
@@ -85,6 +86,9 @@ export async function GET(request: Request, { params }: BookAssetRouteParams) {
       kind: true,
       storageProvider: true,
       storageKey: true,
+      bucket: true,
+      region: true,
+      publicUrl: true,
       mimeType: true,
       originalFileName: true,
       book: {
@@ -114,7 +118,28 @@ export async function GET(request: Request, { params }: BookAssetRouteParams) {
   }
 
   if (file.storageProvider !== StorageProvider.LOCAL) {
-    return jsonNoStore({ message: "مزود التخزين الحالي لا يدعم التسليم المحمي بعد." }, { status: 501 });
+    try {
+      const provider = createStorageProvider();
+      const signedUrl = await provider.createSignedAssetUrl({
+        pointer: {
+          key: file.storageKey,
+          bucket: file.bucket ?? undefined,
+          region: file.region ?? undefined,
+          publicUrl: file.publicUrl ?? undefined,
+        },
+        fileName: file.originalFileName ?? `${file.id}.${file.kind.toLowerCase()}`,
+        disposition: access.disposition,
+        mimeType: file.mimeType,
+      });
+
+      if (!signedUrl) {
+        return jsonNoStore({ message: "تعذر إنشاء رابط الوصول للملف." }, { status: 500 });
+      }
+
+      return Response.redirect(signedUrl, 302);
+    } catch {
+      return jsonNoStore({ message: "تعذر تجهيز الملف للقراءة حالياً." }, { status: 500 });
+    }
   }
 
   const filePath = await resolveReadableLocalPath(file.storageKey);
