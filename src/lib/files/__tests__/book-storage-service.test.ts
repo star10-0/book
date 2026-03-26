@@ -1,7 +1,12 @@
 import assert from "node:assert/strict";
 import test from "node:test";
 import { FileKind } from "@prisma/client";
-import { BookStorageService, getAssetVisibility, mapStorageProviderKeyToEnum } from "@/lib/files/book-storage-service";
+import {
+  BookStorageService,
+  getAssetVisibility,
+  mapStorageProviderEnumToKey,
+  mapStorageProviderKeyToEnum,
+} from "@/lib/files/book-storage-service";
 import type { BookAssetPointer, StorageProviderAdapter, StoredUpload } from "@/lib/files/storage-provider";
 
 test("book storage service uses public visibility for covers and private for reading assets", async () => {
@@ -59,4 +64,7 @@ test("storage provider mapping and visibility helpers are stable", () => {
   assert.equal(mapStorageProviderKeyToEnum("local"), "LOCAL");
   assert.equal(mapStorageProviderKeyToEnum("s3"), "S3");
   assert.equal(mapStorageProviderKeyToEnum("r2"), "CLOUDFLARE_R2");
+  assert.equal(mapStorageProviderEnumToKey("LOCAL"), "local");
+  assert.equal(mapStorageProviderEnumToKey("S3"), "s3");
+  assert.equal(mapStorageProviderEnumToKey("CLOUDFLARE_R2"), "r2");
 });

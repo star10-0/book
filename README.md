@@ -156,6 +156,14 @@ The app now supports real object storage for uploads and protected reader files.
 - Reader assets (`PDF`/`EPUB`) are stored in private storage and delivered through short-lived signed URLs after access checks.
 - Local storage remains fully supported via `BOOK_STORAGE_PROVIDER=local`.
 
+### Protected asset delivery strategy
+
+- Reader files are always requested through `GET /api/books/assets/:fileId`.
+- The route enforces the existing access-grant policy first (`PAID_ONLY`, preview/public rules, and download disposition checks).
+- For `local` storage, the API streams bytes directly from `storage/private/uploads` with `Cache-Control: private, no-store`.
+- For `s3`/`r2`, the API returns a short-lived pre-signed object URL (HTTP 302) only after authorization passes.
+- Cover images remain public assets; paid reader files are never exposed as permanent public URLs.
+
 
 ---
 

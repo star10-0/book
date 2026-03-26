@@ -24,6 +24,18 @@ export function mapStorageProviderKeyToEnum(providerKey: string): StorageProvide
   return StorageProvider.LOCAL;
 }
 
+export function mapStorageProviderEnumToKey(provider: StorageProvider): StorageProviderAdapter["key"] {
+  if (provider === StorageProvider.S3) {
+    return "s3";
+  }
+
+  if (provider === StorageProvider.CLOUDFLARE_R2) {
+    return "r2";
+  }
+
+  return "local";
+}
+
 export type UploadBookAssetInput = {
   bookId: string;
   kind: FileKind;

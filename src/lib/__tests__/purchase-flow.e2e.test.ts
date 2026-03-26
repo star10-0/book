@@ -4,6 +4,7 @@ import { AccessGrantStatus, AccessGrantType, ContentAccessPolicy, OfferType } fr
 import { grantAccessForPaidOrder } from "@/lib/access-grants";
 import { hashPassword, verifyPassword } from "@/lib/auth-password";
 import { canAccessProtectedAsset } from "@/lib/files/protected-asset-policy";
+import { createStorageProvider } from "@/lib/files/storage-provider";
 import { calculateOrderTotals, mapOfferTypeToAccessGrantType, validateCreateOrderPayload } from "@/lib/orders/create-order";
 
 type AccessGrantRecord = {
@@ -17,7 +18,7 @@ type AccessGrantRecord = {
   expiresAt: Date | null;
 };
 
-test("e2e purchase flow: sign-in to reader access grant", async () => {
+test("e2e happy path: sign in -> order -> payment completion -> grant -> reader", async () => {
   const user = {
     id: "user12345",
     email: "reader@example.com",
@@ -136,5 +137,64 @@ test("e2e purchase flow: sign-in to reader access grant", async () => {
   assert.deepEqual(readerAccess, {
     allowed: true,
     disposition: "inline",
+  });
+
+  const originals = {
+    provider: process.env.BOOK_STORAGE_PROVIDER,
+    accessKey: process.env.BOOK_STORAGE_S3_ACCESS_KEY_ID,
+    secret: process.env.BOOK_STORAGE_S3_SECRET_ACCESS_KEY,
+    bucket: process.env.BOOK_STORAGE_S3_PUBLIC_BUCKET,
+    privateBucket: process.env.BOOK_STORAGE_S3_PRIVATE_BUCKET,
+    region: process.env.BOOK_STORAGE_S3_REGION,
+    endpoint: process.env.BOOK_STORAGE_S3_ENDPOINT,
+  };
+
+  process.env.BOOK_STORAGE_PROVIDER = "s3";
+  process.env.BOOK_STORAGE_S3_ACCESS_KEY_ID = "test-access";
+  process.env.BOOK_STORAGE_S3_SECRET_ACCESS_KEY = "test-secret";
+  process.env.BOOK_STORAGE_S3_PUBLIC_BUCKET = "public-bucket";
+  process.env.BOOK_STORAGE_S3_PRIVATE_BUCKET = "private-bucket";
+  process.env.BOOK_STORAGE_S3_REGION = "us-east-1";
+  process.env.BOOK_STORAGE_S3_ENDPOINT = "https://s3.us-east-1.amazonaws.com";
+
+  try {
+    const provider = createStorageProvider("s3");
+    const signed = await provider.createSignedAssetUrl({
+      pointer: { key: "books/book12345/pdf/file.pdf", bucket: "private-bucket" },
+      fileName: "book.pdf",
+      disposition: "inline",
+      mimeType: "application/pdf",
+    });
+
+    assert.ok(signed, "private reader file should be delivered through signed url in S3 mode");
+    assert.match(signed ?? "", /X-Amz-Signature=/);
+  } finally {
+    if (typeof originals.provider === "string") process.env.BOOK_STORAGE_PROVIDER = originals.provider;
+    else delete process.env.BOOK_STORAGE_PROVIDER;
+    if (typeof originals.accessKey === "string") process.env.BOOK_STORAGE_S3_ACCESS_KEY_ID = originals.accessKey;
+    else delete process.env.BOOK_STORAGE_S3_ACCESS_KEY_ID;
+    if (typeof originals.secret === "string") process.env.BOOK_STORAGE_S3_SECRET_ACCESS_KEY = originals.secret;
+    else delete process.env.BOOK_STORAGE_S3_SECRET_ACCESS_KEY;
+    if (typeof originals.bucket === "string") process.env.BOOK_STORAGE_S3_PUBLIC_BUCKET = originals.bucket;
+    else delete process.env.BOOK_STORAGE_S3_PUBLIC_BUCKET;
+    if (typeof originals.privateBucket === "string") process.env.BOOK_STORAGE_S3_PRIVATE_BUCKET = originals.privateBucket;
+    else delete process.env.BOOK_STORAGE_S3_PRIVATE_BUCKET;
+    if (typeof originals.region === "string") process.env.BOOK_STORAGE_S3_REGION = originals.region;
+    else delete process.env.BOOK_STORAGE_S3_REGION;
+    if (typeof originals.endpoint === "string") process.env.BOOK_STORAGE_S3_ENDPOINT = originals.endpoint;
+    else delete process.env.BOOK_STORAGE_S3_ENDPOINT;
+  }
+});
+
+test("e2e failure path: missing grant denies paid-only reader access", () => {
+  const readerAccess = canAccessProtectedAsset({
+    policy: ContentAccessPolicy.PAID_ONLY,
+    hasActiveGrant: false,
+    requestedDisposition: "inline",
+  });
+
+  assert.deepEqual(readerAccess, {
+    allowed: false,
+    reason: "UNAUTHORIZED",
   });
 });
