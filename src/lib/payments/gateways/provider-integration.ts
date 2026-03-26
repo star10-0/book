@@ -75,8 +75,8 @@ export function parseSelectedLiveProviders(): LiveProviderSelectionResult {
   }
 
   const values = rawValue
-    .split(",")
-    .map((item) => item.trim().toUpperCase())
+    .split(/[,\s]+/)
+    .map((item) => item.trim().replace(/^['"]|['"]$/g, "").toUpperCase())
     .filter(Boolean);
 
   const selectedProviders: SupportedLiveProvider[] = [];

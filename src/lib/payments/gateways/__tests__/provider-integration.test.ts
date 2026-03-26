@@ -64,3 +64,16 @@ test("parseSelectedLiveProviders accepts CSV and reports invalid entries", () =>
 
   process.env = originalEnv;
 });
+
+test("parseSelectedLiveProviders accepts quoted provider values", () => {
+  const originalEnv = { ...process.env };
+  process.env.PAYMENT_LIVE_PROVIDERS = "\"SHAM_CASH\"";
+
+  const selection = parseSelectedLiveProviders();
+
+  assert.deepEqual(selection.selectedProviders, ["SHAM_CASH"]);
+  assert.deepEqual(selection.invalidProviders, []);
+  assert.equal(selection.source, "env");
+
+  process.env = originalEnv;
+});
