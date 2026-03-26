@@ -48,10 +48,39 @@ export async function POST(request: Request) {
 
   const integration = getProviderIntegrationConfig(provider);
   const selectedProviders = parseSelectedLiveProviders();
+  if (integration && integration.mode === "live" && selectedProviders.invalidProviders.length > 0) {
+    return jsonNoStore(
+      {
+        message: "قيمة مزودي الدفع المباشرين غير صالحة على الخادم.",
+        error: {
+          code: "PAYMENT_LIVE_PROVIDERS_INVALID",
+          mode: integration.mode,
+          selectedLiveProviders: selectedProviders.selectedProviders,
+          invalidProviders: selectedProviders.invalidProviders,
+        },
+      },
+      { status: 500 },
+    );
+  }
+
+  if (integration && integration.mode === "live" && selectedProviders.selectedProviders.length === 0) {
+    return jsonNoStore(
+      {
+        message: "لا يوجد مزود دفع مباشر مفعّل على الخادم.",
+        error: {
+          code: "PAYMENT_LIVE_PROVIDERS_EMPTY",
+          mode: integration.mode,
+          selectedLiveProviders: selectedProviders.selectedProviders,
+          invalidProviders: selectedProviders.invalidProviders,
+        },
+      },
+      { status: 500 },
+    );
+  }
+
   if (
     integration &&
     integration.mode === "live" &&
-    selectedProviders.selectedProviders.length > 0 &&
     !selectedProviders.selectedProviders.includes(integration.provider)
   ) {
     return jsonNoStore(
