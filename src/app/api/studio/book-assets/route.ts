@@ -1,12 +1,11 @@
-import path from "node:path";
-import { FileKind, StorageProvider, UserRole } from "@prisma/client";
+import { FileKind, UserRole } from "@prisma/client";
 import { NextResponse } from "next/server";
 
 import { requireCreator } from "@/lib/auth-session";
 import { canManageCreatorBook } from "@/lib/authz";
-import { BOOK_ASSET_EXTENSIONS, BOOK_ASSET_MIME_TYPES, isSupportedAdminBookAssetKind } from "@/lib/files/book-asset-metadata";
-import { createStorageProvider } from "@/lib/files/storage-provider";
-import { validateFileSignature, validateUploadSize } from "@/lib/files/upload-validation";
+import { isSupportedAdminBookAssetKind } from "@/lib/files/book-asset-metadata";
+import { BookStorageService, mapStorageProviderKeyToEnum } from "@/lib/files/book-storage-service";
+import { getUploadValidationArabicMessage, validateUploadPayload } from "@/lib/files/upload-validation";
 import { getClientIp } from "@/lib/observability/logger";
 import { prisma } from "@/lib/prisma";
 import { enforceRateLimit, isSameOriginMutation, rejectCrossOriginMutation, rejectRateLimited } from "@/lib/security";
@@ -20,20 +19,6 @@ function parseKind(input: string | null): FileKind | null {
   if (normalized === FileKind.PDF) return FileKind.PDF;
   if (normalized === FileKind.EPUB) return FileKind.EPUB;
   return null;
-}
-
-function inferStorageProviderEnum(providerKey: string): StorageProvider {
-  if (providerKey === "s3") return StorageProvider.S3;
-  if (providerKey === "r2") return StorageProvider.CLOUDFLARE_R2;
-  return StorageProvider.LOCAL;
-}
-
-function isAllowedFileForKind(kind: FileKind, fileName: string, mimeType: string): boolean {
-  const allowedMimes = BOOK_ASSET_MIME_TYPES[kind as keyof typeof BOOK_ASSET_MIME_TYPES];
-  const allowedExtensions = BOOK_ASSET_EXTENSIONS[kind as keyof typeof BOOK_ASSET_EXTENSIONS];
-  const extension = path.extname(fileName).toLowerCase();
-
-  return allowedMimes.includes(mimeType) && allowedExtensions.includes(extension);
 }
 
 async function canManageBook(userId: string, role: UserRole, bookId: string) {
@@ -108,31 +93,28 @@ export async function POST(request: Request) {
     return NextResponse.json({ error: "الأنواع المدعومة حاليًا: COVER_IMAGE, EPUB, PDF" }, { status: 400 });
   }
 
-  if (!isAllowedFileForKind(kind, file.name, file.type)) {
-    return NextResponse.json({ error: "صيغة الملف أو نوع MIME غير مدعوم لهذا النوع." }, { status: 400 });
-  }
-
-  const sizeValidation = validateUploadSize(kind, file.size);
-  if (!sizeValidation.ok) {
-    return NextResponse.json({ error: `حجم الملف يتجاوز الحد المسموح (${Math.floor(sizeValidation.maxBytes / (1024 * 1024))}MB).` }, { status: 400 });
-  }
-
-  const provider = createStorageProvider();
   const bytes = new Uint8Array(await file.arrayBuffer());
+  const validation = validateUploadPayload({
+    kind,
+    fileName: file.name,
+    mimeType: file.type,
+    sizeBytes: file.size,
+    bytes,
+  });
 
-  if (!validateFileSignature(kind, file.name, bytes)) {
-    return NextResponse.json({ error: "بصمة الملف لا تطابق نوعه المعلن." }, { status: 400 });
+  if (!validation.ok) {
+    return NextResponse.json({ error: getUploadValidationArabicMessage(validation.code, validation.maxBytes) }, { status: 400 });
   }
 
-  const shouldBePublic = kind === FileKind.COVER_IMAGE;
+  const storageService = new BookStorageService();
 
-  const uploaded = await provider.uploadFile({
+  const uploaded = await storageService.uploadBookAsset({
+    bookId: book.id,
+    kind,
     bytes,
-    folder: `books/${book.id}/${kind.toLowerCase()}`,
     fileName: file.name,
     fileSizeBytes: file.size,
     mimeType: file.type,
-    visibility: shouldBePublic ? "public" : "private",
   });
 
   const previousAsset = await prisma.bookFile.findFirst({
@@ -151,7 +133,7 @@ export async function POST(request: Request) {
   });
 
   if (previousAsset) {
-    await provider.deleteFile({
+    await storageService.deleteBookAsset({
       key: previousAsset.storageKey,
       bucket: previousAsset.bucket ?? undefined,
       region: previousAsset.region ?? undefined,
@@ -169,7 +151,7 @@ export async function POST(request: Request) {
         },
       },
       update: {
-        storageProvider: inferStorageProviderEnum(provider.key),
+        storageProvider: mapStorageProviderKeyToEnum(storageService.providerKey),
         storageKey: uploaded.pointer.key,
         bucket: uploaded.pointer.bucket ?? null,
         region: uploaded.pointer.region ?? null,
@@ -182,7 +164,7 @@ export async function POST(request: Request) {
         bookId: book.id,
         kind,
         sortOrder: 0,
-        storageProvider: inferStorageProviderEnum(provider.key),
+        storageProvider: mapStorageProviderKeyToEnum(storageService.providerKey),
         storageKey: uploaded.pointer.key,
         bucket: uploaded.pointer.bucket ?? null,
         region: uploaded.pointer.region ?? null,
@@ -249,9 +231,9 @@ export async function DELETE(request: Request) {
     return NextResponse.json({ error: "غير مسموح بالوصول لهذا الكتاب." }, { status: 403 });
   }
 
-  const provider = createStorageProvider();
+  const storageService = new BookStorageService();
 
-  await provider.deleteFile({
+  await storageService.deleteBookAsset({
     key: asset.storageKey,
     bucket: asset.bucket ?? undefined,
     region: asset.region ?? undefined,
