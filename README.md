@@ -36,47 +36,52 @@
 
 ---
 
-## Sprint 5: Deployment and Production Readiness
+## Sprint 3: Production Launch Readiness (Docker/VPS)
 
-This repository now includes an explicit production deployment flow for Docker/VPS with persistent local storage.
+This repository includes a production-first Docker/VPS deployment flow with explicit migration ordering, startup env validation, healthchecks, and operational runbooks.
 
 ### Deployment artifacts
 
 - `Dockerfile`: multi-stage production image.
 - `docker-compose.prod.yml`: production orchestration for `db`, one-off `migrate`, and `app`.
-- `docker-compose.app.yml`: app-only deployment (use with managed PostgreSQL).
+- `docker-compose.app.yml`: app + one-off `migrate` (for managed PostgreSQL).
 - `.env.production.example`: complete production variable template including mount and compose overrides.
 
-### Production build/start contract
+### Build/start contract
 
-- Build: `npm run build`
-- Runtime start: `npm run start`
-- Production-safe start (migration + app): `npm run start:prod`
-- Migration only: `npm run prisma:migrate:deploy`
+- Build image contents: `npm run build`
+- Run app server only: `npm run start`
+- Run migrations only: `npm run prisma:migrate:deploy`
 
-`docker-compose.prod.yml` runs migration in a dedicated one-off `migrate` service before starting `app`.
+> Production startup order is migration-first, app-second. Do **not** use `prisma migrate dev` in production.
 
 ---
 
-## Production Environment Variables
+## Production Environment Variables (exact)
 
-The app validates environment variables at server startup (`src/instrumentation.ts`) and throws in production for missing/invalid required values.
+Startup validation runs via `src/instrumentation.ts` and `src/lib/env.ts`.
 
-### Required in production
+### Required
 
+- `NODE_ENV=production`
 - `DATABASE_URL`
 - `AUTH_SECRET` (minimum 32 chars)
 - `NEXTAUTH_URL` (absolute URL)
 - `APP_BASE_URL` (absolute URL)
 - `BOOK_STORAGE_PROVIDER` (`local` | `s3` | `r2`)
-- `BOOK_STORAGE_S3_ACCESS_KEY_ID`, `BOOK_STORAGE_S3_SECRET_ACCESS_KEY`, `BOOK_STORAGE_S3_PUBLIC_BUCKET` (when `BOOK_STORAGE_PROVIDER=s3|r2`)
 - `PAYMENT_GATEWAY_MODE` (`mock` | `live`)
+- `ALLOW_MOCK_PAYMENTS=false` in production
+- `ALLOW_MOCK_PAYMENT_VERIFICATION=false` in production
 - `KV_REST_API_URL`
 - `KV_REST_API_TOKEN`
 
-### Conditionally required
+### Required when `BOOK_STORAGE_PROVIDER=s3|r2`
 
-When `PAYMENT_GATEWAY_MODE=live`, also set:
+- `BOOK_STORAGE_S3_ACCESS_KEY_ID`
+- `BOOK_STORAGE_S3_SECRET_ACCESS_KEY`
+- `BOOK_STORAGE_S3_PUBLIC_BUCKET`
+
+### Required when `PAYMENT_GATEWAY_MODE=live`
 
 - `SHAM_CASH_API_BASE_URL`
 - `SHAM_CASH_API_KEY`
@@ -92,108 +97,14 @@ When `PAYMENT_GATEWAY_MODE=live`, also set:
 - `SYRIATEL_CASH_CREATE_PAYMENT_PATH`
 - `SYRIATEL_CASH_VERIFY_PAYMENT_PATH`
 
-For local development/testing mock flows only, set all of the following explicitly:
-
-- `PAYMENT_GATEWAY_MODE=mock`
-- `ALLOW_MOCK_PAYMENTS=true`
-- `ALLOW_MOCK_PAYMENT_VERIFICATION=true`
-
-Use `.env.production.example` as the source of truth for production setup.
+Use `.env.production.example` as the source of truth.
 
 ---
 
-## Prisma Production Flow (No `migrate dev`)
+## Exact Production Deployment Steps (Docker/VPS)
 
-Production uses **deploy-only** migrations:
-
-```bash
-npm run prisma:migrate:deploy
-```
-
-Do **not** run `prisma migrate dev` in production.
-
-### Required migration/start order
-
-1. Start PostgreSQL.
-2. Wait for DB health/readiness.
-3. Run `prisma migrate deploy`.
-4. Start Next.js app.
-
-In Docker production (`docker-compose.prod.yml`), this order is enforced via service dependencies:
-
-- `db` must be healthy.
-- `migrate` must exit successfully.
-- then `app` starts.
-
----
-
-## Persistent Storage Requirements (Docker/VPS)
-
-Persist these paths to avoid data loss:
-
-- `public/uploads` (container path: `/app/public/uploads`)
-- `storage/private/uploads` (container path: `/app/storage/private/uploads`)
-
-When using bundled Postgres, also persist:
-
-- `/var/lib/postgresql/data`
-
-`docker-compose.prod.yml` defaults to host bind mounts under `./volumes/*` and can be overridden with:
-
-- `PUBLIC_UPLOADS_PATH`
-- `PRIVATE_UPLOADS_PATH`
-- `POSTGRES_DATA_PATH`
-
-This keeps **local filesystem storage** viable for single-VPS production rollouts.
-
-## Object Storage (S3 / compatible)
-
-The app now supports real object storage for uploads and protected reader files.
-
-- `BOOK_STORAGE_PROVIDER=s3|r2` enables S3-compatible mode.
-- `BOOK_STORAGE_S3_ENDPOINT` is optional (use it for R2/MinIO/other compatible providers).
-- Cover images (`COVER_IMAGE`) are stored in the public bucket and can expose `BOOK_STORAGE_PUBLIC_BASE_URL`.
-- Reader assets (`PDF`/`EPUB`) are stored in private storage and delivered through short-lived signed URLs after access checks.
-- Local storage remains fully supported via `BOOK_STORAGE_PROVIDER=local`.
-
-### Protected asset delivery strategy
-
-- Reader files are always requested through `GET /api/books/assets/:fileId`.
-- The route enforces the existing access-grant policy first (`PAID_ONLY`, preview/public rules, and download disposition checks).
-- For `local` storage, the API streams bytes directly from `storage/private/uploads` with `Cache-Control: private, no-store`.
-- For `s3`/`r2`, the API returns a short-lived pre-signed object URL (HTTP 302) only after authorization passes.
-- Cover images remain public assets; paid reader files are never exposed as permanent public URLs.
-
-
----
-
-## Staging Deployment (Docker)
-
-1. Prepare env file:
-
-   ```bash
-   cp .env.production.example .env.production
-   ```
-
-2. Fill staging domain and secrets.
-3. Build + launch:
-
-   ```bash
-   docker compose -f docker-compose.prod.yml --env-file .env.production up -d --build
-   ```
-
-4. Check migration and app logs:
-
-   ```bash
-   docker compose -f docker-compose.prod.yml logs -f migrate app
-   ```
-
-5. Smoke test core flows (auth, checkout, library, reader).
-
-## Production Deployment on VPS (Exact Steps)
-
-1. Install Docker Engine + Docker Compose plugin on the VPS.
-2. Clone repo into a stable path, e.g. `/opt/book`.
+1. Install Docker Engine + Docker Compose plugin.
+2. Clone repository into a stable path (example: `/opt/book`).
 3. Create persistent directories:
 
    ```bash
@@ -202,72 +113,150 @@ The app now supports real object storage for uploads and protected reader files.
    mkdir -p /opt/book/volumes/private-uploads
    ```
 
-4. Prepare environment:
+4. Create env file:
 
    ```bash
    cp /opt/book/.env.production.example /opt/book/.env.production
    ```
 
-5. Edit `.env.production` with real values (URLs, secrets, DB credentials, KV credentials).
-6. Start services:
+5. Fill real URLs, secrets, storage credentials, and payment provider credentials.
+6. Start production stack:
 
    ```bash
    cd /opt/book
    docker compose -f docker-compose.prod.yml --env-file .env.production up -d --build
    ```
 
-7. Verify rollout:
+7. Verify migration succeeded before app traffic:
 
    ```bash
    docker compose -f docker-compose.prod.yml ps
    docker compose -f docker-compose.prod.yml logs --tail=200 migrate app
    ```
 
-8. Put app behind TLS reverse proxy (Nginx/Caddy/Traefik) and point domain to `APP_BASE_URL`/`NEXTAUTH_URL`.
+8. Verify runtime health endpoint:
 
-### App-only deployment (managed PostgreSQL)
+   ```bash
+   curl -fsS http://127.0.0.1:${APP_PORT:-3000}/api/health
+   ```
+
+9. Put app behind TLS reverse proxy (Nginx/Caddy/Traefik), and ensure proxy forwards `x-forwarded-host` and `x-forwarded-proto`.
+
+### Managed PostgreSQL deployment
 
 ```bash
 docker compose -f docker-compose.app.yml --env-file .env.production up -d --build
 ```
 
-Use external `DATABASE_URL` in `.env.production`.
+This runs `migrate` first, then starts `app`.
 
 ---
 
-## Operations Basics
+## Exact Staging Checklist
 
-### Backups
+1. Copy production template and set staging domain values for `APP_BASE_URL` and `NEXTAUTH_URL`.
+2. Keep `PAYMENT_GATEWAY_MODE=mock` in staging unless full live gateway verification is intentionally being tested.
+3. Keep `ALLOW_MOCK_PAYMENTS=false` and `ALLOW_MOCK_PAYMENT_VERIFICATION=false` by default; enable temporarily only for controlled QA windows.
+4. Deploy with `docker-compose.prod.yml` using staging env.
+5. Confirm `migrate` exited successfully and `app` is healthy.
+6. Validate smoke flows:
+   - sign up/sign in
+   - checkout create order
+   - payment attempt creation and status verification path
+   - library access
+   - reader open flow
+7. Confirm structured logs include JSON lines and request IDs.
+8. Confirm backups execute and can be restored in a staging restore drill.
 
-- PostgreSQL: scheduled logical backup or volume snapshots.
-- Uploads: snapshot both mounted paths together:
-  - `public/uploads`
-  - `storage/private/uploads`
-- Take an on-demand backup before every production release.
+---
 
-### Restore (minimum)
+## Persistence, Storage, and Repo Hygiene
+
+### Persistent paths
+
+- Postgres data: `/var/lib/postgresql/data` (container)
+- Public uploads: `/app/public/uploads` (container)
+- Private uploads: `/app/storage/private/uploads` (container)
+
+### Object storage expectations
+
+- Prefer `BOOK_STORAGE_PROVIDER=s3|r2` for public launch durability.
+- Local filesystem mode is supported, but requires stable host disks and backups of both upload paths.
+
+### Repo hygiene rule
+
+- Uploaded user/content files must never be committed to Git.
+- `public/uploads`, `storage/private/uploads`, and host `volumes/` are intentionally gitignored.
+
+---
+
+## Operations Readiness
+
+### Structured logging
+
+- Use JSON logs (already implemented in `src/lib/observability/logger.ts`).
+- Preserve `requestId` in route logs for traceability.
+- Collect stdout/stderr from Docker (`docker compose logs`) into your log sink when available.
+
+### Minimal observability
+
+- Health endpoint: `GET /api/health`
+- Container healthcheck is wired to `/api/health`.
+- Error visibility: inspect app logs for `"level":"error"` records.
+- Alerts (minimum):
+  - container unhealthy/restart loop
+  - migration job failure
+  - high rate of 5xx responses via reverse proxy metrics
+
+---
+
+## Backups, Restore, and Rollback
+
+### Backup basics
+
+- PostgreSQL logical backup example:
+
+  ```bash
+  docker compose -f docker-compose.prod.yml exec -T db \
+    pg_dump -U "$POSTGRES_USER" -d "$POSTGRES_DB" > backup_$(date +%F_%H%M%S).sql
+  ```
+
+- Upload backup example:
+
+  ```bash
+  tar -czf uploads_$(date +%F_%H%M%S).tar.gz volumes/public-uploads volumes/private-uploads
+  ```
+
+- Run an on-demand backup before every production rollout.
+
+### Restore basics
 
 1. Stop app traffic.
-2. Restore PostgreSQL from selected backup point.
-3. Restore both upload mounts from the same point-in-time window.
-4. Restart services and run smoke tests.
+2. Restore DB dump:
 
-### Rollback expectations
+   ```bash
+   cat backup.sql | docker compose -f docker-compose.prod.yml exec -T db psql -U "$POSTGRES_USER" -d "$POSTGRES_DB"
+   ```
 
-- Keep previous Docker image/tag available.
-- Application-only regressions: rollback app image.
-- Schema-breaking releases: restore DB + upload volumes to pre-release snapshot, then redeploy previous image.
+3. Restore uploads tarball to `volumes/public-uploads` and `volumes/private-uploads`.
+4. Restart services and run smoke checks.
+
+### Rollback procedure
+
+1. Keep previous known-good image tag available.
+2. If app regression only, redeploy previous app image tag.
+3. If schema/data mismatch, restore DB + uploads from pre-release backup, then redeploy previous image.
+4. Re-run health + smoke checks before reopening traffic.
 
 ---
 
-## Current Launch Blockers / Risks
+## Current Launch Blockers / Remaining Items
 
-Before true large-scale public launch:
+Before broad public launch:
 
-1. Object storage is available (`BOOK_STORAGE_PROVIDER=s3|r2`), but production must still enforce secure key rotation and bucket-level policies.
-2. Syriatel Cash live integration is still placeholder.
-3. Full production observability stack (centralized logs/metrics/alerts) is not yet codified in this repo.
-4. Disaster recovery is documented, but automated backup verification is still an operational responsibility.
+1. Syriatel Cash live integration remains incomplete and must be finalized before enabling that provider.
+2. Centralized logs/metrics/alerting stack is still environment-specific (outside this repo).
+3. Backup restore drills should be scheduled and evidenced operationally.
 
 ---
 
