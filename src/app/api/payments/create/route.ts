@@ -3,7 +3,7 @@ import { API_ERROR_CODES, jsonError, parseJsonBody } from "@/lib/api-response";
 import { getCurrentUser } from "@/lib/auth-session";
 import { logError, getClientIp, getRequestId } from "@/lib/observability/logger";
 import { GatewayConfigurationError, GatewayRequestError } from "@/lib/payments/gateways/provider-http";
-import { getProviderIntegrationConfig } from "@/lib/payments/gateways/provider-integration";
+import { getProviderIntegrationConfig, parseSelectedLiveProviders } from "@/lib/payments/gateways/provider-integration";
 import { isPaymentError, PAYMENT_ERROR_CODES } from "@/lib/payments/errors";
 import { createPaymentForOrder } from "@/lib/payments/payment-service";
 import { enforceRateLimit, isSameOriginMutation, jsonNoStore, rejectCrossOriginMutation, rejectRateLimitUnavailable, rejectRateLimited } from "@/lib/security";
@@ -47,6 +47,27 @@ export async function POST(request: Request) {
   }
 
   const integration = getProviderIntegrationConfig(provider);
+  const selectedProviders = parseSelectedLiveProviders();
+  if (
+    integration &&
+    integration.mode === "live" &&
+    selectedProviders.selectedProviders.length > 0 &&
+    !selectedProviders.selectedProviders.includes(integration.provider)
+  ) {
+    return jsonNoStore(
+      {
+        message: "مزود الدفع غير مفعّل حالياً.",
+        error: {
+          code: "PAYMENT_PROVIDER_DISABLED",
+          provider: integration.provider,
+          mode: integration.mode,
+          selectedLiveProviders: selectedProviders.selectedProviders,
+        },
+      },
+      { status: 409 },
+    );
+  }
+
   if (integration && integration.mode === "live" && !integration.isLiveConfigured) {
     return jsonNoStore(
       {

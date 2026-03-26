@@ -1,4 +1,9 @@
-import { getMissingLiveEnvKeys } from "@/lib/payments/gateways/provider-integration";
+import {
+  getLiveProvidersEnvKey,
+  getMissingLiveEnvKeys,
+  getSupportedLiveProviders,
+  parseSelectedLiveProviders,
+} from "@/lib/payments/gateways/provider-integration";
 
 type RuntimeEnvironment = "development" | "test" | "production";
 
@@ -120,19 +125,36 @@ function validateEnvironment(): EnvIssue[] {
   }
 
   if (paymentMode === "live") {
-    const shamMissingEnv = getMissingLiveEnvKeys("SHAM_CASH");
-    const syriatelMissingEnv = getMissingLiveEnvKeys("SYRIATEL_CASH");
+    const providersSelection = parseSelectedLiveProviders();
 
-    const shamIsConfigured = shamMissingEnv.length === 0;
-    const syriatelIsConfigured = syriatelMissingEnv.length === 0;
-
-    if (!shamIsConfigured && !syriatelIsConfigured) {
+    if (providersSelection.invalidProviders.length > 0) {
       issues.push({
         severity: nodeEnv === "production" ? "error" : "warning",
-        key: "PAYMENT_GATEWAY_MODE",
-        message:
-          "PAYMENT_GATEWAY_MODE=live requires at least one fully configured provider (SHAM_CASH or SYRIATEL_CASH).",
+        key: getLiveProvidersEnvKey(),
+        message: `${getLiveProvidersEnvKey()} contains unsupported providers: ${providersSelection.invalidProviders.join(
+          ", ",
+        )}. Supported values are: ${getSupportedLiveProviders().join(", ")}.`,
       });
+    }
+
+    if (providersSelection.selectedProviders.length === 0) {
+      issues.push({
+        severity: nodeEnv === "production" ? "error" : "warning",
+        key: getLiveProvidersEnvKey(),
+        message:
+          `PAYMENT_GATEWAY_MODE=live requires at least one selected provider via ${getLiveProvidersEnvKey()}.`,
+      });
+    }
+
+    for (const provider of providersSelection.selectedProviders) {
+      const missingEnv = getMissingLiveEnvKeys(provider);
+      for (const envKey of missingEnv) {
+        issues.push({
+          severity: nodeEnv === "production" ? "error" : "warning",
+          key: envKey,
+          message: `${envKey} is required when PAYMENT_GATEWAY_MODE=live and ${provider} is selected in ${getLiveProvidersEnvKey()}.`,
+        });
+      }
     }
   }
 
