@@ -24,7 +24,13 @@ export function OrderSummaryCard({ bookId, bookTitle, offers }: OrderSummaryCard
   const selectedOffer = useMemo(() => offers.find((offer) => offer.id === selectedOfferId) ?? null, [offers, selectedOfferId]);
 
   if (offers.length === 0) {
-    return null;
+    return (
+      <section aria-label="ملخص الطلب" className="space-y-2 rounded-2xl border border-dashed border-slate-300 bg-slate-50 p-4">
+        <h2 className="text-lg font-bold text-slate-900">ملخص الطلب</h2>
+        <p className="text-sm text-slate-600">لا تتوفر حاليًا عروض شراء أو إيجار لهذا الكتاب.</p>
+        <p className="text-xs text-slate-500">لذلك لن يظهر زر «شراء الآن» أو «استئجار الآن» قبل إضافة عرض نشط.</p>
+      </section>
+    );
   }
 
   const checkoutHref = selectedOffer ? `/checkout?bookId=${bookId}&offerId=${selectedOffer.id}` : "#";

@@ -12,6 +12,9 @@ export function SignUpForm() {
   return (
     <form action={formAction} className="space-y-4 rounded-2xl bg-white p-6 shadow-sm ring-1 ring-slate-200" dir="rtl" noValidate>
       <h1 className="text-2xl font-bold text-slate-900">إنشاء حساب</h1>
+      <p className="text-sm text-slate-600">
+        بعد التسجيل يمكنك القراءة والشراء فورًا، ويمكنك أيضًا تفعيل مسار الكاتب للوصول إلى استوديو النشر.
+      </p>
 
       <div className="space-y-1.5">
         <label htmlFor="fullName" className="block text-sm font-medium text-slate-800">
@@ -96,6 +99,10 @@ export function SignUpForm() {
           تسجيل الدخول
         </Link>
       </p>
+
+      <div className="rounded-xl border border-slate-200 bg-slate-50 px-3 py-2 text-xs text-slate-600">
+        للدخول إلى الاستوديو بعد التسجيل: افتح <span className="font-semibold">لوحة الكاتب</span> من القائمة ثم فعّل ملف الكاتب.
+      </div>
     </form>
   );
 }
