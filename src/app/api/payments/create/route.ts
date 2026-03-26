@@ -3,6 +3,7 @@ import { API_ERROR_CODES, jsonError, parseJsonBody } from "@/lib/api-response";
 import { getCurrentUser } from "@/lib/auth-session";
 import { logError, getClientIp, getRequestId } from "@/lib/observability/logger";
 import { GatewayConfigurationError, GatewayRequestError } from "@/lib/payments/gateways/provider-http";
+import { getProviderIntegrationConfig } from "@/lib/payments/gateways/provider-integration";
 import { isPaymentError, PAYMENT_ERROR_CODES } from "@/lib/payments/errors";
 import { createPaymentForOrder } from "@/lib/payments/payment-service";
 import { enforceRateLimit, isSameOriginMutation, jsonNoStore, rejectCrossOriginMutation, rejectRateLimitUnavailable, rejectRateLimited } from "@/lib/security";
@@ -43,6 +44,22 @@ export async function POST(request: Request) {
 
   if (!Object.values(PaymentProvider).includes(provider)) {
     return jsonError(API_ERROR_CODES.invalid_request, "مزود الدفع غير صالح.", 400);
+  }
+
+  const integration = getProviderIntegrationConfig(provider);
+  if (integration && integration.mode === "live" && !integration.isLiveConfigured) {
+    return jsonNoStore(
+      {
+        message: "إعدادات مزود الدفع غير مكتملة على الخادم.",
+        error: {
+          code: "PAYMENT_PROVIDER_ENV_MISSING",
+          provider: integration.provider,
+          mode: integration.mode,
+          missingEnvKeys: integration.missingEnvKeys,
+        },
+      },
+      { status: 500 },
+    );
   }
 
   const user = await getCurrentUser();
@@ -96,7 +113,19 @@ export async function POST(request: Request) {
     }
 
     if (error instanceof GatewayConfigurationError) {
-      return jsonNoStore({ message: "إعدادات مزود الدفع غير مكتملة على الخادم." }, { status: 500 });
+      const integration = getProviderIntegrationConfig(provider);
+      return jsonNoStore(
+        {
+          message: "إعدادات مزود الدفع غير مكتملة على الخادم.",
+          error: {
+            code: "PAYMENT_PROVIDER_ENV_MISSING",
+            provider: integration?.provider ?? provider,
+            mode: integration?.mode ?? "live",
+            missingEnvKeys: integration?.missingEnvKeys ?? [],
+          },
+        },
+        { status: 500 },
+      );
     }
 
     if (error instanceof GatewayRequestError) {

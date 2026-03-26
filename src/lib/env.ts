@@ -1,3 +1,5 @@
+import { getMissingLiveEnvKeys } from "@/lib/payments/gateways/provider-integration";
+
 type RuntimeEnvironment = "development" | "test" | "production";
 
 type EnvSeverity = "error" | "warning";
@@ -118,43 +120,19 @@ function validateEnvironment(): EnvIssue[] {
   }
 
   if (paymentMode === "live") {
-    const shamLiveRequired = [
-      "SHAM_CASH_API_BASE_URL",
-      "SHAM_CASH_API_KEY",
-      "SHAM_CASH_MERCHANT_ID",
-      "SHAM_CASH_DESTINATION_ACCOUNT",
-      "SHAM_CASH_CREATE_PAYMENT_PATH",
-      "SHAM_CASH_VERIFY_PAYMENT_PATH",
-      "SHAM_CASH_WEBHOOK_SECRET",
-    ];
+    const shamMissingEnv = getMissingLiveEnvKeys("SHAM_CASH");
+    const syriatelMissingEnv = getMissingLiveEnvKeys("SYRIATEL_CASH");
 
-    for (const key of shamLiveRequired) {
-      if (!readEnv(key)) {
-        issues.push({
-          severity: nodeEnv === "production" ? "error" : "warning",
-          key,
-          message: `${key} is required when PAYMENT_GATEWAY_MODE=live.`,
-        });
-      }
-    }
+    const shamIsConfigured = shamMissingEnv.length === 0;
+    const syriatelIsConfigured = syriatelMissingEnv.length === 0;
 
-    const syriatelLiveRequired = [
-      "SYRIATEL_CASH_API_BASE_URL",
-      "SYRIATEL_CASH_API_KEY",
-      "SYRIATEL_CASH_MERCHANT_ID",
-      "SYRIATEL_CASH_DESTINATION_ACCOUNT",
-      "SYRIATEL_CASH_CREATE_PAYMENT_PATH",
-      "SYRIATEL_CASH_VERIFY_PAYMENT_PATH",
-    ];
-
-    for (const key of syriatelLiveRequired) {
-      if (!readEnv(key)) {
-        issues.push({
-          severity: nodeEnv === "production" ? "error" : "warning",
-          key,
-          message: `${key} is required when PAYMENT_GATEWAY_MODE=live.`,
-        });
-      }
+    if (!shamIsConfigured && !syriatelIsConfigured) {
+      issues.push({
+        severity: nodeEnv === "production" ? "error" : "warning",
+        key: "PAYMENT_GATEWAY_MODE",
+        message:
+          "PAYMENT_GATEWAY_MODE=live requires at least one fully configured provider (SHAM_CASH or SYRIATEL_CASH).",
+      });
     }
   }
 
