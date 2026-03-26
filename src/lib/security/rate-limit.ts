@@ -9,9 +9,23 @@ export type RateLimitResult = {
   allowed: boolean;
   remaining: number;
   retryAfterSeconds: number;
-  backend: "kv" | "unavailable";
-  reason?: "RATE_LIMIT_BACKEND_UNAVAILABLE";
+  backend: "kv" | "memory" | "unavailable";
+  reason?: "RATE_LIMIT_BACKEND_UNAVAILABLE" | "RATE_LIMIT_ENV_MISCONFIG";
+  details?: "missing_kv_credentials" | "kv_request_failed" | "kv_invalid_response";
 };
+
+type KvCheckResult =
+  | { status: "ok"; result: RateLimitResult }
+  | { status: "missing_config" }
+  | { status: "request_failed" }
+  | { status: "invalid_response" };
+
+type MemoryWindow = {
+  count: number;
+  resetAt: number;
+};
+
+const memoryWindows = new Map<string, MemoryWindow>();
 
 function readOptionalEnv(name: string): string | undefined {
   const value = process.env[name]?.trim();
@@ -45,11 +59,43 @@ function buildResult(
   };
 }
 
-async function checkKvRateLimit(config: RateLimitConfig): Promise<RateLimitResult | null> {
+function checkMemoryRateLimit(config: RateLimitConfig): RateLimitResult {
+  const now = Date.now();
+  const windowStart = now - (now % config.windowMs);
+  const resetAt = windowStart + config.windowMs;
+  const retryAfterSeconds = Math.ceil((resetAt - now) / 1000);
+  const key = `ratelimit:${config.key}:${windowStart}`;
+
+  const current = memoryWindows.get(key);
+
+  if (!current || current.resetAt <= now) {
+    memoryWindows.set(key, { count: 1, resetAt });
+    return buildResult(1, config.limit, retryAfterSeconds, "memory");
+  }
+
+  current.count += 1;
+  return buildResult(current.count, config.limit, retryAfterSeconds, "memory");
+}
+
+function getUnavailableResult(
+  reason: RateLimitResult["reason"],
+  details?: RateLimitResult["details"],
+): RateLimitResult {
+  return {
+    allowed: false,
+    remaining: 0,
+    retryAfterSeconds: 60,
+    backend: "unavailable",
+    reason,
+    details,
+  };
+}
+
+async function checkKvRateLimit(config: RateLimitConfig): Promise<KvCheckResult> {
   const kv = getKvConfig();
 
   if (!kv) {
-    return null;
+    return { status: "missing_config" };
   }
 
   const now = Date.now();
@@ -72,7 +118,7 @@ async function checkKvRateLimit(config: RateLimitConfig): Promise<RateLimitResul
   });
 
   if (!response.ok) {
-    return null;
+    return { status: "request_failed" };
   }
 
   const payload = (await response.json()) as Array<{ result?: unknown }>;
@@ -80,27 +126,42 @@ async function checkKvRateLimit(config: RateLimitConfig): Promise<RateLimitResul
   const count = typeof countValue === "number" ? countValue : Number.parseInt(String(countValue ?? "0"), 10);
 
   if (!Number.isFinite(count) || count <= 0) {
-    return null;
-  }
-
-  return buildResult(count, config.limit, retryAfterSeconds, "kv");
-}
-
-export async function checkRateLimit(config: RateLimitConfig): Promise<RateLimitResult> {
-  try {
-    const kvResult = await checkKvRateLimit(config);
-    if (kvResult) {
-      return kvResult;
-    }
-  } catch {
-    // fallback handled below
+    return { status: "invalid_response" };
   }
 
   return {
-    allowed: false,
-    remaining: 0,
-    retryAfterSeconds: 60,
-    backend: "unavailable",
-    reason: "RATE_LIMIT_BACKEND_UNAVAILABLE",
+    status: "ok",
+    result: buildResult(count, config.limit, retryAfterSeconds, "kv"),
   };
+}
+
+export async function checkRateLimit(config: RateLimitConfig): Promise<RateLimitResult> {
+  const requireDistributed = Boolean(config.requireDistributedInProduction && process.env.NODE_ENV === "production");
+
+  try {
+    const kvCheck = await checkKvRateLimit(config);
+    if (kvCheck.status === "ok") {
+      return kvCheck.result;
+    }
+
+    if (!requireDistributed) {
+      return checkMemoryRateLimit(config);
+    }
+
+    if (kvCheck.status === "missing_config") {
+      return getUnavailableResult("RATE_LIMIT_ENV_MISCONFIG", "missing_kv_credentials");
+    }
+
+    if (kvCheck.status === "invalid_response") {
+      return getUnavailableResult("RATE_LIMIT_BACKEND_UNAVAILABLE", "kv_invalid_response");
+    }
+
+    return getUnavailableResult("RATE_LIMIT_BACKEND_UNAVAILABLE", "kv_request_failed");
+  } catch {
+    if (!requireDistributed) {
+      return checkMemoryRateLimit(config);
+    }
+
+    return getUnavailableResult("RATE_LIMIT_BACKEND_UNAVAILABLE", "kv_request_failed");
+  }
 }

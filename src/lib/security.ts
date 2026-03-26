@@ -55,9 +55,9 @@ export function rejectRateLimited(retryAfterSeconds: number) {
   );
 }
 
-export function rejectRateLimitUnavailable() {
+export function rejectRateLimitUnavailable(reason?: string) {
   return NextResponse.json(
-    { message: "الخدمة محمية مؤقتاً. يرجى المحاولة بعد قليل." },
+    { message: "الخدمة محمية مؤقتاً. يرجى المحاولة بعد قليل.", code: reason ?? "RATE_LIMIT_BACKEND_UNAVAILABLE" },
     {
       status: 503,
       headers: {
