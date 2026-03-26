@@ -94,6 +94,42 @@ function validateEnvironment(): EnvIssue[] {
       message: "ALLOW_MOCK_PAYMENT_VERIFICATION must remain false in production.",
     });
   }
+
+  if (nodeEnv === "production") {
+    const kvUrl = readEnv("KV_REST_API_URL") ?? readEnv("UPSTASH_REDIS_REST_URL");
+    const kvToken = readEnv("KV_REST_API_TOKEN") ?? readEnv("UPSTASH_REDIS_REST_TOKEN");
+
+    if (!kvUrl || !kvToken) {
+      issues.push({
+        severity: "error",
+        key: "KV_REST_API_URL",
+        message: "KV/Redis REST credentials are required in production for auth/payment rate limiting.",
+      });
+    }
+  }
+
+  if (paymentMode === "live") {
+    const shamLiveRequired = [
+      "SHAM_CASH_API_BASE_URL",
+      "SHAM_CASH_API_KEY",
+      "SHAM_CASH_MERCHANT_ID",
+      "SHAM_CASH_DESTINATION_ACCOUNT",
+      "SHAM_CASH_CREATE_PAYMENT_PATH",
+      "SHAM_CASH_VERIFY_PAYMENT_PATH",
+      "SHAM_CASH_WEBHOOK_SECRET",
+    ];
+
+    for (const key of shamLiveRequired) {
+      if (!readEnv(key)) {
+        issues.push({
+          severity: nodeEnv === "production" ? "error" : "warning",
+          key,
+          message: `${key} is required when PAYMENT_GATEWAY_MODE=live.`,
+        });
+      }
+    }
+  }
+
   const rawStorageProvider = readEnv("BOOK_STORAGE_PROVIDER");
   if (nodeEnv === "production" && !rawStorageProvider) {
     issues.push({

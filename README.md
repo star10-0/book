@@ -56,12 +56,14 @@ The app validates these settings at runtime and fails fast in production when re
 - `BOOK_STORAGE_PROVIDER` (`local` | `s3` | `r2`)
 - `PAYMENT_GATEWAY_MODE` (`mock` | `live`)
 - `SHAM_CASH_WEBHOOK_SECRET` (required for live Sham Cash callback authenticity verification)
+- `SHAM_CASH_DESTINATION_ACCOUNT` (required for live Sham Cash destination-account validation)
+- `SHAM_CASH_API_BASE_URL`, `SHAM_CASH_API_KEY`, `SHAM_CASH_MERCHANT_ID`, `SHAM_CASH_CREATE_PAYMENT_PATH`, `SHAM_CASH_VERIFY_PAYMENT_PATH` (required when `PAYMENT_GATEWAY_MODE=live`)
 
 ### Strongly recommended
 
 - `NEXTAUTH_SECRET` (keep equal to `AUTH_SECRET` for consistency)
 - `PORT` (optional; default `3000`)
-- `KV_REST_API_URL` + `KV_REST_API_TOKEN` (for distributed rate limiting across instances)
+- `KV_REST_API_URL` + `KV_REST_API_TOKEN` (required in production for auth/payment distributed rate limiting)
 
 ### Payment safety guardrails
 
@@ -209,7 +211,7 @@ Set `DATABASE_URL` to your managed PostgreSQL connection string.
 
 - Sham Cash now supports live create/verify flow; Syriatel Cash remains placeholder for next sprint.
 - Mock verification is hard-gated to development/test only (with explicit flag).
-- Distributed/shared rate limiting is enabled when KV REST credentials are configured, with in-memory fallback.
+- Auth/payment rate limiting fails closed in production unless KV/Redis REST credentials are configured.
 - Object storage migration plan (S3/R2) should be completed before horizontal scaling.
 
 ## Validation Commands

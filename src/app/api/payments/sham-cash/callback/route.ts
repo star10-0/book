@@ -9,14 +9,17 @@ import { GatewayConfigurationError, GatewayRequestError } from "@/lib/payments/g
 import { getShamCashIntegrationConfig } from "@/lib/payments/gateways/provider-integration";
 import { isPaymentError, PAYMENT_ERROR_CODES } from "@/lib/payments/errors";
 import { verifyPaymentByProviderReference } from "@/lib/payments/payment-service";
-import { enforceRateLimit, jsonNoStore, rejectRateLimited } from "@/lib/security";
+import { enforceRateLimit, jsonNoStore, rejectRateLimitUnavailable, rejectRateLimited } from "@/lib/security";
 
 export async function POST(request: Request) {
   const requestId = getRequestId(request);
   const clientIp = getClientIp(request);
 
-  const rateLimit = await enforceRateLimit({ key: `payments:sham-callback:${clientIp}`, limit: 120, windowMs: 60_000 });
+  const rateLimit = await enforceRateLimit({ key: `payments:sham-callback:${clientIp}`, limit: 120, windowMs: 60_000, requireDistributedInProduction: true });
   if (!rateLimit.allowed) {
+    if (rateLimit.reason === "RATE_LIMIT_BACKEND_UNAVAILABLE") {
+      return rejectRateLimitUnavailable();
+    }
     return rejectRateLimited(rateLimit.retryAfterSeconds);
   }
 

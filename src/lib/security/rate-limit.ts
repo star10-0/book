@@ -4,12 +4,15 @@ export type RateLimitConfig = {
   key: string;
   limit: number;
   windowMs: number;
+  requireDistributedInProduction?: boolean;
 };
 
 export type RateLimitResult = {
   allowed: boolean;
   remaining: number;
   retryAfterSeconds: number;
+  backend: "kv" | "memory" | "unavailable";
+  reason?: "RATE_LIMIT_BACKEND_UNAVAILABLE";
 };
 
 function readOptionalEnv(name: string): string | undefined {
@@ -28,13 +31,19 @@ function getKvConfig() {
   return { url, token };
 }
 
-function buildResult(count: number, limit: number, retryAfterSeconds: number): RateLimitResult {
+function buildResult(
+  count: number,
+  limit: number,
+  retryAfterSeconds: number,
+  backend: RateLimitResult["backend"],
+): RateLimitResult {
   const allowed = count <= limit;
 
   return {
     allowed,
     remaining: Math.max(limit - count, 0),
     retryAfterSeconds: Math.max(retryAfterSeconds, 1),
+    backend,
   };
 }
 
@@ -76,7 +85,7 @@ async function checkKvRateLimit(config: RateLimitConfig): Promise<RateLimitResul
     return null;
   }
 
-  return buildResult(count, config.limit, retryAfterSeconds);
+  return buildResult(count, config.limit, retryAfterSeconds, "kv");
 }
 
 function checkInMemoryRateLimit(config: RateLimitConfig): RateLimitResult {
@@ -86,23 +95,43 @@ function checkInMemoryRateLimit(config: RateLimitConfig): RateLimitResult {
   if (!current || now >= current.resetAt) {
     store.set(config.key, { count: 1, resetAt: now + config.windowMs });
     pruneExpired(now);
-    return buildResult(1, config.limit, Math.ceil(config.windowMs / 1000));
+    return buildResult(1, config.limit, Math.ceil(config.windowMs / 1000), "memory");
   }
 
   current.count += 1;
   store.set(config.key, current);
 
-  return buildResult(current.count, config.limit, Math.ceil((current.resetAt - now) / 1000));
+  return buildResult(current.count, config.limit, Math.ceil((current.resetAt - now) / 1000), "memory");
 }
 
 export async function checkRateLimit(config: RateLimitConfig): Promise<RateLimitResult> {
+  const shouldRequireDistributed = config.requireDistributedInProduction && process.env.NODE_ENV === "production";
+
   try {
     const kvResult = await checkKvRateLimit(config);
     if (kvResult) {
       return kvResult;
     }
   } catch {
-    // Fall back to in-memory limiting when KV is unavailable.
+    if (shouldRequireDistributed) {
+      return {
+        allowed: false,
+        remaining: 0,
+        retryAfterSeconds: 60,
+        backend: "unavailable",
+        reason: "RATE_LIMIT_BACKEND_UNAVAILABLE",
+      };
+    }
+  }
+
+  if (shouldRequireDistributed) {
+    return {
+      allowed: false,
+      remaining: 0,
+      retryAfterSeconds: 60,
+      backend: "unavailable",
+      reason: "RATE_LIMIT_BACKEND_UNAVAILABLE",
+    };
   }
 
   return checkInMemoryRateLimit(config);
