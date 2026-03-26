@@ -29,4 +29,4 @@ RUN mkdir -p /app/public/uploads /app/storage/private/uploads \
 
 USER nextjs
 EXPOSE 3000
-CMD ["npm", "run", "start:prod"]
+CMD ["npm", "run", "start"]
