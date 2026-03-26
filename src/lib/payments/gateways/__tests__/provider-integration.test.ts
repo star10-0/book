@@ -8,17 +8,13 @@ test("getProviderIntegrationConfig reports missing env for Sham Cash only", () =
   process.env.PAYMENT_GATEWAY_MODE = "live";
   process.env.SHAM_CASH_API_BASE_URL = "https://sham.example";
   process.env.SHAM_CASH_API_KEY = "secret-key";
-  process.env.SHAM_CASH_MERCHANT_ID = "merchant-1";
-  process.env.SHAM_CASH_DESTINATION_ACCOUNT = "dest-acc-1";
-  process.env.SHAM_CASH_CREATE_PAYMENT_PATH = "/create";
-  process.env.SHAM_CASH_VERIFY_PAYMENT_PATH = "/verify";
-  delete process.env.SHAM_CASH_WEBHOOK_SECRET;
+  delete process.env.SHAM_CASH_DESTINATION_ACCOUNT;
 
   const integration = getProviderIntegrationConfig("SHAM_CASH");
   assert.ok(integration);
   assert.equal(integration.mode, "live");
   assert.equal(integration.isLiveConfigured, false);
-  assert.deepEqual(integration.missingEnvKeys, ["SHAM_CASH_WEBHOOK_SECRET"]);
+  assert.deepEqual(integration.missingEnvKeys, ["SHAM_CASH_DESTINATION_ACCOUNT"]);
 
   process.env = originalEnv;
 });

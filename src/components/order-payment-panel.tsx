@@ -14,6 +14,7 @@ interface OrderPaymentPanelProps {
   appliedPromoCode?: string;
   initialAttemptId?: string;
   initialAttemptStatus?: PaymentAttemptStatus;
+  shamCashDestinationAccount?: string;
 }
 
 type UiStatus = "idle" | "pending" | "success" | "failure";
@@ -22,7 +23,7 @@ const paymentOptions: Array<{ provider: PaymentProvider; label: string; instruct
   {
     provider: PaymentProvider.SHAM_CASH,
     label: "Sham Cash",
-    instructions: "حوّل المبلغ المطلوب إلى حساب Sham Cash الرسمي ثم أدخل مرجع العملية كما يظهر في التطبيق.",
+    instructions: "حوّل المبلغ المطلوب يدويًا إلى حساب Sham Cash أدناه، مع الاحتفاظ بمرجع الطلب، ثم أدخل رقم العملية (tx).",
   },
   {
     provider: PaymentProvider.SYRIATEL_CASH,
@@ -60,6 +61,7 @@ export function OrderPaymentPanel({
   appliedPromoCode,
   initialAttemptId,
   initialAttemptStatus,
+  shamCashDestinationAccount,
 }: OrderPaymentPanelProps) {
   const router = useRouter();
   const [selectedProvider, setSelectedProvider] = useState<PaymentProvider>(PaymentProvider.SHAM_CASH);
@@ -146,7 +148,7 @@ export function OrderPaymentPanel({
 
       setAttemptId(payload.attempt.id);
       setAttemptStatus(payload.attempt.status);
-      setMessage("تم إنشاء طلب الدفع. أرسل الآن مرجع العملية أو إثبات الدفع.");
+      setMessage("تم إنشاء طلب الدفع. حوّل الآن عبر Sham Cash ثم أدخل رقم العملية (tx).");
       router.refresh();
     });
   };
@@ -232,7 +234,7 @@ export function OrderPaymentPanel({
   return (
     <section className="rounded-2xl border border-slate-200 bg-white p-5 shadow-sm">
       <h2 className="text-lg font-bold text-slate-900">الدفع للطلب</h2>
-      <p className="mt-1 text-sm text-slate-600">اختر وسيلة الدفع، ثم أدخل مرجع العملية أو إثبات الدفع لإرسالها للمراجعة.</p>
+      <p className="mt-1 text-sm text-slate-600">اختر وسيلة الدفع، ثم نفّذ التحويل اليدوي وأدخل رقم العملية (tx) لإرسالها للتحقق.</p>
 
       <div className="mt-4 rounded-xl border border-slate-200 bg-slate-50 p-4 text-sm">
         <p className="font-semibold text-slate-900">رمز الخصم</p>
@@ -308,11 +310,27 @@ export function OrderPaymentPanel({
           <div className="mt-4 rounded-xl bg-slate-50 p-4 text-sm text-slate-700">
             <p className="font-semibold text-slate-900">تعليمات الدفع</p>
             <p className="mt-1">{selectedOption.instructions}</p>
+            {selectedProvider === PaymentProvider.SHAM_CASH ? (
+              <dl className="mt-3 rounded-xl border border-indigo-100 bg-indigo-50 p-3 text-slate-800">
+                <div className="flex items-center justify-between gap-3">
+                  <dt className="font-semibold">حساب الاستلام</dt>
+                  <dd className="font-mono text-xs sm:text-sm">{shamCashDestinationAccount ?? "غير متاح حالياً"}</dd>
+                </div>
+                <div className="mt-2 flex items-center justify-between gap-3">
+                  <dt className="font-semibold">المبلغ</dt>
+                  <dd>{formatArabicCurrency(totalCents / 100, { currency })}</dd>
+                </div>
+                <div className="mt-2 flex items-center justify-between gap-3">
+                  <dt className="font-semibold">مرجع الطلب</dt>
+                  <dd className="font-mono text-xs sm:text-sm">{orderId}</dd>
+                </div>
+              </dl>
+            ) : null}
           </div>
 
           <div className="mt-4 space-y-3">
             <label className="block text-sm font-semibold text-slate-800" htmlFor="transaction-reference">
-              مرجع العملية
+              رقم العملية (tx)
             </label>
             <input
               id="transaction-reference"
@@ -351,7 +369,7 @@ export function OrderPaymentPanel({
               disabled={isPending || !attemptId}
               className="rounded-xl border border-indigo-200 bg-indigo-50 px-4 py-2 text-sm font-semibold text-indigo-700 disabled:cursor-not-allowed disabled:border-slate-200 disabled:bg-slate-100 disabled:text-slate-400"
             >
-              إرسال مرجع/إثبات
+              إرسال رقم العملية
             </button>
             <button
               type="button"

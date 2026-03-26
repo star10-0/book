@@ -27,6 +27,9 @@ export async function POST(request: Request) {
   if (integration.mode !== "live") {
     return jsonNoStore({ message: "Sham Cash callback endpoint is disabled in mock mode." }, { status: 404 });
   }
+  if (!process.env.SHAM_CASH_WEBHOOK_SECRET?.trim()) {
+    return jsonNoStore({ message: "Sham Cash callback endpoint is disabled for manual verification mode." }, { status: 404 });
+  }
 
   const rawBody = await request.text();
   const signatureHeader = request.headers.get("x-shamcash-signature");
