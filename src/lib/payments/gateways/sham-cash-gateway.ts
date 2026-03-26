@@ -1,15 +1,13 @@
 import { PaymentProvider } from "@prisma/client";
-import { getAppBaseUrl } from "@/lib/env";
 import { createMockPaymentResult, verifyMockPaymentResult } from "@/lib/payments/gateways/mock-payment-gateway";
 import {
   extractFailureReason,
-  extractProviderReference,
   GatewayConfigurationError,
   GatewayRequestError,
   isPaidStatus,
-  postProviderJson,
   readOptionalTimeoutMs,
   readRequiredEnv,
+  safeLogProviderResponse,
 } from "@/lib/payments/gateways/provider-http";
 import { getShamCashIntegrationConfig } from "@/lib/payments/gateways/provider-integration";
 import { isMockPaymentGatewayEnabled } from "@/lib/payments/mock-mode";
@@ -21,17 +19,10 @@ import type {
   VerifyPaymentGatewayResult,
 } from "@/lib/payments/gateways/payment-gateway";
 
-function buildShamCashEndpoint(baseUrl: string, path: string) {
-  return new URL(path, baseUrl).toString();
-}
-
 function getShamCashLiveConfig() {
   return {
     baseUrl: readRequiredEnv("SHAM_CASH_API_BASE_URL"),
     apiKey: readRequiredEnv("SHAM_CASH_API_KEY"),
-    merchantId: readRequiredEnv("SHAM_CASH_MERCHANT_ID"),
-    createPath: readRequiredEnv("SHAM_CASH_CREATE_PAYMENT_PATH"),
-    verifyPath: readRequiredEnv("SHAM_CASH_VERIFY_PAYMENT_PATH"),
     destinationAccount: readRequiredEnv("SHAM_CASH_DESTINATION_ACCOUNT"),
     timeoutMs: readOptionalTimeoutMs("SHAM_CASH_TIMEOUT_MS"),
   };
@@ -81,71 +72,17 @@ export class ShamCashGateway implements PaymentGateway {
     }
 
     const config = getShamCashLiveConfig();
-    const payload = await postProviderJson({
-      provider: "sham_cash",
-      phase: "create",
-      endpoint: buildShamCashEndpoint(config.baseUrl, config.createPath),
-      headers: {
-        Authorization: `Bearer ${config.apiKey}`,
-        "X-Merchant-Id": config.merchantId,
-      },
-      body: {
-        merchantId: config.merchantId,
-        paymentId: input.paymentId,
-        orderId: input.orderId,
-        amountCents: input.amountCents,
-        currency: input.currency,
-        destinationAccount: config.destinationAccount,
-        customerId: input.customerId,
-        callbackUrl: `${getAppBaseUrl()}/api/payments/sham-cash/callback`,
-      },
-      timeoutMs: config.timeoutMs,
-    });
-
-    const providerReference = extractProviderReference(payload);
-
-    if (!providerReference) {
-      throw new GatewayConfigurationError("Sham Cash create response did not include a provider reference.");
-    }
-
-    const echoedAmountCents = pickNumber(payload, ["amountCents", "amount"]);
-    const echoedCurrency = pickString(payload, ["currency"]);
-    const echoedDestination = pickString(payload, ["destinationAccount", "receiverAccount", "merchantAccount"]);
-
-    if (typeof echoedAmountCents === "number" && echoedAmountCents !== input.amountCents) {
-      throw new GatewayRequestError({
-        provider: "sham_cash",
-        phase: "create",
-        message: "Sham Cash create response amount does not match order total.",
-      });
-    }
-
-    if (echoedCurrency && echoedCurrency.toUpperCase() !== input.currency.toUpperCase()) {
-      throw new GatewayRequestError({
-        provider: "sham_cash",
-        phase: "create",
-        message: "Sham Cash create response currency does not match order currency.",
-      });
-    }
-
-    if (echoedDestination && echoedDestination !== config.destinationAccount) {
-      throw new GatewayRequestError({
-        provider: "sham_cash",
-        phase: "create",
-        message: "Sham Cash create response destination account mismatch.",
-      });
-    }
-
-    const checkoutUrl = [payload.checkoutUrl, payload.paymentUrl, payload.redirectUrl].find(
-      (candidate): candidate is string => typeof candidate === "string" && candidate.trim().length > 0,
-    );
+    const providerReference = `sham-manual:${input.paymentId}`;
 
     return {
       providerReference,
-      checkoutUrl,
       rawPayload: {
-        mode: "live",
-        ...payload,
+        mode: "live-manual",
+        providerReference,
+        destinationAccount: config.destinationAccount,
+        amountCents: input.amountCents,
+        currency: input.currency,
+        orderReference: input.orderId,
       },
     };
   }
@@ -164,30 +101,23 @@ export class ShamCashGateway implements PaymentGateway {
       throw new GatewayConfigurationError("Sham Cash live integration is not fully configured.");
     }
 
+    if (!input.transactionReference?.trim()) {
+      throw new GatewayRequestError({
+        provider: "sham_cash",
+        phase: "verify",
+        message: "Sham Cash verification requires a submitted transaction reference.",
+      });
+    }
+
     const config = getShamCashLiveConfig();
-    const payload = await postProviderJson({
-      provider: "sham_cash",
-      phase: "verify",
-      endpoint: buildShamCashEndpoint(config.baseUrl, config.verifyPath),
-      headers: {
-        Authorization: `Bearer ${config.apiKey}`,
-        "X-Merchant-Id": config.merchantId,
-      },
-      body: {
-        merchantId: config.merchantId,
-        paymentId: input.paymentId,
-        providerReference: input.providerReference,
-        transactionReference: input.transactionReference,
-        amountCents: input.expectedAmountCents,
-        currency: input.expectedCurrency,
-        destinationAccount: config.destinationAccount,
-      },
-      timeoutMs: config.timeoutMs,
+    const payload = await findShamCashTransaction({
+      config,
+      transactionReference: input.transactionReference.trim(),
     });
 
     const verifiedAmountCents = pickNumber(payload, ["amountCents", "amount"]);
     const verifiedCurrency = pickString(payload, ["currency"]);
-    const verifiedDestination = pickString(payload, ["destinationAccount", "receiverAccount", "merchantAccount"]);
+    const verifiedDestination = pickString(payload, ["account_address", "destinationAccount", "receiverAccount", "merchantAccount"]);
 
     if (typeof verifiedAmountCents === "number" && verifiedAmountCents !== input.expectedAmountCents) {
       throw new GatewayRequestError({
@@ -221,7 +151,101 @@ export class ShamCashGateway implements PaymentGateway {
         mode: "live",
         ...payload,
       },
-      failureReason: isPaid ? undefined : extractFailureReason(payload) ?? "Sham Cash reported an unsuccessful payment status.",
+      failureReason: isPaid ? undefined : extractFailureReason(payload) ?? "Sham Cash reported an unsuccessful transaction status.",
     };
   }
+}
+
+async function findShamCashTransaction(input: {
+  config: ReturnType<typeof getShamCashLiveConfig>;
+  transactionReference: string;
+}): Promise<Record<string, unknown>> {
+  const endpoint = new URL(input.config.baseUrl);
+  endpoint.searchParams.set("resource", "shamcash");
+  endpoint.searchParams.set("action", "find_tx");
+  endpoint.searchParams.set("tx", input.transactionReference);
+  endpoint.searchParams.set("account_address", input.config.destinationAccount);
+
+  const controller = new AbortController();
+  const timeout = setTimeout(() => controller.abort(), input.config.timeoutMs);
+
+  try {
+    const response = await fetch(endpoint.toString(), {
+      method: "GET",
+      headers: {
+        "X-Api-Key": input.config.apiKey,
+      },
+      cache: "no-store",
+      signal: controller.signal,
+    });
+
+    const textPayload = await response.text();
+    const payload = parsePayload(textPayload);
+    const normalizedPayload = unwrapDataContainer(payload);
+
+    safeLogProviderResponse("sham_cash", "verify", {
+      status: response.status,
+      ok: response.ok,
+      payload: normalizedPayload,
+    });
+
+    if (!response.ok) {
+      throw new GatewayRequestError({
+        provider: "sham_cash",
+        phase: "verify",
+        statusCode: response.status,
+        message: `Provider API request failed with status ${response.status}.`,
+      });
+    }
+
+    return normalizedPayload;
+  } catch (error) {
+    if (error instanceof GatewayRequestError) {
+      throw error;
+    }
+
+    if (error instanceof Error && error.name === "AbortError") {
+      throw new GatewayRequestError({
+        provider: "sham_cash",
+        phase: "verify",
+        message: `Provider API request timed out after ${input.config.timeoutMs}ms.`,
+      });
+    }
+
+    throw new GatewayRequestError({
+      provider: "sham_cash",
+      phase: "verify",
+      message: "Provider API request failed unexpectedly.",
+    });
+  } finally {
+    clearTimeout(timeout);
+  }
+}
+
+function parsePayload(value: string): Record<string, unknown> {
+  if (!value.trim()) {
+    return {};
+  }
+
+  try {
+    const parsed: unknown = JSON.parse(value);
+    if (!parsed || typeof parsed !== "object" || Array.isArray(parsed)) {
+      return { data: parsed };
+    }
+    return parsed as Record<string, unknown>;
+  } catch {
+    return {
+      raw: value,
+    };
+  }
+}
+
+function unwrapDataContainer(payload: Record<string, unknown>) {
+  const nested = payload.data;
+
+  if (!nested || typeof nested !== "object" || Array.isArray(nested)) {
+    return payload;
+  }
+
+  return nested as Record<string, unknown>;
 }

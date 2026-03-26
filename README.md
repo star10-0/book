@@ -89,11 +89,7 @@ Select at least one provider via `PAYMENT_LIVE_PROVIDERS` and fully configure on
 **Sham Cash (if enabled/selected)**
 - `SHAM_CASH_API_BASE_URL`
 - `SHAM_CASH_API_KEY`
-- `SHAM_CASH_MERCHANT_ID`
 - `SHAM_CASH_DESTINATION_ACCOUNT`
-- `SHAM_CASH_CREATE_PAYMENT_PATH`
-- `SHAM_CASH_VERIFY_PAYMENT_PATH`
-- `SHAM_CASH_WEBHOOK_SECRET`
 
 **Syriatel Cash (if enabled/selected)**
 - `SYRIATEL_CASH_API_BASE_URL`

@@ -38,6 +38,7 @@ export default async function CheckoutPage({ params }: CheckoutPageProps) {
   }
 
   const latestAttempt = order.paymentAttempts[0];
+  const shamCashDestinationAccount = process.env.SHAM_CASH_DESTINATION_ACCOUNT?.trim() || undefined;
 
   return (
     <main>
@@ -76,6 +77,7 @@ export default async function CheckoutPage({ params }: CheckoutPageProps) {
           appliedPromoCode={order.promoCode?.code}
           initialAttemptId={latestAttempt?.id}
           initialAttemptStatus={latestAttempt?.status}
+          shamCashDestinationAccount={shamCashDestinationAccount}
         />
       </div>
     </main>
