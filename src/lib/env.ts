@@ -156,6 +156,24 @@ function validateEnvironment(): EnvIssue[] {
     });
   }
 
+  if (storageProvider === "s3" || storageProvider === "r2") {
+    const cloudStorageRequired = [
+      "BOOK_STORAGE_S3_ACCESS_KEY_ID",
+      "BOOK_STORAGE_S3_SECRET_ACCESS_KEY",
+      "BOOK_STORAGE_S3_PUBLIC_BUCKET",
+    ];
+
+    for (const key of cloudStorageRequired) {
+      if (!readEnv(key)) {
+        issues.push({
+          severity: nodeEnv === "production" ? "error" : "warning",
+          key,
+          message: `${key} is required when BOOK_STORAGE_PROVIDER is set to s3/r2.`,
+        });
+      }
+    }
+  }
+
   const nextAuthUrl = readEnv("NEXTAUTH_URL");
   if (nodeEnv === "production" && !nextAuthUrl) {
     issues.push({

@@ -107,3 +107,34 @@ test("validateServerEnv requires Sham Cash live credentials when live mode is en
   if (typeof originalShamDestination === "string") process.env.SHAM_CASH_DESTINATION_ACCOUNT = originalShamDestination;
   else delete process.env.SHAM_CASH_DESTINATION_ACCOUNT;
 });
+
+
+test("validateServerEnv requires cloud storage vars for s3/r2 providers", () => {
+  const originalProvider = process.env.BOOK_STORAGE_PROVIDER;
+  const originalKey = process.env.BOOK_STORAGE_S3_ACCESS_KEY_ID;
+  const originalSecret = process.env.BOOK_STORAGE_S3_SECRET_ACCESS_KEY;
+  const originalBucket = process.env.BOOK_STORAGE_S3_PUBLIC_BUCKET;
+
+  process.env.BOOK_STORAGE_PROVIDER = "s3";
+  delete process.env.BOOK_STORAGE_S3_ACCESS_KEY_ID;
+  delete process.env.BOOK_STORAGE_S3_SECRET_ACCESS_KEY;
+  delete process.env.BOOK_STORAGE_S3_PUBLIC_BUCKET;
+
+  const result = validateServerEnv();
+
+  assert.ok(result.issues.some((issue) => issue.key === "BOOK_STORAGE_S3_ACCESS_KEY_ID"));
+  assert.ok(result.issues.some((issue) => issue.key === "BOOK_STORAGE_S3_SECRET_ACCESS_KEY"));
+  assert.ok(result.issues.some((issue) => issue.key === "BOOK_STORAGE_S3_PUBLIC_BUCKET"));
+
+  if (typeof originalProvider === "string") process.env.BOOK_STORAGE_PROVIDER = originalProvider;
+  else delete process.env.BOOK_STORAGE_PROVIDER;
+
+  if (typeof originalKey === "string") process.env.BOOK_STORAGE_S3_ACCESS_KEY_ID = originalKey;
+  else delete process.env.BOOK_STORAGE_S3_ACCESS_KEY_ID;
+
+  if (typeof originalSecret === "string") process.env.BOOK_STORAGE_S3_SECRET_ACCESS_KEY = originalSecret;
+  else delete process.env.BOOK_STORAGE_S3_SECRET_ACCESS_KEY;
+
+  if (typeof originalBucket === "string") process.env.BOOK_STORAGE_S3_PUBLIC_BUCKET = originalBucket;
+  else delete process.env.BOOK_STORAGE_S3_PUBLIC_BUCKET;
+});

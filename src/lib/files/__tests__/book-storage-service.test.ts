@@ -22,6 +22,9 @@ test("book storage service uses public visibility for covers and private for rea
     resolvePublicUrl() {
       return null;
     },
+    async createSignedAssetUrl() {
+      return null;
+    },
   };
 
   const service = new BookStorageService(provider);
