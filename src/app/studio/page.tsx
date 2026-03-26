@@ -14,10 +14,26 @@ export default async function StudioDashboardPage() {
 
   if (user.role !== "CREATOR" && user.role !== "ADMIN") {
     return (
-      <section className="rounded-2xl border border-indigo-200 bg-white p-5 shadow-sm">
-        <h2 className="text-lg font-bold text-slate-900">لوحة الكاتب</h2>
+      <section className="space-y-4 rounded-2xl border border-indigo-200 bg-white p-5 shadow-sm">
+        <div>
+          <h2 className="text-lg font-bold text-slate-900">ابدأ مسار الكاتب من هنا</h2>
+          <p className="mt-2 text-sm text-slate-700">
+            حسابك الحالي مناسب للقراءة والشراء. لتحويله إلى حساب كاتب وفتح أدوات الاستوديو، فعّل ملف الكاتب من النموذج التالي.
+          </p>
+        </div>
+        <div className="rounded-xl border border-indigo-200 bg-indigo-50 p-4 text-sm text-indigo-900">
+          <p className="font-semibold">بعد التفعيل ستحصل على:</p>
+          <ul className="mt-2 space-y-1 text-xs">
+            <li>• صفحة «كتبي» لإدارة المسودات والمنشور.</li>
+            <li>• تدفّق واضح: إنشاء بيانات الكتاب ← تعديل المحتوى ← نشر.</li>
+            <li>• أكواد خصم خاصة بك للطلبات المؤهلة.</li>
+          </ul>
+        </div>
         <p className="mt-2 text-sm text-slate-700">
           للوصول إلى إدارة الكتب والنشر، فعّل حساب الكاتب أولًا من النموذج التالي.
+        </p>
+        <p className="mt-2 text-sm text-slate-700">
+          ملاحظة: يبقى مسار الحساب والقارئ كما هو دون أي تأثير على مشترياتك السابقة.
         </p>
         <BecomeCreatorForm suggestedName={user.name ?? user.email.split("@")[0]} />
       </section>
@@ -141,6 +157,9 @@ export default async function StudioDashboardPage() {
       <section className="rounded-2xl border border-slate-200 bg-white p-5 shadow-sm">
         <h2 className="text-lg font-bold text-slate-900">مرحبًا بك في لوحة الكاتب</h2>
         <p className="mt-2 text-sm text-slate-600">يمكنك الآن إدارة كتبك الرقمية، متابعة المبيعات والإيجارات، ومراقبة جاهزية المحتوى.</p>
+        <div className="mt-3 rounded-xl border border-indigo-200 bg-indigo-50 p-3 text-xs text-indigo-900">
+          المسار المقترح: 1) أضف كتابًا (البيانات + التسعير) 2) افتح صفحة التعديل لإضافة المحتوى 3) انشر عند الجاهزية.
+        </div>
         <div className="mt-4 flex flex-wrap gap-2">
           <Link href="/studio/books/new" className="rounded-lg bg-indigo-700 px-4 py-2 text-sm font-semibold text-white hover:bg-indigo-600">
             أضف كتابًا

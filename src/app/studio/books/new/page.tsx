@@ -27,6 +27,9 @@ export default async function NewStudioBookPage() {
             <li>• كتابة المحتوى النصي</li>
           </ul>
         </div>
+        <p className="mt-3 text-xs font-semibold">
+          بعد الضغط على «إنشاء»، سيتم تحويلك تلقائيًا إلى صفحة التعديل مع رسالة نجاح وتعليمات الخطوة التالية.
+        </p>
       </section>
       <BookForm mode="create" categories={categories} authors={[]} hideAuthorField action={action} backHref="/studio/books" />
     </div>

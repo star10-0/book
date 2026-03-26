@@ -4,6 +4,19 @@ import { formatArabicDate } from "@/lib/formatters/intl";
 import { prisma } from "@/lib/prisma";
 import { createCreatorPromoCodeAction, toggleCreatorPromoCodeAction, updateCreatorPromoCodeAction } from "./actions";
 
+function formatPromoType(type: PromoCodeType) {
+  if (type === PromoCodeType.FREE) return "مجاني بالكامل";
+  if (type === PromoCodeType.FIXED) return "خصم ثابت";
+  return "خصم نسبي (%)";
+}
+
+function formatAppliesTo(value: PromoCodeAppliesTo) {
+  if (value === PromoCodeAppliesTo.PURCHASE) return "شراء فقط";
+  if (value === PromoCodeAppliesTo.RENTAL) return "إيجار فقط";
+  if (value === PromoCodeAppliesTo.PUBLISHING_FEE) return "رسوم نشر";
+  return "أي نوع طلب";
+}
+
 export default async function StudioPromoCodesPage() {
   const user = await requireCreator({ callbackUrl: "/studio/promo-codes" });
 
@@ -24,6 +37,9 @@ export default async function StudioPromoCodesPage() {
       <div>
         <h2 className="text-lg font-bold text-slate-900">أكواد الخصم الخاصة بالكاتب</h2>
         <p className="mt-1 text-sm text-slate-600">يمكنك إنشاء أكواد خصم مقيّدة بحساب الكاتب الخاص بك.</p>
+        <div className="mt-2 rounded-xl border border-indigo-200 bg-indigo-50 p-3 text-xs text-indigo-900">
+          للأعمال/المؤسسات: عند مشاركة كود مع جهة محددة، وضّح لهم أن نجاح التطبيق يتأثر بنوع الطلب (شراء/إيجار) والحد الأدنى للسعر وحدود الاستخدام.
+        </div>
       </div>
 
       <form action={createCreatorPromoCodeAction} className="grid gap-3 md:grid-cols-2">
@@ -61,7 +77,12 @@ export default async function StudioPromoCodesPage() {
                 </button>
               </form>
             </div>
-            <p className="mt-1 text-slate-700">{code.type} · {code.value ?? "—"} · {code.appliesTo} · {code.isActive ? "مفعل" : "معطل"}</p>
+            <p className="mt-1 text-slate-700">
+              {formatPromoType(code.type)} · القيمة: {code.value ?? "—"} · {formatAppliesTo(code.appliesTo)} · {code.isActive ? "مفعل" : "معطل"}
+            </p>
+            <p className="mt-1 text-xs text-slate-600">
+              الاستخدام: إجمالي {code.maxTotalUses ?? "غير محدود"} · لكل مستخدم {code.maxUsesPerUser ?? "غير محدود"} · حد أدنى {code.minimumAmountCents ?? 0} سنت
+            </p>
             <p className="mt-1 text-slate-500">أُنشئ بتاريخ {formatArabicDate(code.createdAt)}</p>
             <div className="mt-2 text-xs text-slate-600">
               آخر الاستخدامات: {code.redemptions.length === 0 ? "لا يوجد" : code.redemptions.map((r) => `${r.user.email} (${r.status})`).join("، ")}

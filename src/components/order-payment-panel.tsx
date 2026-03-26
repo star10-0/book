@@ -38,6 +38,11 @@ const statusLabel: Record<UiStatus, string> = {
   failure: "فشل الدفع",
 };
 
+const promoAudienceHints = [
+  "قد يكون بعض الأكواد مخصصًا لمؤسسة معينة (حسابات الأعمال/الجامعات) ولن يعمل مع حسابات أخرى.",
+  "قد يكون الكود مقيدًا بنوع العرض (شراء أو إيجار) أو بحد أدنى لقيمة الطلب.",
+];
+
 function mapAttemptStatusToUiStatus(status?: PaymentAttemptStatus): UiStatus {
   if (!status) return "idle";
   if (status === "PAID") return "success";
@@ -231,6 +236,7 @@ export function OrderPaymentPanel({
 
       <div className="mt-4 rounded-xl border border-slate-200 bg-slate-50 p-4 text-sm">
         <p className="font-semibold text-slate-900">رمز الخصم</p>
+        <p className="mt-1 text-xs text-slate-600">أدخل الكود كما استلمته من المؤسسة أو الجهة المانحة للخصم.</p>
         <div className="mt-2 flex gap-2">
           <input
             value={promoCodeInput}
@@ -248,15 +254,28 @@ export function OrderPaymentPanel({
           </button>
         </div>
         {appliedPromoCode ? <p className="mt-2 text-xs text-slate-600">الكود المطبق: {appliedPromoCode}</p> : null}
-        <p className="mt-2 text-xs text-slate-700">
-          الخصم: {formatArabicCurrency(discountCents / 100, { currency })} · الإجمالي بعد الخصم: {formatArabicCurrency(totalCents / 100, { currency })}
-        </p>
+        <dl className="mt-2 space-y-1 text-xs">
+          <div className="flex items-center justify-between gap-2 text-slate-700">
+            <dt>إجمالي الخصم</dt>
+            <dd className="font-semibold">{formatArabicCurrency(discountCents / 100, { currency })}</dd>
+          </div>
+          <div className="flex items-center justify-between gap-2 border-t border-slate-200 pt-1 text-slate-800">
+            <dt className="font-semibold">المبلغ النهائي بعد الخصم</dt>
+            <dd className="font-bold">{formatArabicCurrency(totalCents / 100, { currency })}</dd>
+          </div>
+        </dl>
+        <ul className="mt-2 list-disc space-y-1 pr-4 text-xs text-slate-600">
+          {promoAudienceHints.map((hint) => (
+            <li key={hint}>{hint}</li>
+          ))}
+        </ul>
       </div>
 
       {isFreeOrder ? (
         <div className="mt-4 rounded-xl border border-emerald-200 bg-emerald-50 p-4 text-sm text-emerald-900">
           <p className="font-semibold">هذا الطلب مجاني بالكامل بعد تطبيق الخصم.</p>
-          <p className="mt-1">لن يتم طلب دفع خارجي. اضغط الزر أدناه لإتمام الطلب ومنح الوصول مباشرة.</p>
+          <p className="mt-1">لن يتم طلب دفع خارجي. هذا يُعامل كطلب مجاني/تكميلي (Complimentary).</p>
+          <p className="mt-1">اضغط الزر أدناه لإتمام الطلب ومنح الوصول مباشرة.</p>
           <button
             type="button"
             onClick={completeFreeOrder}

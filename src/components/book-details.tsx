@@ -26,6 +26,8 @@ type BookDetailsProps = {
     publicReadUrl: string | null;
     publicReadLabel: string | null;
     publicDownloadUrl: string | null;
+    accessGuidance?: string | null;
+    contentStateNote?: string | null;
   };
   offers: Pick<BookOffer, "id" | "type" | "priceCents" | "currency" | "rentalDays">[];
   averageRating: number;
@@ -123,6 +125,9 @@ export function BookDetailsSection({
             <h2 id="book-content-access" className="text-lg font-bold text-slate-900">
               الوصول إلى المحتوى
             </h2>
+            {book.accessGuidance ? (
+              <p className="rounded-xl border border-indigo-200 bg-indigo-50 px-4 py-3 text-sm text-indigo-900">{book.accessGuidance}</p>
+            ) : null}
             {book.publicReadUrl || book.publicDownloadUrl ? (
               <div className="flex flex-wrap gap-3">
                 {book.publicReadUrl ? (
@@ -144,9 +149,10 @@ export function BookDetailsSection({
                 ) : null}
               </div>
             ) : (
-              <p className="rounded-xl border border-dashed border-slate-300 bg-slate-50 px-4 py-3 text-sm text-slate-600">
-                لا تتوفر قراءة أو تحميل مباشر لهذا الكتاب حاليًا. استخدم خيارات الشراء أو الإيجار للوصول إلى المحتوى داخل المكتبة.
-              </p>
+              <div className="space-y-2 rounded-xl border border-dashed border-slate-300 bg-slate-50 px-4 py-3 text-sm text-slate-600">
+                <p>لا تتوفر قراءة أو تحميل مباشر لهذا الكتاب حاليًا. استخدم خيارات الشراء أو الإيجار للوصول إلى المحتوى داخل المكتبة.</p>
+                {book.contentStateNote ? <p className="text-xs font-semibold text-slate-700">{book.contentStateNote}</p> : null}
+              </div>
             )}
           </section>
 
@@ -248,9 +254,10 @@ function BookOffers({ offers }: { offers: Pick<BookOffer, "id" | "type" | "price
       </h2>
 
       {offers.length === 0 ? (
-        <p className="rounded-xl border border-dashed border-slate-300 px-4 py-3 text-sm text-slate-600">
-          لا توجد عروض متاحة لهذا الكتاب حاليًا.
-        </p>
+        <div className="rounded-xl border border-dashed border-slate-300 px-4 py-3 text-sm text-slate-600">
+          <p>لا توجد عروض متاحة لهذا الكتاب حاليًا.</p>
+          <p className="mt-1 text-xs">لن تظهر أزرار الشراء/الاستئجار قبل إضافة عرض صالح ومفعل من الاستوديو.</p>
+        </div>
       ) : (
         <ul className="space-y-2">
           {offers.map((offer) => (
