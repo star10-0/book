@@ -6,6 +6,7 @@ test("validateCreateOrderPayload trims valid ids", () => {
   const result = validateCreateOrderPayload({ bookId: " cly0000000000000000000001 ", offerId: " cly0000000000000000000002 " });
 
   assert.deepEqual(result, {
+    ok: true,
     data: {
       bookId: "cly0000000000000000000001",
       offerId: "cly0000000000000000000002",
@@ -14,12 +15,21 @@ test("validateCreateOrderPayload trims valid ids", () => {
 });
 
 test("validateCreateOrderPayload rejects missing and malformed fields", () => {
-  assert.equal(validateCreateOrderPayload({ bookId: "", offerId: "cly0000000000000000000002" }).error, "حقل bookId مطلوب.");
-  assert.equal(validateCreateOrderPayload({ bookId: "cly0000000000000000000001", offerId: "" }).error, "حقل offerId مطلوب.");
-  assert.equal(
-    validateCreateOrderPayload({ bookId: "not-valid-id", offerId: "cly0000000000000000000002" }).error,
-    "معرّفات الطلب غير صالحة.",
-  );
+  const missingBookId = validateCreateOrderPayload({ bookId: "", offerId: "cly0000000000000000000002" });
+  const missingOfferId = validateCreateOrderPayload({ bookId: "cly0000000000000000000001", offerId: "" });
+  const malformed = validateCreateOrderPayload({ bookId: "not-valid-id", offerId: "cly0000000000000000000002" });
+
+  assert.equal(missingBookId.ok, false);
+  assert.equal(missingOfferId.ok, false);
+  assert.equal(malformed.ok, false);
+
+  if (!missingOfferId.ok) {
+    assert.equal(missingOfferId.error, "حقل offerId مطلوب.");
+  }
+
+  if (!malformed.ok) {
+    assert.equal(malformed.error, "معرّفات الطلب غير صالحة.");
+  }
 });
 
 test("isOfferCurrentlyAvailable validates status, format, rental settings and schedule", () => {

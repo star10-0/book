@@ -38,8 +38,8 @@ export async function POST(request: Request) {
 
   const validation = validateCreateOrderPayload(body);
 
-  if (validation.error || !validation.data) {
-    return jsonNoStore({ message: validation.error ?? "بيانات الطلب غير صالحة." }, { status: 400 });
+  if (!validation.ok) {
+    return jsonNoStore({ message: validation.error }, { status: 400 });
   }
 
   try {

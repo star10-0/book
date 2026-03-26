@@ -11,7 +11,7 @@ import {
 
 type BookFormFieldErrors = Partial<Record<keyof SharedBookFormValues, string>>;
 
-type BookFormValidationSuccess = {
+export type BookFormValidationSuccess = {
   status: NonNullable<ReturnType<typeof parseStatus>>;
   buyEnabled: boolean;
   rentEnabled: boolean;
@@ -22,11 +22,11 @@ type BookFormValidationSuccess = {
   metadata: Prisma.InputJsonValue | Prisma.NullableJsonNullValueInput | undefined;
 };
 
-type BookFormValidationResult =
+export type BookFormValidationResult =
   | { ok: true; data: BookFormValidationSuccess }
   | { ok: false; error: BookFormFieldErrors };
 
-type CreatorBookFormValidationResult =
+export type CreatorBookFormValidationResult =
   | { ok: true; data: BookFormValidationSuccess & { creatorAuthorId: string } }
   | { ok: false; error: BookFormFieldErrors };
 
