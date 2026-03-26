@@ -85,6 +85,18 @@ When `PAYMENT_GATEWAY_MODE=live`, also set:
 - `SHAM_CASH_CREATE_PAYMENT_PATH`
 - `SHAM_CASH_VERIFY_PAYMENT_PATH`
 - `SHAM_CASH_WEBHOOK_SECRET`
+- `SYRIATEL_CASH_API_BASE_URL`
+- `SYRIATEL_CASH_API_KEY`
+- `SYRIATEL_CASH_MERCHANT_ID`
+- `SYRIATEL_CASH_DESTINATION_ACCOUNT`
+- `SYRIATEL_CASH_CREATE_PAYMENT_PATH`
+- `SYRIATEL_CASH_VERIFY_PAYMENT_PATH`
+
+For local development/testing mock flows only, set all of the following explicitly:
+
+- `PAYMENT_GATEWAY_MODE=mock`
+- `ALLOW_MOCK_PAYMENTS=true`
+- `ALLOW_MOCK_PAYMENT_VERIFICATION=true`
 
 Use `.env.production.example` as the source of truth for production setup.
 

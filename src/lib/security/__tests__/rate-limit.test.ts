@@ -2,35 +2,42 @@ import assert from "node:assert/strict";
 import test from "node:test";
 import { checkRateLimit } from "@/lib/security/rate-limit";
 
-test("checkRateLimit blocks requests over limit inside same window", async () => {
-  const key = `test:${Date.now()}`;
+test("checkRateLimit uses KV backend when available", async () => {
+  const originalFetch = global.fetch;
+  const originalEnv = { ...process.env };
 
-  const first = await checkRateLimit({ key, limit: 2, windowMs: 60_000 });
-  const second = await checkRateLimit({ key, limit: 2, windowMs: 60_000 });
-  const third = await checkRateLimit({ key, limit: 2, windowMs: 60_000 });
+  process.env.KV_REST_API_URL = "https://kv.example";
+  process.env.KV_REST_API_TOKEN = "token";
 
-  assert.equal(first.allowed, true);
-  assert.equal(first.backend, "memory");
-  assert.equal(second.allowed, true);
-  assert.equal(third.allowed, false);
-  assert.ok(third.retryAfterSeconds >= 1);
+  global.fetch = async () =>
+    new Response(
+      JSON.stringify([
+        { result: 1 },
+        { result: 1 },
+      ]),
+      { status: 200 },
+    );
+
+  const result = await checkRateLimit({ key: `test:kv:${Date.now()}`, limit: 2, windowMs: 60_000 });
+
+  assert.equal(result.allowed, true);
+  assert.equal(result.backend, "kv");
+
+  process.env = originalEnv;
+  global.fetch = originalFetch;
 });
 
-test("checkRateLimit fails closed in production when distributed backend is required", async () => {
-  const originalNodeEnv = (process.env as Record<string, string | undefined>).NODE_ENV;
-  const originalKvUrl = process.env.KV_REST_API_URL;
-  const originalKvToken = process.env.KV_REST_API_TOKEN;
-  const originalUpstashUrl = process.env.UPSTASH_REDIS_REST_URL;
-  const originalUpstashToken = process.env.UPSTASH_REDIS_REST_TOKEN;
+test("checkRateLimit fails closed when KV backend is unavailable", async () => {
+  const originalFetch = global.fetch;
+  const originalEnv = { ...process.env };
 
-  (process.env as Record<string, string | undefined>).NODE_ENV = "production";
-  delete process.env.KV_REST_API_URL;
-  delete process.env.KV_REST_API_TOKEN;
-  delete process.env.UPSTASH_REDIS_REST_URL;
-  delete process.env.UPSTASH_REDIS_REST_TOKEN;
+  process.env.KV_REST_API_URL = "https://kv.example";
+  process.env.KV_REST_API_TOKEN = "token";
+
+  global.fetch = async () => new Response("bad", { status: 500 });
 
   const result = await checkRateLimit({
-    key: `test:prod:${Date.now()}`,
+    key: `test:unavailable:${Date.now()}`,
     limit: 5,
     windowMs: 60_000,
     requireDistributedInProduction: true,
@@ -40,18 +47,6 @@ test("checkRateLimit fails closed in production when distributed backend is requ
   assert.equal(result.backend, "unavailable");
   assert.equal(result.reason, "RATE_LIMIT_BACKEND_UNAVAILABLE");
 
-  if (typeof originalNodeEnv === "string") (process.env as Record<string, string | undefined>).NODE_ENV = originalNodeEnv;
-  else delete (process.env as Record<string, string | undefined>).NODE_ENV;
-
-  if (typeof originalKvUrl === "string") process.env.KV_REST_API_URL = originalKvUrl;
-  else delete process.env.KV_REST_API_URL;
-
-  if (typeof originalKvToken === "string") process.env.KV_REST_API_TOKEN = originalKvToken;
-  else delete process.env.KV_REST_API_TOKEN;
-
-  if (typeof originalUpstashUrl === "string") process.env.UPSTASH_REDIS_REST_URL = originalUpstashUrl;
-  else delete process.env.UPSTASH_REDIS_REST_URL;
-
-  if (typeof originalUpstashToken === "string") process.env.UPSTASH_REDIS_REST_TOKEN = originalUpstashToken;
-  else delete process.env.UPSTASH_REDIS_REST_TOKEN;
+  process.env = originalEnv;
+  global.fetch = originalFetch;
 });

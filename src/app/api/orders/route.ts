@@ -9,7 +9,7 @@ import {
   validateCreateOrderPayload,
 } from "@/lib/orders/create-order";
 import { prisma } from "@/lib/prisma";
-import { enforceRateLimit, isSameOriginMutation, jsonNoStore, rejectCrossOriginMutation, rejectRateLimited } from "@/lib/security";
+import { enforceRateLimit, isSameOriginMutation, jsonNoStore, rejectCrossOriginMutation, rejectRateLimitUnavailable, rejectRateLimited } from "@/lib/security";
 
 export async function POST(request: Request) {
   const requestId = getRequestId(request);
@@ -19,8 +19,11 @@ export async function POST(request: Request) {
     return rejectCrossOriginMutation();
   }
 
-  const rateLimit = await enforceRateLimit({ key: `orders:create:${clientIp}`, limit: 30, windowMs: 60_000 });
+  const rateLimit = await enforceRateLimit({ key: `orders:create:${clientIp}`, limit: 30, windowMs: 60_000, requireDistributedInProduction: true });
   if (!rateLimit.allowed) {
+    if (rateLimit.reason === "RATE_LIMIT_BACKEND_UNAVAILABLE") {
+      return rejectRateLimitUnavailable();
+    }
     return rejectRateLimited(rateLimit.retryAfterSeconds);
   }
 

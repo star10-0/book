@@ -12,6 +12,7 @@ import {
   readRequiredEnv,
 } from "@/lib/payments/gateways/provider-http";
 import { getShamCashIntegrationConfig } from "@/lib/payments/gateways/provider-integration";
+import { isMockPaymentGatewayEnabled } from "@/lib/payments/mock-mode";
 import type {
   CreatePaymentGatewayInput,
   CreatePaymentGatewayResult,
@@ -69,6 +70,9 @@ export class ShamCashGateway implements PaymentGateway {
     const integration = getShamCashIntegrationConfig();
 
     if (integration.mode !== "live") {
+      if (!isMockPaymentGatewayEnabled()) {
+        throw new GatewayConfigurationError("Mock payment gateways are disabled outside explicit development/test mode.");
+      }
       return createMockPaymentResult("sham", input);
     }
 
@@ -150,6 +154,9 @@ export class ShamCashGateway implements PaymentGateway {
     const integration = getShamCashIntegrationConfig();
 
     if (integration.mode !== "live") {
+      if (!isMockPaymentGatewayEnabled()) {
+        throw new GatewayConfigurationError("Mock payment gateways are disabled outside explicit development/test mode.");
+      }
       return verifyMockPaymentResult("Sham Cash", input);
     }
 
