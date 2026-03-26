@@ -4,7 +4,8 @@ import { NextResponse } from "next/server";
 import { requireCreator } from "@/lib/auth-session";
 import { canManageCreatorBook } from "@/lib/authz";
 import { isSupportedAdminBookAssetKind } from "@/lib/files/book-asset-metadata";
-import { BookStorageService, mapStorageProviderKeyToEnum } from "@/lib/files/book-storage-service";
+import { BookStorageService, mapStorageProviderEnumToKey, mapStorageProviderKeyToEnum } from "@/lib/files/book-storage-service";
+import { createStorageProvider } from "@/lib/files/storage-provider";
 import { getUploadValidationArabicMessage, validateUploadPayload } from "@/lib/files/upload-validation";
 import { getClientIp } from "@/lib/observability/logger";
 import { prisma } from "@/lib/prisma";
@@ -125,6 +126,7 @@ export async function POST(request: Request) {
     },
     select: {
       id: true,
+      storageProvider: true,
       storageKey: true,
       bucket: true,
       region: true,
@@ -133,7 +135,7 @@ export async function POST(request: Request) {
   });
 
   if (previousAsset) {
-    await storageService.deleteBookAsset({
+    await createStorageProvider(mapStorageProviderEnumToKey(previousAsset.storageProvider)).deleteFile({
       key: previousAsset.storageKey,
       bucket: previousAsset.bucket ?? undefined,
       region: previousAsset.region ?? undefined,
@@ -214,6 +216,7 @@ export async function DELETE(request: Request) {
     select: {
       id: true,
       kind: true,
+      storageProvider: true,
       bookId: true,
       storageKey: true,
       bucket: true,
@@ -231,9 +234,7 @@ export async function DELETE(request: Request) {
     return NextResponse.json({ error: "غير مسموح بالوصول لهذا الكتاب." }, { status: 403 });
   }
 
-  const storageService = new BookStorageService();
-
-  await storageService.deleteBookAsset({
+  await createStorageProvider(mapStorageProviderEnumToKey(asset.storageProvider)).deleteFile({
     key: asset.storageKey,
     bucket: asset.bucket ?? undefined,
     region: asset.region ?? undefined,

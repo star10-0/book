@@ -4,6 +4,7 @@ import path from "node:path";
 import { Readable } from "node:stream";
 import { AccessGrantStatus, FileKind, StorageProvider } from "@prisma/client";
 import { getCurrentUser } from "@/lib/auth-session";
+import { mapStorageProviderEnumToKey } from "@/lib/files/book-storage-service";
 import { canAccessProtectedAsset, resolveAssetDisposition } from "@/lib/files/protected-asset-policy";
 import { createStorageProvider } from "@/lib/files/storage-provider";
 import { prisma } from "@/lib/prisma";
@@ -119,7 +120,7 @@ export async function GET(request: Request, { params }: BookAssetRouteParams) {
 
   if (file.storageProvider !== StorageProvider.LOCAL) {
     try {
-      const provider = createStorageProvider();
+      const provider = createStorageProvider(mapStorageProviderEnumToKey(file.storageProvider));
       const signedUrl = await provider.createSignedAssetUrl({
         pointer: {
           key: file.storageKey,

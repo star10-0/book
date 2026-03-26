@@ -348,8 +348,8 @@ export const resolveStorageProviderFromEnv = (): StorageProviderKey => {
   return "local";
 };
 
-export const createStorageProvider = (): StorageProviderAdapter => {
-  const provider = resolveStorageProviderFromEnv();
+export const createStorageProvider = (providerKey?: StorageProviderKey): StorageProviderAdapter => {
+  const provider = providerKey ?? resolveStorageProviderFromEnv();
 
   if (provider === "s3" || provider === "r2") {
     return new S3CompatibleStorageProvider(provider);
