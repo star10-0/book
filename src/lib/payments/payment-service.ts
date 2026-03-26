@@ -1,6 +1,7 @@
 import { Prisma, PaymentStatus, type PaymentAttemptStatus, type PaymentProvider } from "@prisma/client";
 import { prisma } from "@/lib/prisma";
 import { resolvePaymentGateway } from "@/lib/payments/gateways";
+import { sanitizeForLogs } from "@/lib/payments/gateways/provider-http";
 import { isMockPaymentVerificationEnabled } from "@/lib/payments/mock-mode";
 import {
   canTransitionPaymentStatus,
@@ -145,7 +146,7 @@ export async function createPaymentForOrder(input: CreatePaymentForOrderInput) {
           data: {
             status: "SUBMITTED",
             providerReference,
-            responsePayload: gatewayResponse.rawPayload as Prisma.InputJsonValue | undefined,
+            responsePayload: sanitizePayloadForStorage(gatewayResponse.rawPayload),
           },
         });
 
@@ -316,6 +317,8 @@ export async function verifyPayment(input: VerifyPaymentInput) {
         providerReference,
         transactionReference,
         mockOutcome: input.mockOutcome,
+        expectedAmountCents: attempt.amountCents,
+        expectedCurrency: attempt.currency,
       });
     } catch (error) {
       await prisma.paymentAttempt.updateMany({
@@ -342,7 +345,7 @@ export async function verifyPayment(input: VerifyPaymentInput) {
       data: {
         status: finalAttemptStatus,
         verifiedAt: new Date(),
-        responsePayload: gatewayResult.rawPayload as Prisma.InputJsonValue | undefined,
+        responsePayload: sanitizePayloadForStorage(gatewayResult.rawPayload),
         failureReason: gatewayResult.failureReason,
       },
     });
@@ -401,6 +404,14 @@ export async function verifyPayment(input: VerifyPaymentInput) {
 
     return finalizedAttempt;
   });
+}
+
+function sanitizePayloadForStorage(payload: Record<string, unknown> | undefined): Prisma.InputJsonValue | undefined {
+  if (!payload) {
+    return undefined;
+  }
+
+  return sanitizeForLogs(payload) as Prisma.InputJsonValue;
 }
 
 

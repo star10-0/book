@@ -4,7 +4,7 @@ import { logError, getClientIp, getRequestId } from "@/lib/observability/logger"
 import { GatewayConfigurationError, GatewayRequestError } from "@/lib/payments/gateways/provider-http";
 import { isPaymentError, PAYMENT_ERROR_CODES } from "@/lib/payments/errors";
 import { verifyPayment } from "@/lib/payments/payment-service";
-import { enforceRateLimit, isSameOriginMutation, jsonNoStore, rejectCrossOriginMutation, rejectRateLimited } from "@/lib/security";
+import { enforceRateLimit, isSameOriginMutation, jsonNoStore, rejectCrossOriginMutation, rejectRateLimitUnavailable, rejectRateLimited } from "@/lib/security";
 
 interface VerifyPaymentRequestBody {
   attemptId?: string;
@@ -18,8 +18,11 @@ export async function POST(request: Request) {
     return rejectCrossOriginMutation();
   }
 
-  const rateLimit = await enforceRateLimit({ key: `payments:verify:${clientIp}`, limit: 30, windowMs: 60_000 });
+  const rateLimit = await enforceRateLimit({ key: `payments:verify:${clientIp}`, limit: 30, windowMs: 60_000, requireDistributedInProduction: true });
   if (!rateLimit.allowed) {
+    if (rateLimit.reason === "RATE_LIMIT_BACKEND_UNAVAILABLE") {
+      return rejectRateLimitUnavailable();
+    }
     return rejectRateLimited(rateLimit.retryAfterSeconds);
   }
 

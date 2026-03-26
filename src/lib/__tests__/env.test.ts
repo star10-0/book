@@ -67,6 +67,7 @@ test("validateServerEnv requires production deployment vars", () => {
   assert.ok(result.errors.some((issue) => issue.key === "NEXTAUTH_URL"));
   assert.ok(result.errors.some((issue) => issue.key === "PAYMENT_GATEWAY_MODE"));
   assert.ok(result.errors.some((issue) => issue.key === "BOOK_STORAGE_PROVIDER"));
+  assert.ok(result.errors.some((issue) => issue.key === "KV_REST_API_URL"));
 
   if (typeof originalNodeEnv === "string") (process.env as Record<string, string | undefined>).NODE_ENV = originalNodeEnv;
   else delete (process.env as Record<string, string | undefined>).NODE_ENV;
@@ -88,4 +89,21 @@ test("validateServerEnv requires production deployment vars", () => {
 
   if (typeof originalDatabaseUrl === "string") process.env.DATABASE_URL = originalDatabaseUrl;
   else delete process.env.DATABASE_URL;
+});
+
+test("validateServerEnv requires Sham Cash live credentials when live mode is enabled", () => {
+  const originalPaymentMode = process.env.PAYMENT_GATEWAY_MODE;
+  const originalShamDestination = process.env.SHAM_CASH_DESTINATION_ACCOUNT;
+
+  process.env.PAYMENT_GATEWAY_MODE = "live";
+  delete process.env.SHAM_CASH_DESTINATION_ACCOUNT;
+
+  const result = validateServerEnv();
+  assert.ok(result.issues.some((issue) => issue.key === "SHAM_CASH_DESTINATION_ACCOUNT"));
+
+  if (typeof originalPaymentMode === "string") process.env.PAYMENT_GATEWAY_MODE = originalPaymentMode;
+  else delete process.env.PAYMENT_GATEWAY_MODE;
+
+  if (typeof originalShamDestination === "string") process.env.SHAM_CASH_DESTINATION_ACCOUNT = originalShamDestination;
+  else delete process.env.SHAM_CASH_DESTINATION_ACCOUNT;
 });

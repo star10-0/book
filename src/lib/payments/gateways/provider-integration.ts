@@ -38,6 +38,7 @@ export function getShamCashIntegrationConfig(): ProviderIntegrationConfig {
       hasEnv("SHAM_CASH_API_BASE_URL") &&
       hasEnv("SHAM_CASH_API_KEY") &&
       hasEnv("SHAM_CASH_MERCHANT_ID") &&
+      hasEnv("SHAM_CASH_DESTINATION_ACCOUNT") &&
       hasEnv("SHAM_CASH_CREATE_PAYMENT_PATH") &&
       hasEnv("SHAM_CASH_VERIFY_PAYMENT_PATH") &&
       hasEnv("SHAM_CASH_WEBHOOK_SECRET"),
