@@ -34,68 +34,64 @@
 
 > Seed currently creates an admin account (`admin@book.local` / `AdminPass123!`).
 
-## Production Deployment Model (Current Recommendation)
+---
 
-Current production recommendation is **Docker/VPS with persistent local volumes** because:
+## Sprint 5: Deployment and Production Readiness
 
-- uploads are still written to local filesystem paths,
-- protected reader files are streamed from private local storage,
-- S3/R2 adapters are present but not fully ready for production migration,
-- live payment providers are not implemented yet.
+This repository now includes an explicit production deployment flow for Docker/VPS with persistent local storage.
+
+### Deployment artifacts
+
+- `Dockerfile`: multi-stage production image.
+- `docker-compose.prod.yml`: production orchestration for `db`, one-off `migrate`, and `app`.
+- `docker-compose.app.yml`: app-only deployment (use with managed PostgreSQL).
+- `.env.production.example`: complete production variable template including mount and compose overrides.
+
+### Production build/start contract
+
+- Build: `npm run build`
+- Runtime start: `npm run start`
+- Production-safe start (migration + app): `npm run start:prod`
+- Migration only: `npm run prisma:migrate:deploy`
+
+`docker-compose.prod.yml` runs migration in a dedicated one-off `migrate` service before starting `app`.
+
+---
 
 ## Production Environment Variables
 
-The app validates these settings at runtime and fails fast in production when required values are missing/invalid.
+The app validates environment variables at server startup (`src/instrumentation.ts`) and throws in production for missing/invalid required values.
 
 ### Required in production
 
 - `DATABASE_URL`
 - `AUTH_SECRET` (minimum 32 chars)
-- `NEXTAUTH_URL` (absolute HTTPS URL)
-- `APP_BASE_URL` (absolute HTTPS URL)
+- `NEXTAUTH_URL` (absolute URL)
+- `APP_BASE_URL` (absolute URL)
 - `BOOK_STORAGE_PROVIDER` (`local` | `s3` | `r2`)
 - `PAYMENT_GATEWAY_MODE` (`mock` | `live`)
-- `SHAM_CASH_WEBHOOK_SECRET` (required for live Sham Cash callback authenticity verification)
-- `SHAM_CASH_DESTINATION_ACCOUNT` (required for live Sham Cash destination-account validation)
-- `SHAM_CASH_API_BASE_URL`, `SHAM_CASH_API_KEY`, `SHAM_CASH_MERCHANT_ID`, `SHAM_CASH_CREATE_PAYMENT_PATH`, `SHAM_CASH_VERIFY_PAYMENT_PATH` (required when `PAYMENT_GATEWAY_MODE=live`)
+- `KV_REST_API_URL`
+- `KV_REST_API_TOKEN`
 
-### Strongly recommended
+### Conditionally required
 
-- `NEXTAUTH_SECRET` (keep equal to `AUTH_SECRET` for consistency)
-- `PORT` (optional; default `3000`)
-- `KV_REST_API_URL` + `KV_REST_API_TOKEN` (required in production for auth/payment distributed rate limiting)
+When `PAYMENT_GATEWAY_MODE=live`, also set:
 
-### Payment safety guardrails
+- `SHAM_CASH_API_BASE_URL`
+- `SHAM_CASH_API_KEY`
+- `SHAM_CASH_MERCHANT_ID`
+- `SHAM_CASH_DESTINATION_ACCOUNT`
+- `SHAM_CASH_CREATE_PAYMENT_PATH`
+- `SHAM_CASH_VERIFY_PAYMENT_PATH`
+- `SHAM_CASH_WEBHOOK_SECRET`
 
-- Keep `PAYMENT_GATEWAY_MODE=mock` for first production rollout.
-- Keep `ALLOW_MOCK_PAYMENT_VERIFICATION=false` on staging/production.
-- Mock verification endpoint is only available when:
-  - `NODE_ENV` is `development` or `test`,
-  - `PAYMENT_GATEWAY_MODE=mock`,
-  - `ALLOW_MOCK_PAYMENT_VERIFICATION=true`.
+Use `.env.production.example` as the source of truth for production setup.
 
-Use `.env.production.example` as the baseline template.
+---
 
-## Docker Files
+## Prisma Production Flow (No `migrate dev`)
 
-- `Dockerfile`: production build + runtime image
-- `docker-compose.yml`: app + PostgreSQL + persistent volumes
-- `.dockerignore`: reduces build context
-
-## Persistent Volume Requirements
-
-You must persist these paths for Docker/VPS deployment:
-
-- `/app/public/uploads` → maps to project `public/uploads`
-- `/app/storage/private/uploads` → maps to project `storage/private/uploads`
-
-If you use bundled PostgreSQL via compose, also persist:
-
-- `/var/lib/postgresql/data`
-
-## Prisma Production Flow
-
-Production migration command:
+Production uses **deploy-only** migrations:
 
 ```bash
 npm run prisma:migrate:deploy
@@ -103,116 +99,145 @@ npm run prisma:migrate:deploy
 
 Do **not** run `prisma migrate dev` in production.
 
-## Local Schema Drift Recovery (Important)
+### Required migration/start order
 
-### Root cause seen in this codebase
+1. Start PostgreSQL.
+2. Wait for DB health/readiness.
+3. Run `prisma migrate deploy`.
+4. Start Next.js app.
 
-Recent schema updates added promo-related columns to `Order` (`discountCents`, `promoCodeId`) and related promo tables. If local development databases were not migrated after pulling those changes, runtime Prisma queries fail with missing-column errors (for example around `Order.discountCents`).
+In Docker production (`docker-compose.prod.yml`), this order is enforced via service dependencies:
 
-### Safe recovery path for development
+- `db` must be healthy.
+- `migrate` must exit successfully.
+- then `app` starts.
 
-If you need to preserve local data, apply pending migrations:
+---
 
-```bash
-npm run prisma:migrate:status
-npm run prisma:migrate
-```
+## Persistent Storage Requirements (Docker/VPS)
 
-If local data is disposable and drift is severe, use reset (recommended quickest recovery in dev):
+Persist these paths to avoid data loss:
 
-```bash
-npm run prisma:reset:dev
-```
+- `public/uploads` (container path: `/app/public/uploads`)
+- `storage/private/uploads` (container path: `/app/storage/private/uploads`)
 
-Then run:
+When using bundled Postgres, also persist:
 
-```bash
-npm run dev
-```
+- `/var/lib/postgresql/data`
 
-After migrations are in sync, order creation and checkout queries work again.
+`docker-compose.prod.yml` defaults to host bind mounts under `./volumes/*` and can be overridden with:
 
-### Migration/startup order
+- `PUBLIC_UPLOADS_PATH`
+- `PRIVATE_UPLOADS_PATH`
+- `POSTGRES_DATA_PATH`
 
-1. Start PostgreSQL and wait for readiness.
-2. Run `prisma migrate deploy`.
-3. Start the Next.js server.
+This keeps **local filesystem storage** viable for single-VPS production rollouts.
 
-In Docker this project uses `npm run start:prod`, which runs migrate deploy before `next start`.
+---
 
-## Staging / Production (Docker Compose)
+## Staging Deployment (Docker)
 
-1. Copy env template and fill real values:
+1. Prepare env file:
 
    ```bash
    cp .env.production.example .env.production
    ```
 
-2. Build and start:
+2. Fill staging domain and secrets.
+3. Build + launch:
 
    ```bash
-   docker compose --env-file .env.production up -d --build
+   docker compose -f docker-compose.prod.yml --env-file .env.production up -d --build
    ```
 
-3. Check logs:
+4. Check migration and app logs:
 
    ```bash
-   docker compose logs -f app
+   docker compose -f docker-compose.prod.yml logs -f migrate app
    ```
 
-4. Open app at `http://<server-ip>:3000` (or behind your reverse proxy TLS domain).
+5. Smoke test core flows (auth, checkout, library, reader).
 
-### If PostgreSQL is managed externally
+## Production Deployment on VPS (Exact Steps)
 
-Use the app-only compose file:
+1. Install Docker Engine + Docker Compose plugin on the VPS.
+2. Clone repo into a stable path, e.g. `/opt/book`.
+3. Create persistent directories:
+
+   ```bash
+   mkdir -p /opt/book/volumes/postgres-data
+   mkdir -p /opt/book/volumes/public-uploads
+   mkdir -p /opt/book/volumes/private-uploads
+   ```
+
+4. Prepare environment:
+
+   ```bash
+   cp /opt/book/.env.production.example /opt/book/.env.production
+   ```
+
+5. Edit `.env.production` with real values (URLs, secrets, DB credentials, KV credentials).
+6. Start services:
+
+   ```bash
+   cd /opt/book
+   docker compose -f docker-compose.prod.yml --env-file .env.production up -d --build
+   ```
+
+7. Verify rollout:
+
+   ```bash
+   docker compose -f docker-compose.prod.yml ps
+   docker compose -f docker-compose.prod.yml logs --tail=200 migrate app
+   ```
+
+8. Put app behind TLS reverse proxy (Nginx/Caddy/Traefik) and point domain to `APP_BASE_URL`/`NEXTAUTH_URL`.
+
+### App-only deployment (managed PostgreSQL)
 
 ```bash
 docker compose -f docker-compose.app.yml --env-file .env.production up -d --build
 ```
 
-Set `DATABASE_URL` to your managed PostgreSQL connection string.
+Use external `DATABASE_URL` in `.env.production`.
 
-## VPS Rollout Checklist
+---
 
-1. Provision VPS (Ubuntu/Debian), install Docker + Docker Compose plugin.
-2. Clone repo on VPS.
-3. Create `.env.production` from `.env.production.example`.
-4. Ensure domain + TLS reverse proxy are configured (Nginx/Caddy/Traefik).
-5. Run `docker compose up -d --build`.
-6. Smoke-test:
-   - sign in
-   - create order
-   - payment attempt lifecycle in mock mode
-   - reader access for purchased/rented content
-   - protected asset URLs return `403` for unauthorized users.
-
-## Backup, Restore, and Rollback Basics
+## Operations Basics
 
 ### Backups
 
-- PostgreSQL: daily backup + retention policy.
-- File volumes: snapshot both uploads volumes on same schedule:
+- PostgreSQL: scheduled logical backup or volume snapshots.
+- Uploads: snapshot both mounted paths together:
   - `public/uploads`
   - `storage/private/uploads`
-- Always take an on-demand DB + file snapshot before deployment.
+- Take an on-demand backup before every production release.
 
-### Restore expectations
+### Restore (minimum)
 
-- Restore DB backup and both file volumes from the same backup window.
-- Run integrity smoke tests (login, library, reader streaming, recent orders).
+1. Stop app traffic.
+2. Restore PostgreSQL from selected backup point.
+3. Restore both upload mounts from the same point-in-time window.
+4. Restart services and run smoke tests.
 
-### Rollback basics
+### Rollback expectations
 
-- Keep previous app image tag available.
-- Roll back app image first if release is bad.
-- If migration changed schema incompatibly, restore database snapshot and aligned file volumes.
+- Keep previous Docker image/tag available.
+- Application-only regressions: rollback app image.
+- Schema-breaking releases: restore DB + upload volumes to pre-release snapshot, then redeploy previous image.
 
-## Current Limitations Before True Public Launch
+---
 
-- Sham Cash now supports live create/verify flow; Syriatel Cash remains placeholder for next sprint.
-- Mock verification is hard-gated to development/test only (with explicit flag).
-- Auth/payment rate limiting fails closed in production unless KV/Redis REST credentials are configured.
-- Object storage migration plan (S3/R2) should be completed before horizontal scaling.
+## Current Launch Blockers / Risks
+
+Before true large-scale public launch:
+
+1. `BOOK_STORAGE_PROVIDER=local` is VPS-friendly but not ideal for horizontal scaling (shared object storage migration still pending).
+2. Syriatel Cash live integration is still placeholder.
+3. Full production observability stack (centralized logs/metrics/alerts) is not yet codified in this repo.
+4. Disaster recovery is documented, but automated backup verification is still an operational responsibility.
+
+---
 
 ## Validation Commands
 
@@ -223,22 +248,3 @@ npm run lint
 npm run typecheck
 npm run test
 ```
-
-## Promo Code / Discount System
-
-The platform now includes a server-validated promo system for checkout with:
-
-- `FREE`, `PERCENT`, and `FIXED` promo types.
-- Redemption tracking per user/order/payment.
-- Institution and creator restrictions.
-- Scope restrictions (`PURCHASE`, `RENTAL`, `PUBLISHING_FEE`, `ANY`).
-- Free-order internal completion flow (no external gateway call).
-
-### Management
-
-- Admin management: `/admin/promo-codes`
-- Creator management: `/studio/promo-codes`
-
-### Checkout usage
-
-Users enter promo codes on the checkout order payment panel (`/checkout/[orderId]`). Totals are always recalculated on the server before payment attempt creation.

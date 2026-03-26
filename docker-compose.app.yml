@@ -8,11 +8,12 @@ services:
       - .env.production
     environment:
       NODE_ENV: production
+    command: ["npm", "run", "start:prod"]
     ports:
-      - "3000:3000"
+      - "${APP_PORT:-3000}:3000"
     volumes:
-      - app_public_uploads:/app/public/uploads
-      - app_private_uploads:/app/storage/private/uploads
+      - ${PUBLIC_UPLOADS_PATH:-./volumes/public-uploads}:/app/public/uploads
+      - ${PRIVATE_UPLOADS_PATH:-./volumes/private-uploads}:/app/storage/private/uploads
     restart: unless-stopped
     healthcheck:
       test:
@@ -23,7 +24,3 @@ services:
       interval: 15s
       timeout: 5s
       retries: 10
-
-volumes:
-  app_public_uploads:
-  app_private_uploads:
