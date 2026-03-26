@@ -1,5 +1,6 @@
 import { AccessGrantType, type BookOffer } from "@prisma/client";
-import { hasValidRentalDays } from "@/lib/services/invariants";
+import { hasValidRentalDays, normalizeNonNegativeMoneyCents } from "@/lib/services/invariants";
+import { err, ok, type ServiceResult } from "@/lib/services/result";
 
 const CUID_PATTERN = /^[a-z0-9]{8,36}$/;
 
@@ -14,34 +15,32 @@ export interface OrderTotals {
   totalCents: number;
 }
 
-export function validateCreateOrderPayload(payload: unknown): { data?: CreateOrderRequest; error?: string } {
+export function validateCreateOrderPayload(payload: unknown): ServiceResult<CreateOrderRequest, string> {
   if (!payload || typeof payload !== "object") {
-    return { error: "بيانات الطلب غير صالحة." };
+    return err("بيانات الطلب غير صالحة.");
   }
 
   const { bookId, offerId } = payload as Record<string, unknown>;
 
   if (typeof bookId !== "string" || bookId.trim().length === 0) {
-    return { error: "حقل bookId مطلوب." };
+    return err("حقل bookId مطلوب.");
   }
 
   if (typeof offerId !== "string" || offerId.trim().length === 0) {
-    return { error: "حقل offerId مطلوب." };
+    return err("حقل offerId مطلوب.");
   }
 
   const normalizedBookId = bookId.trim();
   const normalizedOfferId = offerId.trim();
 
   if (!isLikelyId(normalizedBookId) || !isLikelyId(normalizedOfferId)) {
-    return { error: "معرّفات الطلب غير صالحة." };
+    return err("معرّفات الطلب غير صالحة.");
   }
 
-  return {
-    data: {
-      bookId: normalizedBookId,
-      offerId: normalizedOfferId,
-    },
-  };
+  return ok({
+    bookId: normalizedBookId,
+    offerId: normalizedOfferId,
+  });
 }
 
 export function isOfferCurrentlyAvailable(
@@ -109,9 +108,5 @@ function isLikelyId(value: string) {
 }
 
 function normalizeSafeMoneyCents(value: number) {
-  if (!Number.isInteger(value) || value < 0) {
-    return null;
-  }
-
-  return value;
+  return normalizeNonNegativeMoneyCents(value);
 }

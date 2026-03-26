@@ -1,17 +1,22 @@
 "use server";
 
-import { BookStatus, OfferType, UserRole } from "@prisma/client";
+import { BookStatus, UserRole } from "@prisma/client";
 import { revalidatePath } from "next/cache";
 import { redirect } from "next/navigation";
 import { requireCreator, requireUser } from "@/lib/auth-session";
 import { prisma } from "@/lib/prisma";
 import {
   BOOK_SLUG_PATTERN,
-  buildBookOfferWrites,
-  readField,
-  type SharedBookFormValues,
 } from "@/lib/services/book-form";
+import type { SharedBookFormValues } from "@/lib/services/book-form";
 import { resolveCreatorAuthorId, validateCreatorBookForm } from "@/lib/services/book-form-validation";
+import {
+  buildBookOffersReplaceData,
+  buildBookValues,
+  buildBookWriteData,
+  canManageCreatorBook,
+  parseTextContentForm,
+} from "@/lib/services/book-workflows";
 
 export type StudioProfileState = {
   error?: string;
@@ -64,30 +69,6 @@ async function makeUniqueCreatorSlug(seed: string) {
     counter += 1;
     candidate = `${base}-${counter}`;
   }
-}
-
-function buildBookValues(formData: FormData): StudioBookFormValues {
-  return {
-    titleAr: readField(formData, "titleAr"),
-    slug: readField(formData, "slug").toLowerCase(),
-    authorId: readField(formData, "authorId"),
-    categoryId: readField(formData, "categoryId"),
-    purchasePrice: readField(formData, "purchasePrice"),
-    rentalPrice: readField(formData, "rentalPrice"),
-    rentalDays: readField(formData, "rentalDays"),
-    publicationStatus: readField(formData, "publicationStatus") || "draft",
-    buyOfferEnabled: readField(formData, "buyOfferEnabled") || "enabled",
-    rentOfferEnabled: readField(formData, "rentOfferEnabled") || "enabled",
-    allowReadingOnSite: readField(formData, "allowReadingOnSite"),
-    allowDownloading: readField(formData, "allowDownloading"),
-    previewOnly: readField(formData, "previewOnly"),
-    paidOnlyMode: readField(formData, "paidOnlyMode"),
-    description: readField(formData, "description"),
-    metadata: readField(formData, "metadata"),
-    metadataLanguage: readField(formData, "metadataLanguage"),
-    metadataPages: readField(formData, "metadataPages"),
-    metadataPublisher: readField(formData, "metadataPublisher"),
-  };
 }
 
 export async function becomeCreatorAction(_prevState: StudioProfileState, formData: FormData): Promise<StudioProfileState> {
@@ -220,7 +201,11 @@ export async function updateCreatorProfileAction(_prevState: StudioProfileState,
 
 export async function createStudioBookAction(_prevState: StudioBookFormState, formData: FormData): Promise<StudioBookFormState> {
   const user = await requireCreator({ callbackUrl: "/studio/books/new" });
-  const values = buildBookValues(formData);
+  const values = buildBookValues(formData, {
+    publicationStatus: "draft",
+    buyOfferEnabled: "enabled",
+    rentOfferEnabled: "enabled",
+  });
   const creatorAuthorId = await resolveCreatorAuthorId(user.id);
   const validation = await validateCreatorBookForm(values, creatorAuthorId);
 
@@ -230,24 +215,12 @@ export async function createStudioBookAction(_prevState: StudioBookFormState, fo
 
   const book = await prisma.book.create({
     data: {
-      titleAr: values.titleAr!,
-      slug: values.slug!,
-      descriptionAr: values.description || null,
-      metadata: validation.data.metadata,
-      contentAccessPolicy: validation.data.contentAccessPolicy,
-      status: validation.data.status,
-      creatorId: user.id,
-      authorId: validation.data.creatorAuthorId,
-      categoryId: values.categoryId!,
-      offers: {
-        create: buildBookOfferWrites({
-          buyEnabled: validation.data.buyEnabled,
-          rentEnabled: validation.data.rentEnabled,
-          purchasePriceCents: validation.data.purchasePriceCents,
-          rentalPriceCents: validation.data.rentalPriceCents,
-          rentalDays: validation.data.rentalDays,
-        }),
-      },
+      ...buildBookWriteData({
+        values,
+        validation: validation.data,
+        authorId: validation.data.creatorAuthorId,
+        creatorId: user.id,
+      }),
     },
     select: { id: true },
   });
@@ -265,21 +238,19 @@ export async function updateStudioBookTextContentAction(
   const user = await requireCreator({ callbackUrl: `/studio/books/${bookId}/edit` });
 
   const targetBook = await prisma.book.findUnique({ where: { id: bookId }, select: { creatorId: true } });
-  if (!targetBook || (user.role !== UserRole.ADMIN && targetBook.creatorId !== user.id)) {
+  if (!targetBook || !canManageCreatorBook({ userRole: user.role, userId: user.id, creatorId: targetBook.creatorId })) {
     return { error: "لا يمكنك تعديل محتوى هذا الكتاب." };
   }
 
-  const textContentValue = formData.get("textContent");
-  const textContent = typeof textContentValue === "string" ? textContentValue.trim() : "";
-
-  if (textContent.length > 500_000) {
-    return { error: "المحتوى النصي طويل جدًا. الحد الأقصى 500,000 حرف." };
+  const parsed = parseTextContentForm(formData);
+  if (parsed.error) {
+    return { error: parsed.error };
   }
 
   await prisma.book.update({
     where: { id: bookId },
     data: {
-      textContent: textContent || null,
+      textContent: parsed.textContent || null,
     },
   });
 
@@ -288,7 +259,7 @@ export async function updateStudioBookTextContentAction(
   revalidatePath("/books");
 
   return {
-    success: textContent ? "تم حفظ المحتوى النصي بنجاح." : "تم مسح المحتوى النصي من الكتاب.",
+    success: parsed.textContent ? "تم حفظ المحتوى النصي بنجاح." : "تم مسح المحتوى النصي من الكتاب.",
   };
 }
 
@@ -296,11 +267,15 @@ export async function updateStudioBookAction(bookId: string, _prevState: StudioB
   const user = await requireCreator({ callbackUrl: `/studio/books/${bookId}/edit` });
 
   const targetBook = await prisma.book.findUnique({ where: { id: bookId }, select: { creatorId: true } });
-  if (!targetBook || (user.role !== UserRole.ADMIN && targetBook.creatorId !== user.id)) {
+  if (!targetBook || !canManageCreatorBook({ userRole: user.role, userId: user.id, creatorId: targetBook.creatorId })) {
     return { error: "لا يمكنك تعديل هذا الكتاب." };
   }
 
-  const values = buildBookValues(formData);
+  const values = buildBookValues(formData, {
+    publicationStatus: "draft",
+    buyOfferEnabled: "enabled",
+    rentOfferEnabled: "enabled",
+  });
   const creatorAuthorId = await resolveCreatorAuthorId(user.id);
   const validation = await validateCreatorBookForm(values, creatorAuthorId, bookId);
 
@@ -319,18 +294,7 @@ export async function updateStudioBookAction(bookId: string, _prevState: StudioB
       status: validation.data.status,
       authorId: validation.data.creatorAuthorId,
       categoryId: values.categoryId!,
-      offers: {
-        deleteMany: {
-          type: { in: [OfferType.PURCHASE, OfferType.RENTAL] },
-        },
-        create: buildBookOfferWrites({
-          buyEnabled: validation.data.buyEnabled,
-          rentEnabled: validation.data.rentEnabled,
-          purchasePriceCents: validation.data.purchasePriceCents,
-          rentalPriceCents: validation.data.rentalPriceCents,
-          rentalDays: validation.data.rentalDays,
-        }),
-      },
+      offers: buildBookOffersReplaceData(validation.data),
     },
   });
 
@@ -353,7 +317,7 @@ export async function publishStudioBookAction(formData: FormData) {
   }
 
   const targetBook = await prisma.book.findUnique({ where: { id: bookId }, select: { creatorId: true } });
-  if (!targetBook || (user.role !== UserRole.ADMIN && targetBook.creatorId !== user.id)) {
+  if (!targetBook || !canManageCreatorBook({ userRole: user.role, userId: user.id, creatorId: targetBook.creatorId })) {
     return;
   }
 
@@ -371,7 +335,7 @@ export async function unpublishStudioBookAction(formData: FormData) {
   }
 
   const targetBook = await prisma.book.findUnique({ where: { id: bookId }, select: { creatorId: true } });
-  if (!targetBook || (user.role !== UserRole.ADMIN && targetBook.creatorId !== user.id)) {
+  if (!targetBook || !canManageCreatorBook({ userRole: user.role, userId: user.id, creatorId: targetBook.creatorId })) {
     return;
   }
 
