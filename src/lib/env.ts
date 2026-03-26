@@ -87,11 +87,20 @@ function validateEnvironment(): EnvIssue[] {
 
 
   const allowMockVerification = (readEnv("ALLOW_MOCK_PAYMENT_VERIFICATION") ?? "false").toLowerCase();
+  const allowMockGateways = (readEnv("ALLOW_MOCK_PAYMENTS") ?? "false").toLowerCase();
   if (nodeEnv === "production" && allowMockVerification === "true") {
     issues.push({
       severity: "error",
       key: "ALLOW_MOCK_PAYMENT_VERIFICATION",
       message: "ALLOW_MOCK_PAYMENT_VERIFICATION must remain false in production.",
+    });
+  }
+
+  if (nodeEnv === "production" && allowMockGateways === "true") {
+    issues.push({
+      severity: "error",
+      key: "ALLOW_MOCK_PAYMENTS",
+      message: "ALLOW_MOCK_PAYMENTS must remain false in production.",
     });
   }
 
@@ -120,6 +129,25 @@ function validateEnvironment(): EnvIssue[] {
     ];
 
     for (const key of shamLiveRequired) {
+      if (!readEnv(key)) {
+        issues.push({
+          severity: nodeEnv === "production" ? "error" : "warning",
+          key,
+          message: `${key} is required when PAYMENT_GATEWAY_MODE=live.`,
+        });
+      }
+    }
+
+    const syriatelLiveRequired = [
+      "SYRIATEL_CASH_API_BASE_URL",
+      "SYRIATEL_CASH_API_KEY",
+      "SYRIATEL_CASH_MERCHANT_ID",
+      "SYRIATEL_CASH_DESTINATION_ACCOUNT",
+      "SYRIATEL_CASH_CREATE_PAYMENT_PATH",
+      "SYRIATEL_CASH_VERIFY_PAYMENT_PATH",
+    ];
+
+    for (const key of syriatelLiveRequired) {
       if (!readEnv(key)) {
         issues.push({
           severity: nodeEnv === "production" ? "error" : "warning",

@@ -17,6 +17,8 @@ export function verifyShamCashCallbackSignature(input: {
   rawBody: string;
   signatureHeader: string | null;
   webhookSecret: string | undefined;
+  timestampHeader?: string | null;
+  maxSkewMs?: number;
 }) {
   if (!input.webhookSecret) {
     throw new GatewayConfigurationError("SHAM_CASH_WEBHOOK_SECRET is required for callback verification.");
@@ -26,8 +28,25 @@ export function verifyShamCashCallbackSignature(input: {
     return false;
   }
 
+  const maxSkewMs = input.maxSkewMs ?? 5 * 60_000;
+  const timestampHeader = input.timestampHeader?.trim();
+  if (!timestampHeader) {
+    return false;
+  }
+
+  const parsedTimestamp = Number.parseInt(timestampHeader, 10);
+  if (!Number.isFinite(parsedTimestamp)) {
+    return false;
+  }
+
+  const timestampMs = parsedTimestamp > 10_000_000_000 ? parsedTimestamp : parsedTimestamp * 1000;
+  if (Math.abs(Date.now() - timestampMs) > maxSkewMs) {
+    return false;
+  }
+
   const providedSignature = normalizeSignature(input.signatureHeader);
-  const expectedSignature = createHmac("sha256", input.webhookSecret).update(input.rawBody, "utf8").digest("hex");
+  const timestampedPayload = `${timestampHeader}.${input.rawBody}`;
+  const expectedSignature = createHmac("sha256", input.webhookSecret).update(timestampedPayload, "utf8").digest("hex");
 
   try {
     return timingSafeEqual(Buffer.from(providedSignature, "hex"), Buffer.from(expectedSignature, "hex"));

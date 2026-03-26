@@ -30,11 +30,13 @@ export async function POST(request: Request) {
 
   const rawBody = await request.text();
   const signatureHeader = request.headers.get("x-shamcash-signature");
+  const timestampHeader = request.headers.get("x-shamcash-timestamp");
 
   try {
     const isAuthentic = verifyShamCashCallbackSignature({
       rawBody,
       signatureHeader,
+      timestampHeader,
       webhookSecret: process.env.SHAM_CASH_WEBHOOK_SECRET?.trim(),
     });
 
@@ -56,6 +58,8 @@ export async function POST(request: Request) {
 
     return jsonNoStore({
       message: "Payment callback processed.",
+      requestId,
+      providerReference,
       attempt: {
         id: attempt.id,
         status: attempt.status,

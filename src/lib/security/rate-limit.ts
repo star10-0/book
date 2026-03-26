@@ -1,5 +1,3 @@
-const store = new Map<string, { count: number; resetAt: number }>();
-
 export type RateLimitConfig = {
   key: string;
   limit: number;
@@ -11,7 +9,7 @@ export type RateLimitResult = {
   allowed: boolean;
   remaining: number;
   retryAfterSeconds: number;
-  backend: "kv" | "memory" | "unavailable";
+  backend: "kv" | "unavailable";
   reason?: "RATE_LIMIT_BACKEND_UNAVAILABLE";
 };
 
@@ -88,59 +86,21 @@ async function checkKvRateLimit(config: RateLimitConfig): Promise<RateLimitResul
   return buildResult(count, config.limit, retryAfterSeconds, "kv");
 }
 
-function checkInMemoryRateLimit(config: RateLimitConfig): RateLimitResult {
-  const now = Date.now();
-  const current = store.get(config.key);
-
-  if (!current || now >= current.resetAt) {
-    store.set(config.key, { count: 1, resetAt: now + config.windowMs });
-    pruneExpired(now);
-    return buildResult(1, config.limit, Math.ceil(config.windowMs / 1000), "memory");
-  }
-
-  current.count += 1;
-  store.set(config.key, current);
-
-  return buildResult(current.count, config.limit, Math.ceil((current.resetAt - now) / 1000), "memory");
-}
-
 export async function checkRateLimit(config: RateLimitConfig): Promise<RateLimitResult> {
-  const shouldRequireDistributed = config.requireDistributedInProduction && process.env.NODE_ENV === "production";
-
   try {
     const kvResult = await checkKvRateLimit(config);
     if (kvResult) {
       return kvResult;
     }
   } catch {
-    if (shouldRequireDistributed) {
-      return {
-        allowed: false,
-        remaining: 0,
-        retryAfterSeconds: 60,
-        backend: "unavailable",
-        reason: "RATE_LIMIT_BACKEND_UNAVAILABLE",
-      };
-    }
+    // fallback handled below
   }
 
-  if (shouldRequireDistributed) {
-    return {
-      allowed: false,
-      remaining: 0,
-      retryAfterSeconds: 60,
-      backend: "unavailable",
-      reason: "RATE_LIMIT_BACKEND_UNAVAILABLE",
-    };
-  }
-
-  return checkInMemoryRateLimit(config);
-}
-
-function pruneExpired(now: number) {
-  for (const [key, value] of store.entries()) {
-    if (value.resetAt <= now) {
-      store.delete(key);
-    }
-  }
+  return {
+    allowed: false,
+    remaining: 0,
+    retryAfterSeconds: 60,
+    backend: "unavailable",
+    reason: "RATE_LIMIT_BACKEND_UNAVAILABLE",
+  };
 }

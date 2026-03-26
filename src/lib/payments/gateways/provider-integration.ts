@@ -54,6 +54,7 @@ export function getSyriatelCashIntegrationConfig(): ProviderIntegrationConfig {
       hasEnv("SYRIATEL_CASH_API_BASE_URL") &&
       hasEnv("SYRIATEL_CASH_API_KEY") &&
       hasEnv("SYRIATEL_CASH_MERCHANT_ID") &&
+      hasEnv("SYRIATEL_CASH_DESTINATION_ACCOUNT") &&
       hasEnv("SYRIATEL_CASH_CREATE_PAYMENT_PATH") &&
       hasEnv("SYRIATEL_CASH_VERIFY_PAYMENT_PATH"),
   };
