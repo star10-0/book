@@ -141,6 +141,19 @@ export default async function BookDetailsPage({ params }: BookDetailsPageProps) 
     files: book.files,
     textContent: book.textContent,
   });
+  const hasOffers = book.offers.length > 0;
+  const accessGuidance = contentAccess.canDownloadPublicly
+    ? "هذا الكتاب يتيح قراءة وتنزيلًا مباشرًا وفق سياسة النشر العامة."
+    : contentAccess.canReadPublicly
+      ? "هذا الكتاب يتيح القراءة المباشرة فقط. التنزيل غير متاح ضمن سياسة هذا الكتاب."
+      : contentAccess.canReadPreview
+        ? "هذا الكتاب يعرض عينة مجانية فقط. للوصول الكامل استخدم الشراء أو الإيجار."
+        : hasOffers
+          ? "الوصول الكامل لهذا الكتاب مرتبط بالشراء أو الإيجار، لذلك لن تظهر أزرار القراءة/التحميل العامة."
+          : "لا توجد عروض شراء/إيجار أو صلاحية وصول عامة لهذا الكتاب حاليًا.";
+  const contentStateNote = !contentAccess.hasReadableContent
+    ? "سبب شائع: لم يتم رفع ملف PDF/EPUB أو إضافة محتوى نصي بعد."
+    : null;
 
   return (
     <main>
@@ -159,7 +172,9 @@ export default async function BookDetailsPage({ params }: BookDetailsPageProps) 
             metadata: book.metadata,
             publicReadUrl: contentAccess.canReadPublicly || contentAccess.canReadPreview ? `/books/${book.slug}/read` : null,
             publicReadLabel: contentAccess.canReadPreview ? "قراءة عينة" : "اقرأ الآن",
-            publicDownloadUrl: contentAccess.canDownloadPublicly && contentAccess.readableFile ? `/api/books/assets/${contentAccess.readableFile.id}` : null,
+            publicDownloadUrl: contentAccess.canDownloadPublicly && contentAccess.readableFile ? `/api/books/assets/${contentAccess.readableFile.id}?download=1` : null,
+            accessGuidance,
+            contentStateNote,
           }}
           offers={book.offers}
           averageRating={averageRating}

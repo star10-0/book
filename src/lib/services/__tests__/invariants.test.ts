@@ -1,6 +1,6 @@
 import { strict as assert } from "node:assert";
 import test from "node:test";
-import { normalizeNonNegativeMoneyCents, normalizeProviderReference, normalizeRating } from "@/lib/services/invariants";
+import { hasValidRentalDays, normalizeNonNegativeMoneyCents, normalizeProviderReference, normalizeRating } from "@/lib/services/invariants";
 
 test("normalizeRating accepts integers 1..5 only", () => {
   assert.equal(normalizeRating("5"), 5);
@@ -23,3 +23,11 @@ test("normalizeProviderReference trims and rejects empty values", () => {
   assert.equal(normalizeProviderReference(null), null);
 });
 
+test("hasValidRentalDays enforces offer-type invariant", () => {
+  assert.equal(hasValidRentalDays("PURCHASE", null), true);
+  assert.equal(hasValidRentalDays("PURCHASE", 7), false);
+  assert.equal(hasValidRentalDays("RENTAL", 1), true);
+  assert.equal(hasValidRentalDays("RENTAL", 365), true);
+  assert.equal(hasValidRentalDays("RENTAL", 0), false);
+  assert.equal(hasValidRentalDays("RENTAL", 366), false);
+});

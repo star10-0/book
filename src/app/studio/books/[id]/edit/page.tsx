@@ -108,12 +108,19 @@ export default async function EditStudioBookPage({ params, searchParams }: EditS
 
       <section
         id="content-section"
-        className={`space-y-4 rounded-2xl border bg-white p-6 shadow-sm ${query?.focus === "content" ? "border-indigo-300 ring-2 ring-indigo-100" : "border-slate-200"}`}
+        className={`space-y-4 rounded-2xl border bg-white p-6 shadow-sm ${query?.focus === "content" ? "border-indigo-400 ring-2 ring-indigo-200" : "border-slate-200"}`}
       >
         <div>
           <h2 className="text-xl font-bold text-slate-900">قسم المحتوى (الخطوة 2)</h2>
           <p className="mt-1 text-sm text-slate-600">
             بعد حفظ بيانات الكتاب، أكمل المحتوى من هنا: رفع الغلاف وملفات القراءة أو كتابة المحتوى النصي.
+          </p>
+        </div>
+
+        <div className="rounded-xl border border-indigo-200 bg-indigo-50 p-3 text-sm text-indigo-900">
+          <p className="font-semibold">أولوية هذه الصفحة الآن: المحتوى أولًا ثم النشر.</p>
+          <p className="mt-1 text-xs">
+            عند اكتمال عناصر المحتوى الأساسية (الغلاف + ملف قراءة أو نص)، عد إلى «كتبي» واستخدم زر «نشر».
           </p>
         </div>
 

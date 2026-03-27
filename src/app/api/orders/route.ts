@@ -1,7 +1,7 @@
 import { Prisma } from "@prisma/client";
 import { API_ERROR_CODES, jsonError, parseJsonBody } from "@/lib/api-response";
 import { getCurrentUser } from "@/lib/auth-session";
-import { logError, getClientIp, getRequestId } from "@/lib/observability/logger";
+import { logError, logWarn, getClientIp, getRequestId } from "@/lib/observability/logger";
 import {
   calculateOrderTotals,
   isOfferCurrentlyAvailable,
@@ -9,7 +9,7 @@ import {
   validateCreateOrderPayload,
 } from "@/lib/orders/create-order";
 import { prisma } from "@/lib/prisma";
-import { enforceRateLimit, isSameOriginMutation, jsonNoStore, rejectCrossOriginMutation, rejectRateLimited } from "@/lib/security";
+import { enforceRateLimit, isSameOriginMutation, jsonNoStore, rejectCrossOriginMutation, rejectRateLimitUnavailable, rejectRateLimited } from "@/lib/security";
 
 export async function POST(request: Request) {
   const requestId = getRequestId(request);
@@ -19,8 +19,19 @@ export async function POST(request: Request) {
     return rejectCrossOriginMutation();
   }
 
-  const rateLimit = enforceRateLimit({ key: `orders:create:${clientIp}`, limit: 30, windowMs: 60_000 });
+  const rateLimit = await enforceRateLimit({ key: `orders:create:${clientIp}`, limit: 30, windowMs: 60_000, requireDistributedInProduction: true });
   if (!rateLimit.allowed) {
+    if (rateLimit.reason === "RATE_LIMIT_BACKEND_UNAVAILABLE" || rateLimit.reason === "RATE_LIMIT_ENV_MISCONFIG") {
+      logWarn("Order rate limit unavailable", {
+        route: "/api/orders",
+        requestId,
+        ip: clientIp,
+        reason: rateLimit.reason,
+        details: rateLimit.details,
+        backend: rateLimit.backend,
+      });
+      return rejectRateLimitUnavailable(rateLimit.reason);
+    }
     return rejectRateLimited(rateLimit.retryAfterSeconds);
   }
 
@@ -38,8 +49,8 @@ export async function POST(request: Request) {
 
   const validation = validateCreateOrderPayload(body);
 
-  if (validation.error || !validation.data) {
-    return jsonNoStore({ message: validation.error ?? "بيانات الطلب غير صالحة." }, { status: 400 });
+  if (!validation.ok) {
+    return jsonNoStore({ message: validation.error }, { status: 400 });
   }
 
   try {

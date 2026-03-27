@@ -3,7 +3,7 @@ import { getCurrentUser } from "@/lib/auth-session";
 import { logError, getClientIp, getRequestId } from "@/lib/observability/logger";
 import { isPaymentError, PAYMENT_ERROR_CODES } from "@/lib/payments/errors";
 import { submitPaymentProof } from "@/lib/payments/payment-service";
-import { enforceRateLimit, isSameOriginMutation, jsonNoStore, rejectCrossOriginMutation, rejectRateLimited } from "@/lib/security";
+import { enforceRateLimit, isSameOriginMutation, jsonNoStore, rejectCrossOriginMutation, rejectRateLimitUnavailable, rejectRateLimited } from "@/lib/security";
 
 interface SubmitPaymentProofRequestBody {
   attemptId?: string;
@@ -19,8 +19,11 @@ export async function POST(request: Request) {
     return rejectCrossOriginMutation();
   }
 
-  const rateLimit = enforceRateLimit({ key: `payments:proof:${clientIp}`, limit: 20, windowMs: 60_000 });
+  const rateLimit = await enforceRateLimit({ key: `payments:proof:${clientIp}`, limit: 20, windowMs: 60_000, requireDistributedInProduction: true });
   if (!rateLimit.allowed) {
+    if (rateLimit.reason === "RATE_LIMIT_BACKEND_UNAVAILABLE") {
+      return rejectRateLimitUnavailable();
+    }
     return rejectRateLimited(rateLimit.retryAfterSeconds);
   }
 
@@ -73,6 +76,10 @@ export async function POST(request: Request) {
 
     if (isPaymentError(error, PAYMENT_ERROR_CODES.paymentProofImmutable)) {
       return jsonNoStore({ message: "تم تثبيت مرجع الدفع لهذه المحاولة مسبقًا ولا يمكن تعديله." }, { status: 409 });
+    }
+
+    if (isPaymentError(error, PAYMENT_ERROR_CODES.duplicateTransactionReference)) {
+      return jsonNoStore({ message: "رقم العملية مستخدم مسبقاً في محاولة دفع أخرى." }, { status: 409 });
     }
 
     if (isPaymentError(error, PAYMENT_ERROR_CODES.missingProviderReference)) {

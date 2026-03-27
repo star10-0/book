@@ -1,0 +1,59 @@
+services:
+  db:
+    image: postgres:16-alpine
+    environment:
+      POSTGRES_DB: ${POSTGRES_DB:-book}
+      POSTGRES_USER: ${POSTGRES_USER:-book}
+      POSTGRES_PASSWORD: ${POSTGRES_PASSWORD:-book}
+    volumes:
+      - ${POSTGRES_DATA_PATH:-./volumes/postgres-data}:/var/lib/postgresql/data
+    healthcheck:
+      test: ["CMD-SHELL", "pg_isready -U ${POSTGRES_USER:-book} -d ${POSTGRES_DB:-book}"]
+      interval: 5s
+      timeout: 5s
+      retries: 20
+    restart: unless-stopped
+
+  migrate:
+    image: book-app:latest
+    build:
+      context: .
+      dockerfile: Dockerfile
+    env_file:
+      - .env.production
+    environment:
+      NODE_ENV: production
+    depends_on:
+      db:
+        condition: service_healthy
+    command: ["npm", "run", "prisma:migrate:deploy"]
+    restart: "no"
+
+  app:
+    image: book-app:latest
+    build:
+      context: .
+      dockerfile: Dockerfile
+    env_file:
+      - .env.production
+    environment:
+      NODE_ENV: production
+    command: ["npm", "run", "start"]
+    depends_on:
+      migrate:
+        condition: service_completed_successfully
+    ports:
+      - "${APP_PORT:-3000}:3000"
+    volumes:
+      - ${PUBLIC_UPLOADS_PATH:-./volumes/public-uploads}:/app/public/uploads
+      - ${PRIVATE_UPLOADS_PATH:-./volumes/private-uploads}:/app/storage/private/uploads
+    restart: unless-stopped
+    healthcheck:
+      test:
+        [
+          "CMD-SHELL",
+          "node -e \"require('http').get('http://127.0.0.1:3000/api/health', (res) => process.exit(res.statusCode >= 500 ? 1 : 0)).on('error', () => process.exit(1))\"",
+        ]
+      interval: 15s
+      timeout: 5s
+      retries: 10

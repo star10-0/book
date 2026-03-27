@@ -1,16 +1,15 @@
 "use server";
 
-import { BookStatus, OfferType } from "@prisma/client";
+import { BookStatus } from "@prisma/client";
 import { revalidatePath } from "next/cache";
 import { redirect } from "next/navigation";
 import { requireAdmin } from "@/lib/auth-session";
 import { prisma } from "@/lib/prisma";
 import {
-  buildBookOfferWrites,
-  readField,
   type SharedBookFormValues,
 } from "@/lib/services/book-form";
 import { validateAdminBookForm } from "@/lib/services/book-form-validation";
+import { buildBookOffersReplaceData, buildBookValues, buildBookWriteData, parseTextContentForm } from "@/lib/services/book-workflows";
 
 export type BookFormValues = SharedBookFormValues;
 
@@ -21,34 +20,14 @@ export type BookFormState = {
   values?: BookFormValues;
 };
 
-function buildValues(formData: FormData): BookFormValues {
-  return {
-    titleAr: readField(formData, "titleAr"),
-    slug: readField(formData, "slug").toLowerCase(),
-    authorId: readField(formData, "authorId"),
-    categoryId: readField(formData, "categoryId"),
-    purchasePrice: readField(formData, "purchasePrice"),
-    rentalPrice: readField(formData, "rentalPrice"),
-    rentalDays: readField(formData, "rentalDays"),
-    publicationStatus: readField(formData, "publicationStatus") || "draft",
-    buyOfferEnabled: readField(formData, "buyOfferEnabled") || "disabled",
-    rentOfferEnabled: readField(formData, "rentOfferEnabled") || "disabled",
-    allowReadingOnSite: readField(formData, "allowReadingOnSite"),
-    allowDownloading: readField(formData, "allowDownloading"),
-    previewOnly: readField(formData, "previewOnly"),
-    paidOnlyMode: readField(formData, "paidOnlyMode"),
-    description: readField(formData, "description"),
-    metadata: readField(formData, "metadata"),
-    metadataLanguage: readField(formData, "metadataLanguage"),
-    metadataPages: readField(formData, "metadataPages"),
-    metadataPublisher: readField(formData, "metadataPublisher"),
-  };
-}
-
 export async function createBookAction(_prevState: BookFormState, formData: FormData): Promise<BookFormState> {
   await requireAdmin({ callbackUrl: "/admin/books/new" });
 
-  const values = buildValues(formData);
+  const values = buildBookValues(formData, {
+    publicationStatus: "draft",
+    buyOfferEnabled: "disabled",
+    rentOfferEnabled: "disabled",
+  });
   const validation = await validateAdminBookForm(values);
 
   if (!validation.ok) {
@@ -61,23 +40,11 @@ export async function createBookAction(_prevState: BookFormState, formData: Form
 
   const book = await prisma.book.create({
     data: {
-      titleAr: values.titleAr!,
-      slug: values.slug!,
-      descriptionAr: values.description || null,
-      metadata: validation.data.metadata,
-      contentAccessPolicy: validation.data.contentAccessPolicy,
-      status: validation.data.status,
-      authorId: values.authorId!,
-      categoryId: values.categoryId!,
-      offers: {
-        create: buildBookOfferWrites({
-          buyEnabled: validation.data.buyEnabled,
-          rentEnabled: validation.data.rentEnabled,
-          purchasePriceCents: validation.data.purchasePriceCents,
-          rentalPriceCents: validation.data.rentalPriceCents,
-          rentalDays: validation.data.rentalDays,
-        }),
-      },
+      ...buildBookWriteData({
+        values,
+        validation: validation.data,
+        authorId: values.authorId!,
+      }),
     },
     select: { id: true },
   });
@@ -99,17 +66,15 @@ export async function updateAdminBookTextContentAction(
 ): Promise<AdminBookTextContentState> {
   await requireAdmin({ callbackUrl: `/admin/books/${bookId}/edit` });
 
-  const textContentValue = formData.get("textContent");
-  const textContent = typeof textContentValue === "string" ? textContentValue.trim() : "";
-
-  if (textContent.length > 500_000) {
-    return { error: "المحتوى النصي طويل جدًا. الحد الأقصى 500,000 حرف." };
+  const parsed = parseTextContentForm(formData);
+  if (parsed.error) {
+    return { error: parsed.error };
   }
 
   await prisma.book.update({
     where: { id: bookId },
     data: {
-      textContent: textContent || null,
+      textContent: parsed.textContent || null,
     },
   });
 
@@ -118,14 +83,18 @@ export async function updateAdminBookTextContentAction(
   revalidatePath("/books");
 
   return {
-    success: textContent ? "تم حفظ المحتوى النصي بنجاح." : "تم مسح المحتوى النصي من الكتاب.",
+    success: parsed.textContent ? "تم حفظ المحتوى النصي بنجاح." : "تم مسح المحتوى النصي من الكتاب.",
   };
 }
 
 export async function updateBookAction(bookId: string, _prevState: BookFormState, formData: FormData): Promise<BookFormState> {
   await requireAdmin({ callbackUrl: `/admin/books/${bookId}/edit` });
 
-  const values = buildValues(formData);
+  const values = buildBookValues(formData, {
+    publicationStatus: "draft",
+    buyOfferEnabled: "disabled",
+    rentOfferEnabled: "disabled",
+  });
   const validation = await validateAdminBookForm(values, bookId);
 
   if (!validation.ok) {
@@ -147,18 +116,7 @@ export async function updateBookAction(bookId: string, _prevState: BookFormState
       status: validation.data.status,
       authorId: values.authorId!,
       categoryId: values.categoryId!,
-      offers: {
-        deleteMany: {
-          type: { in: [OfferType.PURCHASE, OfferType.RENTAL] },
-        },
-        create: buildBookOfferWrites({
-          buyEnabled: validation.data.buyEnabled,
-          rentEnabled: validation.data.rentEnabled,
-          purchasePriceCents: validation.data.purchasePriceCents,
-          rentalPriceCents: validation.data.rentalPriceCents,
-          rentalDays: validation.data.rentalDays,
-        }),
-      },
+      offers: buildBookOffersReplaceData(validation.data),
     },
   });
 

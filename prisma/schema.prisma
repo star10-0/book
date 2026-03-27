@@ -286,6 +286,7 @@ model BookOffer {
 
   @@index([bookId, type, isActive])
   @@index([startsAt, endsAt])
+  @@unique([bookId, type])
 }
 
 model WishlistItem {

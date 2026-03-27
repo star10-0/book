@@ -9,7 +9,7 @@ function providerLabel(provider: PaymentProvider) {
   if (provider === "SHAM_CASH") return "Sham Cash";
   if (provider === "SYRIATEL_CASH") return "Syriatel Cash";
   if (provider === "MANUAL") return "Manual";
-  return "Stripe";
+  return "غير معروف";
 }
 
 function paymentStatusLabel(status: PaymentStatus) {

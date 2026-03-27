@@ -11,7 +11,7 @@ export async function POST(request: Request) {
   if (!isSameOriginMutation(request)) return rejectCrossOriginMutation();
 
   const clientIp = request.headers.get("x-forwarded-for") ?? "local";
-  const rateLimit = enforceRateLimit({ key: `checkout:complete-free:${clientIp}`, limit: 20, windowMs: 60_000 });
+  const rateLimit = await enforceRateLimit({ key: `checkout:complete-free:${clientIp}`, limit: 20, windowMs: 60_000 });
   if (!rateLimit.allowed) return rejectRateLimited(rateLimit.retryAfterSeconds);
 
   const user = await getCurrentUser();

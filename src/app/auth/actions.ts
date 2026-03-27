@@ -52,13 +52,17 @@ export async function signInAction(_prevState: AuthFormState, formData: FormData
     return { error: "تحقق من الحقول المطلوبة ثم أعد المحاولة.", fieldErrors };
   }
 
-  const signInRateLimit = checkRateLimit({
+  const signInRateLimit = await checkRateLimit({
     key: `auth:signin:${email}`,
     limit: 8,
     windowMs: 10 * 60_000,
+    requireDistributedInProduction: true,
   });
 
   if (!signInRateLimit.allowed) {
+    if (signInRateLimit.reason === "RATE_LIMIT_BACKEND_UNAVAILABLE") {
+      return { error: "خدمة الأمان غير متاحة مؤقتًا. يرجى المحاولة لاحقًا." };
+    }
     return { error: "تم تجاوز عدد محاولات تسجيل الدخول. يرجى الانتظار ثم إعادة المحاولة." };
   }
 
@@ -119,13 +123,17 @@ export async function signUpAction(_prevState: AuthFormState, formData: FormData
     return { error: "تحقق من الحقول المطلوبة ثم أعد المحاولة.", fieldErrors };
   }
 
-  const signUpRateLimit = checkRateLimit({
+  const signUpRateLimit = await checkRateLimit({
     key: `auth:signup:${email}`,
     limit: 5,
     windowMs: 30 * 60_000,
+    requireDistributedInProduction: true,
   });
 
   if (!signUpRateLimit.allowed) {
+    if (signUpRateLimit.reason === "RATE_LIMIT_BACKEND_UNAVAILABLE") {
+      return { error: "خدمة الأمان غير متاحة مؤقتًا. يرجى المحاولة لاحقًا." };
+    }
     return { error: "تم تجاوز عدد محاولات إنشاء الحساب. يرجى الانتظار ثم إعادة المحاولة." };
   }
 

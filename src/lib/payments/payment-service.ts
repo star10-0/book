@@ -1,6 +1,7 @@
 import { Prisma, PaymentStatus, type PaymentAttemptStatus, type PaymentProvider } from "@prisma/client";
 import { prisma } from "@/lib/prisma";
 import { resolvePaymentGateway } from "@/lib/payments/gateways";
+import { sanitizeForLogs } from "@/lib/payments/gateways/provider-http";
 import { isMockPaymentVerificationEnabled } from "@/lib/payments/mock-mode";
 import {
   canTransitionPaymentStatus,
@@ -145,7 +146,7 @@ export async function createPaymentForOrder(input: CreatePaymentForOrderInput) {
           data: {
             status: "SUBMITTED",
             providerReference,
-            responsePayload: gatewayResponse.rawPayload as Prisma.InputJsonValue | undefined,
+            responsePayload: sanitizePayloadForStorage(gatewayResponse.rawPayload),
           },
         });
 
@@ -205,12 +206,21 @@ export async function submitPaymentProof(input: SubmitPaymentProofInput) {
 
   const existingTransactionReference = extractTransactionReference(attempt.requestPayload);
   const normalizedTransactionReference = input.transactionReference.trim();
+  const canonicalTransactionReference = normalizedTransactionReference.toLowerCase();
 
   if (
     existingTransactionReference &&
     existingTransactionReference.toLowerCase() !== normalizedTransactionReference.toLowerCase()
   ) {
     paymentError(PAYMENT_ERROR_CODES.paymentProofImmutable);
+  }
+
+  const conflictingAttempt = await findConflictingTransactionReference({
+    transactionReferenceCanonical: canonicalTransactionReference,
+    excludeAttemptId: attempt.id,
+  });
+  if (conflictingAttempt) {
+    paymentError(PAYMENT_ERROR_CODES.duplicateTransactionReference);
   }
 
   const existingPayload =
@@ -277,6 +287,17 @@ export async function verifyPayment(input: VerifyPaymentInput) {
 
   const providerReference = attempt.providerReference;
 
+  if (transactionReference) {
+    const conflictingAttempt = await findConflictingTransactionReference({
+      transactionReferenceCanonical: transactionReference.toLowerCase(),
+      excludeAttemptId: attempt.id,
+      restrictToTerminalPaidAttempts: true,
+    });
+    if (conflictingAttempt) {
+      paymentError(PAYMENT_ERROR_CODES.duplicateTransactionReference);
+    }
+  }
+
   const claimVerification = await prisma.paymentAttempt.updateMany({
     where: {
       id: attempt.id,
@@ -316,6 +337,8 @@ export async function verifyPayment(input: VerifyPaymentInput) {
         providerReference,
         transactionReference,
         mockOutcome: input.mockOutcome,
+        expectedAmountCents: attempt.amountCents,
+        expectedCurrency: attempt.currency,
       });
     } catch (error) {
       await prisma.paymentAttempt.updateMany({
@@ -342,7 +365,7 @@ export async function verifyPayment(input: VerifyPaymentInput) {
       data: {
         status: finalAttemptStatus,
         verifiedAt: new Date(),
-        responsePayload: gatewayResult.rawPayload as Prisma.InputJsonValue | undefined,
+        responsePayload: sanitizePayloadForStorage(gatewayResult.rawPayload),
         failureReason: gatewayResult.failureReason,
       },
     });
@@ -403,6 +426,34 @@ export async function verifyPayment(input: VerifyPaymentInput) {
   });
 }
 
+function sanitizePayloadForStorage(payload: Record<string, unknown> | undefined): Prisma.InputJsonValue | undefined {
+  if (!payload) {
+    return undefined;
+  }
+
+  return sanitizeForLogs(payload) as Prisma.InputJsonValue;
+}
+
+
+export async function verifyPaymentByProviderReference(input: { provider: PaymentProvider; providerReference: string }) {
+  const attempt = await prisma.paymentAttempt.findFirst({
+    where: {
+      provider: input.provider,
+      providerReference: input.providerReference.trim(),
+    },
+    orderBy: { createdAt: "desc" },
+    select: { id: true, userId: true },
+  });
+
+  if (!attempt) {
+    paymentError(PAYMENT_ERROR_CODES.attemptNotFound);
+  }
+
+  return verifyPayment({
+    attemptId: attempt.id,
+    userId: attempt.userId,
+  });
+}
 function extractTransactionReference(payload: Prisma.JsonValue | null): string | undefined {
   if (!payload || typeof payload !== "object" || Array.isArray(payload)) {
     return undefined;
@@ -448,6 +499,27 @@ function buildPaymentUpdateData(input: {
     status: input.desiredStatus,
     providerRef: input.providerReference,
   };
+}
+
+async function findConflictingTransactionReference(input: {
+  transactionReferenceCanonical: string;
+  excludeAttemptId: string;
+  restrictToTerminalPaidAttempts?: boolean;
+}) {
+  const statusFilterSql = input.restrictToTerminalPaidAttempts
+    ? Prisma.sql`AND "status" = 'PAID'`
+    : Prisma.empty;
+
+  const rows = await prisma.$queryRaw<Array<{ id: string }>>(Prisma.sql`
+    SELECT "id"
+    FROM "PaymentAttempt"
+    WHERE lower(coalesce("requestPayload"->>'transactionReference', '')) = ${input.transactionReferenceCanonical}
+      AND "id" <> ${input.excludeAttemptId}
+      ${statusFilterSql}
+    LIMIT 1
+  `);
+
+  return rows[0];
 }
 
 async function ensureProviderReferenceIntegrity(input: {

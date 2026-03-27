@@ -2,8 +2,11 @@ import { createReadStream } from "node:fs";
 import { access } from "node:fs/promises";
 import path from "node:path";
 import { Readable } from "node:stream";
-import { AccessGrantStatus, ContentAccessPolicy, FileKind, StorageProvider } from "@prisma/client";
+import { AccessGrantStatus, FileKind, StorageProvider } from "@prisma/client";
 import { getCurrentUser } from "@/lib/auth-session";
+import { mapStorageProviderEnumToKey } from "@/lib/files/book-storage-service";
+import { canAccessProtectedAsset, resolveAssetDisposition } from "@/lib/files/protected-asset-policy";
+import { createStorageProvider } from "@/lib/files/storage-provider";
 import { prisma } from "@/lib/prisma";
 import { jsonNoStore } from "@/lib/security";
 
@@ -57,10 +60,6 @@ async function resolveReadableLocalPath(storageKey: string) {
   return null;
 }
 
-function userCanReadByPolicy(policy: ContentAccessPolicy) {
-  return policy === ContentAccessPolicy.PUBLIC_READ || policy === ContentAccessPolicy.PUBLIC_DOWNLOAD;
-}
-
 async function hasActiveAccessGrant(userId: string, bookId: string, now: Date) {
   const grant = await prisma.accessGrant.findFirst({
     where: {
@@ -76,8 +75,10 @@ async function hasActiveAccessGrant(userId: string, bookId: string, now: Date) {
   return Boolean(grant);
 }
 
-export async function GET(_request: Request, { params }: BookAssetRouteParams) {
+export async function GET(request: Request, { params }: BookAssetRouteParams) {
   const { fileId } = await params;
+  const url = new URL(request.url);
+  const requestedDisposition = resolveAssetDisposition(url.searchParams.get("download") === "1");
 
   const file = await prisma.bookFile.findUnique({
     where: { id: fileId },
@@ -86,6 +87,9 @@ export async function GET(_request: Request, { params }: BookAssetRouteParams) {
       kind: true,
       storageProvider: true,
       storageKey: true,
+      bucket: true,
+      region: true,
+      publicUrl: true,
       mimeType: true,
       originalFileName: true,
       book: {
@@ -103,16 +107,40 @@ export async function GET(_request: Request, { params }: BookAssetRouteParams) {
 
   const user = await getCurrentUser();
   const now = new Date();
-
-  const canReadPublic = userCanReadByPolicy(file.book.contentAccessPolicy);
   const canReadWithGrant = user ? await hasActiveAccessGrant(user.id, file.book.id, now) : false;
+  const access = canAccessProtectedAsset({
+    policy: file.book.contentAccessPolicy,
+    hasActiveGrant: canReadWithGrant,
+    requestedDisposition,
+  });
 
-  if (!canReadPublic && !canReadWithGrant) {
+  if (!access.allowed) {
     return jsonNoStore({ message: "غير مصرح بالوصول لهذا الملف." }, { status: 403 });
   }
 
   if (file.storageProvider !== StorageProvider.LOCAL) {
-    return jsonNoStore({ message: "مزود التخزين الحالي لا يدعم التسليم المحمي بعد." }, { status: 501 });
+    try {
+      const provider = createStorageProvider(mapStorageProviderEnumToKey(file.storageProvider));
+      const signedUrl = await provider.createSignedAssetUrl({
+        pointer: {
+          key: file.storageKey,
+          bucket: file.bucket ?? undefined,
+          region: file.region ?? undefined,
+          publicUrl: file.publicUrl ?? undefined,
+        },
+        fileName: file.originalFileName ?? `${file.id}.${file.kind.toLowerCase()}`,
+        disposition: access.disposition,
+        mimeType: file.mimeType,
+      });
+
+      if (!signedUrl) {
+        return jsonNoStore({ message: "تعذر إنشاء رابط الوصول للملف." }, { status: 500 });
+      }
+
+      return Response.redirect(signedUrl, 302);
+    } catch {
+      return jsonNoStore({ message: "تعذر تجهيز الملف للقراءة حالياً." }, { status: 500 });
+    }
   }
 
   const filePath = await resolveReadableLocalPath(file.storageKey);
@@ -133,7 +161,7 @@ export async function GET(_request: Request, { params }: BookAssetRouteParams) {
     status: 200,
     headers: {
       "Content-Type": file.mimeType ?? (file.kind === FileKind.PDF ? "application/pdf" : "application/epub+zip"),
-      "Content-Disposition": `inline; filename*=UTF-8''${encodeURIComponent(file.originalFileName ?? `${file.id}.${file.kind.toLowerCase()}`)}`,
+      "Content-Disposition": `${access.disposition}; filename*=UTF-8''${encodeURIComponent(file.originalFileName ?? `${file.id}.${file.kind.toLowerCase()}`)}`,
       "Cache-Control": "private, no-store",
       "X-Content-Type-Options": "nosniff",
     },

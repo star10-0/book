@@ -5,11 +5,11 @@ This folder defines a modular payment architecture where route handlers call the
 ## Provider integrations
 
 - `gateways/payment-gateway.ts`: provider-agnostic interface consumed by the service layer.
-- `gateways/sham-cash-gateway.ts`: Sham Cash placeholder gateway (mock implementation today).
-- `gateways/syriatel-cash-gateway.ts`: Syriatel Cash placeholder gateway (mock implementation today).
+- `gateways/sham-cash-gateway.ts`: Sham Cash gateway with live manual-transfer + `find_tx` verification and payload integrity checks.
+- `gateways/syriatel-cash-gateway.ts`: Syriatel Cash gateway with live create/verify + payload integrity checks.
 - `gateways/provider-integration.ts`: clean integration seam for live-vs-mock provider mode and readiness checks.
 - `gateways/mock-payment-gateway.ts`: shared mock helpers used by placeholder providers.
-- `gateways/provider-http.ts`: retained shared HTTP helpers for future real provider integration.
+- `gateways/provider-http.ts`: shared HTTP helpers with response sanitization for safe logs/storage.
 - `payment-service.ts`: orchestration, lifecycle transitions, integrity checks, and reconciliation-safe updates.
 - `errors.ts`: stable payment-domain error codes used by route handlers.
 
@@ -18,8 +18,9 @@ This folder defines a modular payment architecture where route handlers call the
 1. `/api/payments/create` creates a `Payment` and a `PaymentAttempt` (`PENDING -> SUBMITTED`).
 2. Provider reference is normalized and checked for uniqueness/integrity across `Payment` and `PaymentAttempt`.
 3. `/api/payments/submit-proof` stores transaction reference/proof metadata (only after provider reference is set).
-4. `/api/payments/verify-mock` verifies via the selected gateway (`SUBMITTED -> VERIFYING -> PAID|FAILED`).
-5. Finalization updates:
+4. `/api/payments/verify` verifies via the selected gateway (`SUBMITTED -> VERIFYING -> PAID|FAILED`).
+5. (Optional legacy) `/api/payments/sham-cash/callback` is disabled unless webhook secret is configured.
+6. Finalization updates:
    - attempt terminal status + provider payload,
    - payment status with guarded transitions,
    - order status derived from payment status,
@@ -31,4 +32,7 @@ This folder defines a modular payment architecture where route handlers call the
 - Provider reference mismatch between attempt/payment is treated as integrity conflict.
 - Lifecycle claim step prevents concurrent verification workers from finalizing the same attempt twice.
 
-> Current behavior remains mock-first. Real provider API calls can be added inside each gateway without changing service or route contracts.
+> Sham Cash live mode currently uses manual transfer by user + transaction-number verification (`find_tx`).
+> Syriatel Cash still uses provider create/verify flow.
+> In live mode, gateways enforce amount/currency/destination-account integrity before marking attempts as paid.
+> Mock gateways are now hard-gated to explicit development/test mode with `ALLOW_MOCK_PAYMENTS=true`.

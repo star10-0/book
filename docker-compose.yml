@@ -1,21 +1,51 @@
 services:
-  app:
+  db:
+    image: postgres:16-alpine
+    environment:
+      POSTGRES_DB: ${POSTGRES_DB:-book}
+      POSTGRES_USER: ${POSTGRES_USER:-book}
+      POSTGRES_PASSWORD: ${POSTGRES_PASSWORD:-book}
+    volumes:
+      - ${POSTGRES_DATA_PATH:-./volumes/postgres-data}:/var/lib/postgresql/data
+    healthcheck:
+      test: ["CMD-SHELL", "pg_isready -U ${POSTGRES_USER:-book} -d ${POSTGRES_DB:-book}"]
+      interval: 5s
+      timeout: 5s
+      retries: 20
+    restart: unless-stopped
+
+  migrate:
+    image: book-app:latest
     build:
       context: .
       dockerfile: Dockerfile
-    image: book-app:latest
-    depends_on:
-      db:
-        condition: service_healthy
     env_file:
       - .env.production
     environment:
       NODE_ENV: production
+    depends_on:
+      db:
+        condition: service_healthy
+    command: ["npm", "run", "prisma:migrate:deploy"]
+    restart: "no"
+
+  app:
+    image: book-app:latest
+    build:
+      context: .
+      dockerfile: Dockerfile
+    env_file:
+      - .env.production
+    environment:
+      NODE_ENV: production
+    depends_on:
+      migrate:
+        condition: service_completed_successfully
     ports:
-      - "3000:3000"
+      - "${APP_PORT:-3000}:3000"
     volumes:
-      - app_public_uploads:/app/public/uploads
-      - app_private_uploads:/app/storage/private/uploads
+      - ${PUBLIC_UPLOADS_PATH:-./volumes/public-uploads}:/app/public/uploads
+      - ${PRIVATE_UPLOADS_PATH:-./volumes/private-uploads}:/app/storage/private/uploads
     restart: unless-stopped
     healthcheck:
       test:
@@ -26,23 +56,3 @@ services:
       interval: 15s
       timeout: 5s
       retries: 10
-
-  db:
-    image: postgres:16-alpine
-    environment:
-      POSTGRES_DB: book
-      POSTGRES_USER: book
-      POSTGRES_PASSWORD: book
-    volumes:
-      - postgres_data:/var/lib/postgresql/data
-    healthcheck:
-      test: ["CMD-SHELL", "pg_isready -U book -d book"]
-      interval: 5s
-      timeout: 5s
-      retries: 20
-    restart: unless-stopped
-
-volumes:
-  app_public_uploads:
-  app_private_uploads:
-  postgres_data:

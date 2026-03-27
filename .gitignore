@@ -36,3 +36,8 @@ yarn-error.log*
 /public/icons/icon-512.png
 /public/icons/apple-touch-icon.png
 /public/icons/favicon.ico
+
+# runtime uploads (must stay out of git)
+/public/uploads/
+/storage/private/uploads/
+/volumes/

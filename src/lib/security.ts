@@ -55,8 +55,26 @@ export function rejectRateLimited(retryAfterSeconds: number) {
   );
 }
 
-export function enforceRateLimit(input: { key: string; limit: number; windowMs: number }) {
-  return checkRateLimit(input);
+export function rejectRateLimitUnavailable(reason?: string) {
+  return NextResponse.json(
+    { message: "الخدمة محمية مؤقتاً. يرجى المحاولة بعد قليل.", code: reason ?? "RATE_LIMIT_BACKEND_UNAVAILABLE" },
+    {
+      status: 503,
+      headers: {
+        "Cache-Control": "no-store",
+        "Retry-After": "60",
+      },
+    },
+  );
+}
+
+export async function enforceRateLimit(input: {
+  key: string;
+  limit: number;
+  windowMs: number;
+  requireDistributedInProduction?: boolean;
+}) {
+  return await checkRateLimit(input);
 }
 
 export function jsonNoStore(body: unknown, init?: ResponseInit) {

@@ -1,3 +1,10 @@
+import {
+  getLiveProvidersEnvKey,
+  getMissingLiveEnvKeys,
+  getSupportedLiveProviders,
+  parseSelectedLiveProviders,
+} from "@/lib/payments/gateways/provider-integration";
+
 type RuntimeEnvironment = "development" | "test" | "production";
 
 type EnvSeverity = "error" | "warning";
@@ -85,6 +92,72 @@ function validateEnvironment(): EnvIssue[] {
     });
   }
 
+
+  const allowMockVerification = (readEnv("ALLOW_MOCK_PAYMENT_VERIFICATION") ?? "false").toLowerCase();
+  const allowMockGateways = (readEnv("ALLOW_MOCK_PAYMENTS") ?? "false").toLowerCase();
+  if (nodeEnv === "production" && allowMockVerification === "true") {
+    issues.push({
+      severity: "error",
+      key: "ALLOW_MOCK_PAYMENT_VERIFICATION",
+      message: "ALLOW_MOCK_PAYMENT_VERIFICATION must remain false in production.",
+    });
+  }
+
+  if (nodeEnv === "production" && allowMockGateways === "true") {
+    issues.push({
+      severity: "error",
+      key: "ALLOW_MOCK_PAYMENTS",
+      message: "ALLOW_MOCK_PAYMENTS must remain false in production.",
+    });
+  }
+
+  if (nodeEnv === "production") {
+    const kvUrl = readEnv("KV_REST_API_URL") ?? readEnv("UPSTASH_REDIS_REST_URL");
+    const kvToken = readEnv("KV_REST_API_TOKEN") ?? readEnv("UPSTASH_REDIS_REST_TOKEN");
+
+    if (!kvUrl || !kvToken) {
+      issues.push({
+        severity: "error",
+        key: "KV_REST_API_URL",
+        message: "KV/Redis REST credentials are required in production for auth/payment rate limiting.",
+      });
+    }
+  }
+
+  if (paymentMode === "live") {
+    const providersSelection = parseSelectedLiveProviders();
+
+    if (providersSelection.invalidProviders.length > 0) {
+      issues.push({
+        severity: nodeEnv === "production" ? "error" : "warning",
+        key: getLiveProvidersEnvKey(),
+        message: `${getLiveProvidersEnvKey()} contains unsupported providers: ${providersSelection.invalidProviders.join(
+          ", ",
+        )}. Supported values are: ${getSupportedLiveProviders().join(", ")}.`,
+      });
+    }
+
+    if (providersSelection.selectedProviders.length === 0) {
+      issues.push({
+        severity: nodeEnv === "production" ? "error" : "warning",
+        key: getLiveProvidersEnvKey(),
+        message:
+          `PAYMENT_GATEWAY_MODE=live requires at least one selected provider via ${getLiveProvidersEnvKey()}.`,
+      });
+    }
+
+    for (const provider of providersSelection.selectedProviders) {
+      const missingEnv = getMissingLiveEnvKeys(provider);
+      for (const envKey of missingEnv) {
+        issues.push({
+          severity: nodeEnv === "production" ? "error" : "warning",
+          key: envKey,
+          message: `${envKey} is required when PAYMENT_GATEWAY_MODE=live and ${provider} is selected in ${getLiveProvidersEnvKey()}.`,
+        });
+      }
+    }
+  }
+
   const rawStorageProvider = readEnv("BOOK_STORAGE_PROVIDER");
   if (nodeEnv === "production" && !rawStorageProvider) {
     issues.push({
@@ -109,6 +182,24 @@ function validateEnvironment(): EnvIssue[] {
       key: "BOOK_STORAGE_PROVIDER",
       message: "Using local storage in production can lose files on ephemeral hosts. Prefer object storage.",
     });
+  }
+
+  if (storageProvider === "s3" || storageProvider === "r2") {
+    const cloudStorageRequired = [
+      "BOOK_STORAGE_S3_ACCESS_KEY_ID",
+      "BOOK_STORAGE_S3_SECRET_ACCESS_KEY",
+      "BOOK_STORAGE_S3_PUBLIC_BUCKET",
+    ];
+
+    for (const key of cloudStorageRequired) {
+      if (!readEnv(key)) {
+        issues.push({
+          severity: nodeEnv === "production" ? "error" : "warning",
+          key,
+          message: `${key} is required when BOOK_STORAGE_PROVIDER is set to s3/r2.`,
+        });
+      }
+    }
   }
 
   const nextAuthUrl = readEnv("NEXTAUTH_URL");
