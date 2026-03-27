@@ -2,13 +2,12 @@ import { PaymentProvider } from "@prisma/client";
 import { createMockPaymentResult, verifyMockPaymentResult } from "@/lib/payments/gateways/mock-payment-gateway";
 import {
   extractFailureReason,
-  extractProviderReference,
   GatewayConfigurationError,
   GatewayRequestError,
   isPaidStatus,
-  postProviderJson,
   readOptionalTimeoutMs,
   readRequiredEnv,
+  safeLogProviderResponse,
 } from "@/lib/payments/gateways/provider-http";
 import { getSyriatelCashIntegrationConfig } from "@/lib/payments/gateways/provider-integration";
 import type {
@@ -20,20 +19,18 @@ import type {
 } from "@/lib/payments/gateways/payment-gateway";
 import { isMockPaymentGatewayEnabled } from "@/lib/payments/mock-mode";
 
-function buildSyriatelEndpoint(baseUrl: string, path: string) {
-  return new URL(path, baseUrl).toString();
-}
-
 function getSyriatelCashLiveConfig() {
   return {
     baseUrl: readRequiredEnv("SYRIATEL_CASH_API_BASE_URL"),
     apiKey: readRequiredEnv("SYRIATEL_CASH_API_KEY"),
-    merchantId: readRequiredEnv("SYRIATEL_CASH_MERCHANT_ID"),
-    createPath: readRequiredEnv("SYRIATEL_CASH_CREATE_PAYMENT_PATH"),
-    verifyPath: readRequiredEnv("SYRIATEL_CASH_VERIFY_PAYMENT_PATH"),
     destinationAccount: readRequiredEnv("SYRIATEL_CASH_DESTINATION_ACCOUNT"),
+    findTxPath: process.env.SYRIATEL_CASH_FIND_TX_PATH?.trim() || "/find_tx",
     timeoutMs: readOptionalTimeoutMs("SYRIATEL_CASH_TIMEOUT_MS"),
   };
+}
+
+function buildSyriatelEndpoint(baseUrl: string, path: string) {
+  return new URL(path, baseUrl).toString();
 }
 
 function pickString(payload: Record<string, unknown>, keys: string[]) {
@@ -80,70 +77,17 @@ export class SyriatelCashGateway implements PaymentGateway {
     }
 
     const config = getSyriatelCashLiveConfig();
-
-    const payload = await postProviderJson({
-      provider: "syriatel_cash",
-      phase: "create",
-      endpoint: buildSyriatelEndpoint(config.baseUrl, config.createPath),
-      headers: {
-        Authorization: `Bearer ${config.apiKey}`,
-        "X-Merchant-Id": config.merchantId,
-      },
-      body: {
-        merchantId: config.merchantId,
-        paymentId: input.paymentId,
-        orderId: input.orderId,
-        amountCents: input.amountCents,
-        currency: input.currency,
-        destinationAccount: config.destinationAccount,
-        customerId: input.customerId,
-      },
-      timeoutMs: config.timeoutMs,
-    });
-
-    const providerReference = extractProviderReference(payload);
-    if (!providerReference) {
-      throw new GatewayConfigurationError("Syriatel Cash create response did not include a provider reference.");
-    }
-
-    const echoedAmountCents = pickNumber(payload, ["amountCents", "amount"]);
-    const echoedCurrency = pickString(payload, ["currency"]);
-    const echoedDestination = pickString(payload, ["destinationAccount", "receiverAccount", "merchantAccount"]);
-
-    if (typeof echoedAmountCents === "number" && echoedAmountCents !== input.amountCents) {
-      throw new GatewayRequestError({
-        provider: "syriatel_cash",
-        phase: "create",
-        message: "Syriatel Cash create response amount does not match order total.",
-      });
-    }
-
-    if (echoedCurrency && echoedCurrency.toUpperCase() !== input.currency.toUpperCase()) {
-      throw new GatewayRequestError({
-        provider: "syriatel_cash",
-        phase: "create",
-        message: "Syriatel Cash create response currency does not match order currency.",
-      });
-    }
-
-    if (echoedDestination && echoedDestination !== config.destinationAccount) {
-      throw new GatewayRequestError({
-        provider: "syriatel_cash",
-        phase: "create",
-        message: "Syriatel Cash create response destination account mismatch.",
-      });
-    }
-
-    const checkoutUrl = [payload.checkoutUrl, payload.paymentUrl, payload.redirectUrl].find(
-      (candidate): candidate is string => typeof candidate === "string" && candidate.trim().length > 0,
-    );
+    const providerReference = `syriatel-manual:${input.paymentId}`;
 
     return {
       providerReference,
-      checkoutUrl,
       rawPayload: {
-        mode: "live",
-        ...payload,
+        mode: "live-manual",
+        providerReference,
+        destinationAccount: config.destinationAccount,
+        amountCents: input.amountCents,
+        currency: input.currency,
+        orderReference: input.orderId,
       },
     };
   }
@@ -162,30 +106,23 @@ export class SyriatelCashGateway implements PaymentGateway {
       throw new GatewayConfigurationError("Syriatel Cash live integration is not fully configured.");
     }
 
+    if (!input.transactionReference?.trim()) {
+      throw new GatewayRequestError({
+        provider: "syriatel_cash",
+        phase: "verify",
+        message: "Syriatel Cash verification requires a submitted transaction reference.",
+      });
+    }
+
     const config = getSyriatelCashLiveConfig();
-    const payload = await postProviderJson({
-      provider: "syriatel_cash",
-      phase: "verify",
-      endpoint: buildSyriatelEndpoint(config.baseUrl, config.verifyPath),
-      headers: {
-        Authorization: `Bearer ${config.apiKey}`,
-        "X-Merchant-Id": config.merchantId,
-      },
-      body: {
-        merchantId: config.merchantId,
-        paymentId: input.paymentId,
-        providerReference: input.providerReference,
-        transactionReference: input.transactionReference,
-        amountCents: input.expectedAmountCents,
-        currency: input.expectedCurrency,
-        destinationAccount: config.destinationAccount,
-      },
-      timeoutMs: config.timeoutMs,
+    const payload = await findSyriatelCashTransaction({
+      config,
+      transactionReference: input.transactionReference.trim(),
     });
 
     const verifiedAmountCents = pickNumber(payload, ["amountCents", "amount"]);
     const verifiedCurrency = pickString(payload, ["currency"]);
-    const verifiedDestination = pickString(payload, ["destinationAccount", "receiverAccount", "merchantAccount"]);
+    const verifiedDestination = pickString(payload, ["to", "destinationAccount", "receiverAccount", "merchantAccount", "gsm"]);
 
     if (typeof verifiedAmountCents === "number" && verifiedAmountCents !== input.expectedAmountCents) {
       throw new GatewayRequestError({
@@ -219,7 +156,103 @@ export class SyriatelCashGateway implements PaymentGateway {
         mode: "live",
         ...payload,
       },
-      failureReason: isPaid ? undefined : extractFailureReason(payload) ?? "Syriatel Cash reported an unsuccessful payment status.",
+      failureReason: isPaid ? undefined : extractFailureReason(payload) ?? "Syriatel Cash reported an unsuccessful transaction status.",
     };
   }
+}
+
+async function findSyriatelCashTransaction(input: {
+  config: ReturnType<typeof getSyriatelCashLiveConfig>;
+  transactionReference: string;
+}): Promise<Record<string, unknown>> {
+  const endpoint = buildSyriatelEndpoint(input.config.baseUrl, input.config.findTxPath);
+  const controller = new AbortController();
+  const timeout = setTimeout(() => controller.abort(), input.config.timeoutMs);
+
+  try {
+    const response = await fetch(endpoint, {
+      method: "POST",
+      headers: {
+        "Content-Type": "application/json",
+        "X-Api-Key": input.config.apiKey,
+      },
+      body: JSON.stringify({
+        tx: input.transactionReference,
+        transactionReference: input.transactionReference,
+        account: input.config.destinationAccount,
+        destinationAccount: input.config.destinationAccount,
+      }),
+      cache: "no-store",
+      signal: controller.signal,
+    });
+
+    const textPayload = await response.text();
+    const payload = parsePayload(textPayload);
+    const normalizedPayload = unwrapDataContainer(payload);
+
+    safeLogProviderResponse("syriatel_cash", "verify", {
+      status: response.status,
+      ok: response.ok,
+      payload: normalizedPayload,
+    });
+
+    if (!response.ok) {
+      throw new GatewayRequestError({
+        provider: "syriatel_cash",
+        phase: "verify",
+        statusCode: response.status,
+        message: `Provider API request failed with status ${response.status}.`,
+      });
+    }
+
+    return normalizedPayload;
+  } catch (error) {
+    if (error instanceof GatewayRequestError) {
+      throw error;
+    }
+
+    if (error instanceof Error && error.name === "AbortError") {
+      throw new GatewayRequestError({
+        provider: "syriatel_cash",
+        phase: "verify",
+        message: `Provider API request timed out after ${input.config.timeoutMs}ms.`,
+      });
+    }
+
+    throw new GatewayRequestError({
+      provider: "syriatel_cash",
+      phase: "verify",
+      message: "Provider API request failed unexpectedly.",
+    });
+  } finally {
+    clearTimeout(timeout);
+  }
+}
+
+function parsePayload(value: string): Record<string, unknown> {
+  if (!value.trim()) {
+    return {};
+  }
+
+  try {
+    const parsed: unknown = JSON.parse(value);
+    if (!parsed || typeof parsed !== "object" || Array.isArray(parsed)) {
+      return { data: parsed };
+    }
+    return parsed as Record<string, unknown>;
+  } catch {
+    return {
+      raw: value,
+    };
+  }
+}
+
+function unwrapDataContainer(payload: Record<string, unknown>) {
+  const nested = payload.data;
+
+  if (!nested || typeof nested !== "object" || Array.isArray(nested)) {
+    return payload;
+  }
+
+  return nested as Record<string, unknown>;
 }
