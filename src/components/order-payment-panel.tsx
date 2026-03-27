@@ -15,6 +15,7 @@ interface OrderPaymentPanelProps {
   initialAttemptId?: string;
   initialAttemptStatus?: PaymentAttemptStatus;
   shamCashDestinationAccount?: string;
+  syriatelCashDestinationAccount?: string;
   enabledLiveProviders?: LiveProviderOption[];
 }
 
@@ -30,7 +31,7 @@ const paymentOptions: Array<{ provider: LiveProviderOption; label: string; instr
   {
     provider: PaymentProvider.SYRIATEL_CASH,
     label: "Syriatel Cash",
-    instructions: "أرسل المبلغ عبر Syriatel Cash ثم أضف رقم العملية أو لقطة الإشعار في خانة الإثبات.",
+    instructions: "حوّل المبلغ يدويًا إلى حساب Syriatel Cash الموضّح، ثم أدخل رقم العملية (tx) للتحقق من الدفع.",
   },
 ];
 
@@ -64,6 +65,7 @@ export function OrderPaymentPanel({
   initialAttemptId,
   initialAttemptStatus,
   shamCashDestinationAccount,
+  syriatelCashDestinationAccount,
   enabledLiveProviders,
 }: OrderPaymentPanelProps) {
   const router = useRouter();
@@ -162,7 +164,7 @@ export function OrderPaymentPanel({
       setMessage(
         selectedProvider === PaymentProvider.SHAM_CASH
           ? "تم إنشاء طلب الدفع. حوّل الآن عبر Sham Cash ثم أدخل رقم العملية (tx)."
-          : "تم إنشاء طلب الدفع. نفّذ التحويل ثم أدخل رقم العملية (tx).",
+          : "تم إنشاء طلب الدفع. حوّل الآن عبر Syriatel Cash ثم أدخل رقم العملية (tx).",
       );
       router.refresh();
     });
@@ -346,6 +348,31 @@ export function OrderPaymentPanel({
                     <li>اكتب مرجع الطلب <span className="font-mono">{orderId}</span> في ملاحظات التحويل إن أمكن.</li>
                     <li>بعد نجاح التحويل، أدخل رقم العملية (tx) في الحقل أدناه ثم اضغط زر إرسال رقم العملية.</li>
                     <li>اضغط زر تحقق من حالة الدفع لإتمام التحقق ومنح الوصول تلقائياً عند نجاح العملية.</li>
+                  </ol>
+                </div>
+              </dl>
+            ) : null}
+            {selectedProvider === PaymentProvider.SYRIATEL_CASH ? (
+              <dl className="mt-3 rounded-xl border border-emerald-100 bg-emerald-50 p-3 text-slate-800">
+                <div className="flex items-center justify-between gap-3">
+                  <dt className="font-semibold">رقم/حساب الاستلام</dt>
+                  <dd className="font-mono text-xs sm:text-sm">{syriatelCashDestinationAccount ?? "غير متاح حالياً"}</dd>
+                </div>
+                <div className="mt-2 flex items-center justify-between gap-3">
+                  <dt className="font-semibold">المبلغ</dt>
+                  <dd>{formatArabicCurrency(totalCents / 100, { currency })}</dd>
+                </div>
+                <div className="mt-2 flex items-center justify-between gap-3">
+                  <dt className="font-semibold">مرجع الطلب</dt>
+                  <dd className="font-mono text-xs sm:text-sm">{orderId}</dd>
+                </div>
+                <div className="mt-3 border-t border-emerald-200 pt-2">
+                  <p className="font-semibold">خطوات الدفع عبر Syriatel Cash</p>
+                  <ol className="mt-1 list-decimal space-y-1 pr-4 text-xs sm:text-sm">
+                    <li>افتح تطبيق Syriatel Cash وحوّل المبلغ الكامل إلى رقم/حساب الاستلام أعلاه.</li>
+                    <li>أضف مرجع الطلب <span className="font-mono">{orderId}</span> داخل ملاحظات التحويل إن توفرت.</li>
+                    <li>بعد نجاح التحويل، أدخل رقم العملية (tx) في الحقل أدناه ثم اضغط زر إرسال رقم العملية.</li>
+                    <li>اضغط زر تحقق من حالة الدفع للتحقق عبر عملية <span className="font-mono">find_tx</span> ومنح الوصول تلقائيًا عند التأكيد.</li>
                   </ol>
                 </div>
               </dl>

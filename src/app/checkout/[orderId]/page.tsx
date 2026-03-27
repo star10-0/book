@@ -40,6 +40,7 @@ export default async function CheckoutPage({ params }: CheckoutPageProps) {
 
   const latestAttempt = order.paymentAttempts[0];
   const shamCashDestinationAccount = process.env.SHAM_CASH_DESTINATION_ACCOUNT?.trim() || undefined;
+  const syriatelCashDestinationAccount = process.env.SYRIATEL_CASH_DESTINATION_ACCOUNT?.trim() || undefined;
   const selectedLiveProviders = parseSelectedLiveProviders().selectedProviders;
 
   return (
@@ -80,6 +81,7 @@ export default async function CheckoutPage({ params }: CheckoutPageProps) {
           initialAttemptId={latestAttempt?.id}
           initialAttemptStatus={latestAttempt?.status}
           shamCashDestinationAccount={shamCashDestinationAccount}
+          syriatelCashDestinationAccount={syriatelCashDestinationAccount}
           enabledLiveProviders={selectedLiveProviders}
         />
       </div>
