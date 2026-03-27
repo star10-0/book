@@ -78,6 +78,10 @@ export async function POST(request: Request) {
       return jsonNoStore({ message: "تم تثبيت مرجع الدفع لهذه المحاولة مسبقًا ولا يمكن تعديله." }, { status: 409 });
     }
 
+    if (isPaymentError(error, PAYMENT_ERROR_CODES.duplicateTransactionReference)) {
+      return jsonNoStore({ message: "رقم العملية مستخدم مسبقاً في محاولة دفع أخرى." }, { status: 409 });
+    }
+
     if (isPaymentError(error, PAYMENT_ERROR_CODES.missingProviderReference)) {
       return jsonNoStore({ message: "مرجع مزود الدفع غير متاح بعد. أعد إنشاء المحاولة." }, { status: 409 });
     }

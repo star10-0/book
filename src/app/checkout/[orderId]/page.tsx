@@ -4,6 +4,7 @@ import { SiteHeader } from "@/components/site-header";
 import { OrderDetailsCard } from "@/components/order-details";
 import { OrderPaymentPanel } from "@/components/order-payment-panel";
 import { requireUser } from "@/lib/auth-session";
+import { parseSelectedLiveProviders } from "@/lib/payments/gateways/provider-integration";
 import { prisma } from "@/lib/prisma";
 
 type CheckoutPageProps = {
@@ -39,6 +40,7 @@ export default async function CheckoutPage({ params }: CheckoutPageProps) {
 
   const latestAttempt = order.paymentAttempts[0];
   const shamCashDestinationAccount = process.env.SHAM_CASH_DESTINATION_ACCOUNT?.trim() || undefined;
+  const selectedLiveProviders = parseSelectedLiveProviders().selectedProviders;
 
   return (
     <main>
@@ -78,6 +80,7 @@ export default async function CheckoutPage({ params }: CheckoutPageProps) {
           initialAttemptId={latestAttempt?.id}
           initialAttemptStatus={latestAttempt?.status}
           shamCashDestinationAccount={shamCashDestinationAccount}
+          enabledLiveProviders={selectedLiveProviders}
         />
       </div>
     </main>

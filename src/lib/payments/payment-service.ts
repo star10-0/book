@@ -206,12 +206,21 @@ export async function submitPaymentProof(input: SubmitPaymentProofInput) {
 
   const existingTransactionReference = extractTransactionReference(attempt.requestPayload);
   const normalizedTransactionReference = input.transactionReference.trim();
+  const canonicalTransactionReference = normalizedTransactionReference.toLowerCase();
 
   if (
     existingTransactionReference &&
     existingTransactionReference.toLowerCase() !== normalizedTransactionReference.toLowerCase()
   ) {
     paymentError(PAYMENT_ERROR_CODES.paymentProofImmutable);
+  }
+
+  const conflictingAttempt = await findConflictingTransactionReference({
+    transactionReferenceCanonical: canonicalTransactionReference,
+    excludeAttemptId: attempt.id,
+  });
+  if (conflictingAttempt) {
+    paymentError(PAYMENT_ERROR_CODES.duplicateTransactionReference);
   }
 
   const existingPayload =
@@ -277,6 +286,17 @@ export async function verifyPayment(input: VerifyPaymentInput) {
   }
 
   const providerReference = attempt.providerReference;
+
+  if (transactionReference) {
+    const conflictingAttempt = await findConflictingTransactionReference({
+      transactionReferenceCanonical: transactionReference.toLowerCase(),
+      excludeAttemptId: attempt.id,
+      restrictToTerminalPaidAttempts: true,
+    });
+    if (conflictingAttempt) {
+      paymentError(PAYMENT_ERROR_CODES.duplicateTransactionReference);
+    }
+  }
 
   const claimVerification = await prisma.paymentAttempt.updateMany({
     where: {
@@ -479,6 +499,27 @@ function buildPaymentUpdateData(input: {
     status: input.desiredStatus,
     providerRef: input.providerReference,
   };
+}
+
+async function findConflictingTransactionReference(input: {
+  transactionReferenceCanonical: string;
+  excludeAttemptId: string;
+  restrictToTerminalPaidAttempts?: boolean;
+}) {
+  const statusFilterSql = input.restrictToTerminalPaidAttempts
+    ? Prisma.sql`AND "status" = 'PAID'`
+    : Prisma.empty;
+
+  const rows = await prisma.$queryRaw<Array<{ id: string }>>(Prisma.sql`
+    SELECT "id"
+    FROM "PaymentAttempt"
+    WHERE lower(coalesce("requestPayload"->>'transactionReference', '')) = ${input.transactionReferenceCanonical}
+      AND "id" <> ${input.excludeAttemptId}
+      ${statusFilterSql}
+    LIMIT 1
+  `);
+
+  return rows[0];
 }
 
 async function ensureProviderReferenceIntegrity(input: {
