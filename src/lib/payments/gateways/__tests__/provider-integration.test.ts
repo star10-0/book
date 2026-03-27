@@ -39,13 +39,13 @@ test("getProviderIntegrationConfig reports missing env for Syriatel Cash only", 
   process.env = originalEnv;
 });
 
-test("parseSelectedLiveProviders defaults to all providers when env is missing", () => {
+test("parseSelectedLiveProviders defaults to Sham Cash when env is missing", () => {
   const originalEnv = { ...process.env };
   delete process.env.PAYMENT_LIVE_PROVIDERS;
 
   const selection = parseSelectedLiveProviders();
 
-  assert.deepEqual(selection.selectedProviders, ["SHAM_CASH", "SYRIATEL_CASH"]);
+  assert.deepEqual(selection.selectedProviders, ["SHAM_CASH"]);
   assert.deepEqual(selection.invalidProviders, []);
   assert.equal(selection.source, "default");
 

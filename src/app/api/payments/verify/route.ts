@@ -84,6 +84,10 @@ export async function POST(request: Request) {
       return jsonNoStore({ message: "مرجع مزود الدفع لا يطابق سجل العملية." }, { status: 409 });
     }
 
+    if (isPaymentError(error, PAYMENT_ERROR_CODES.duplicateTransactionReference)) {
+      return jsonNoStore({ message: "رقم العملية مستخدم مسبقاً في سجل دفعة أخرى." }, { status: 409 });
+    }
+
     if (error instanceof GatewayConfigurationError) {
       return jsonNoStore({ message: "إعدادات مزود الدفع غير مكتملة على الخادم." }, { status: 500 });
     }

@@ -6,6 +6,7 @@ export type GatewayExecutionMode = "mock" | "live";
 export type SupportedLiveProvider = "SHAM_CASH" | "SYRIATEL_CASH";
 const LIVE_PROVIDERS_ENV = "PAYMENT_LIVE_PROVIDERS";
 const SUPPORTED_LIVE_PROVIDERS: readonly SupportedLiveProvider[] = ["SHAM_CASH", "SYRIATEL_CASH"];
+const DEFAULT_LIVE_PROVIDERS: readonly SupportedLiveProvider[] = ["SHAM_CASH"];
 
 export interface ProviderIntegrationConfig {
   provider: SupportedLiveProvider;
@@ -68,7 +69,7 @@ export function parseSelectedLiveProviders(): LiveProviderSelectionResult {
 
   if (!rawValue) {
     return {
-      selectedProviders: [...SUPPORTED_LIVE_PROVIDERS],
+      selectedProviders: [...DEFAULT_LIVE_PROVIDERS],
       invalidProviders: [],
       source: "default",
     };

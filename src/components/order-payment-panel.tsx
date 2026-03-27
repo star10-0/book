@@ -15,11 +15,13 @@ interface OrderPaymentPanelProps {
   initialAttemptId?: string;
   initialAttemptStatus?: PaymentAttemptStatus;
   shamCashDestinationAccount?: string;
+  enabledLiveProviders?: LiveProviderOption[];
 }
 
 type UiStatus = "idle" | "pending" | "success" | "failure";
+type LiveProviderOption = "SHAM_CASH" | "SYRIATEL_CASH";
 
-const paymentOptions: Array<{ provider: PaymentProvider; label: string; instructions: string }> = [
+const paymentOptions: Array<{ provider: LiveProviderOption; label: string; instructions: string }> = [
   {
     provider: PaymentProvider.SHAM_CASH,
     label: "Sham Cash",
@@ -62,9 +64,18 @@ export function OrderPaymentPanel({
   initialAttemptId,
   initialAttemptStatus,
   shamCashDestinationAccount,
+  enabledLiveProviders,
 }: OrderPaymentPanelProps) {
   const router = useRouter();
-  const [selectedProvider, setSelectedProvider] = useState<PaymentProvider>(PaymentProvider.SHAM_CASH);
+  const availablePaymentOptions = paymentOptions.filter((option) => {
+    if (!enabledLiveProviders || enabledLiveProviders.length === 0) {
+      return true;
+    }
+    return enabledLiveProviders.includes(option.provider);
+  });
+  const [selectedProvider, setSelectedProvider] = useState<PaymentProvider>(
+    availablePaymentOptions[0]?.provider ?? PaymentProvider.SHAM_CASH,
+  );
   const [attemptId, setAttemptId] = useState<string | undefined>(initialAttemptId);
   const [attemptStatus, setAttemptStatus] = useState<PaymentAttemptStatus | undefined>(initialAttemptStatus);
   const [transactionReference, setTransactionReference] = useState("");
@@ -73,7 +84,7 @@ export function OrderPaymentPanel({
   const [message, setMessage] = useState<string>("");
   const [isPending, startTransition] = useTransition();
 
-  const selectedOption = paymentOptions.find((option) => option.provider === selectedProvider) ?? paymentOptions[0];
+  const selectedOption = availablePaymentOptions.find((option) => option.provider === selectedProvider) ?? availablePaymentOptions[0];
   const uiStatus = mapAttemptStatusToUiStatus(attemptStatus);
 
   const applyPromoCode = () => {
@@ -148,7 +159,11 @@ export function OrderPaymentPanel({
 
       setAttemptId(payload.attempt.id);
       setAttemptStatus(payload.attempt.status);
-      setMessage("تم إنشاء طلب الدفع. حوّل الآن عبر Sham Cash ثم أدخل رقم العملية (tx).");
+      setMessage(
+        selectedProvider === PaymentProvider.SHAM_CASH
+          ? "تم إنشاء طلب الدفع. حوّل الآن عبر Sham Cash ثم أدخل رقم العملية (tx)."
+          : "تم إنشاء طلب الدفع. نفّذ التحويل ثم أدخل رقم العملية (tx).",
+      );
       router.refresh();
     });
   };
@@ -290,7 +305,7 @@ export function OrderPaymentPanel({
       ) : (
         <>
           <div className="mt-4 grid gap-3 sm:grid-cols-2">
-            {paymentOptions.map((option) => {
+            {availablePaymentOptions.map((option) => {
               const isActive = option.provider === selectedProvider;
               return (
                 <button
@@ -323,6 +338,15 @@ export function OrderPaymentPanel({
                 <div className="mt-2 flex items-center justify-between gap-3">
                   <dt className="font-semibold">مرجع الطلب</dt>
                   <dd className="font-mono text-xs sm:text-sm">{orderId}</dd>
+                </div>
+                <div className="mt-3 border-t border-indigo-200 pt-2">
+                  <p className="font-semibold">خطوات الدفع عبر Sham Cash</p>
+                  <ol className="mt-1 list-decimal space-y-1 pr-4 text-xs sm:text-sm">
+                    <li>افتح تطبيق Sham Cash وحوّل المبلغ الكامل إلى حساب الاستلام أعلاه.</li>
+                    <li>اكتب مرجع الطلب <span className="font-mono">{orderId}</span> في ملاحظات التحويل إن أمكن.</li>
+                    <li>بعد نجاح التحويل، أدخل رقم العملية (tx) في الحقل أدناه ثم اضغط زر إرسال رقم العملية.</li>
+                    <li>اضغط زر تحقق من حالة الدفع لإتمام التحقق ومنح الوصول تلقائياً عند نجاح العملية.</li>
+                  </ol>
                 </div>
               </dl>
             ) : null}

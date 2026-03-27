@@ -9,6 +9,7 @@ export const PAYMENT_ERROR_CODES = {
   attemptNotFound: "ATTEMPT_NOT_FOUND",
   attemptNotSubmittable: "ATTEMPT_NOT_SUBMITTABLE",
   paymentProofImmutable: "PAYMENT_PROOF_IMMUTABLE",
+  duplicateTransactionReference: "DUPLICATE_TRANSACTION_REFERENCE",
   attemptAlreadyVerifying: "ATTEMPT_ALREADY_VERIFYING",
   mockVerificationDisabled: "MOCK_VERIFICATION_DISABLED",
   missingProviderReference: "MISSING_PROVIDER_REFERENCE",
