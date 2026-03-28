@@ -1,0 +1,52 @@
+{
+  "annotations": {"list": []},
+  "editable": true,
+  "fiscalYearStartMonth": 0,
+  "graphTooltip": 0,
+  "panels": [
+    {
+      "type": "stat",
+      "title": "App Up",
+      "gridPos": {"h": 4, "w": 6, "x": 0, "y": 0},
+      "targets": [{"expr": "up{job='book-app'}", "refId": "A"}],
+      "fieldConfig": {"defaults": {"mappings": [{"options": {"0": {"text": "DOWN", "color": "red"}, "1": {"text": "UP", "color": "green"}}, "type": "value"}]}}
+    },
+    {
+      "type": "timeseries",
+      "title": "API 5xx Rate",
+      "gridPos": {"h": 8, "w": 9, "x": 6, "y": 0},
+      "targets": [{"expr": "sum(rate(book_api_responses_total{status_class='5xx'}[5m]))", "refId": "A"}]
+    },
+    {
+      "type": "timeseries",
+      "title": "Host Disk Usage %",
+      "gridPos": {"h": 8, "w": 9, "x": 15, "y": 0},
+      "targets": [{"expr": "100 * (1 - (node_filesystem_avail_bytes{mountpoint='/',fstype!='tmpfs'} / node_filesystem_size_bytes{mountpoint='/',fstype!='tmpfs'}))", "refId": "A"}]
+    },
+    {
+      "type": "timeseries",
+      "title": "Container Restarts (10m)",
+      "gridPos": {"h": 8, "w": 8, "x": 0, "y": 4},
+      "targets": [{"expr": "sum by (name) (increase(container_start_time_seconds{name=~'.+'}[10m]))", "refId": "A"}]
+    },
+    {
+      "type": "timeseries",
+      "title": "Health Checks degraded",
+      "gridPos": {"h": 8, "w": 8, "x": 8, "y": 8},
+      "targets": [{"expr": "increase(book_health_checks_total{result='degraded'}[15m])", "refId": "A"}]
+    },
+    {
+      "type": "timeseries",
+      "title": "Postgres Up",
+      "gridPos": {"h": 8, "w": 8, "x": 16, "y": 8},
+      "targets": [{"expr": "pg_up", "refId": "A"}]
+    }
+  ],
+  "schemaVersion": 40,
+  "style": "dark",
+  "tags": ["book", "ops"],
+  "templating": {"list": []},
+  "time": {"from": "now-6h", "to": "now"},
+  "title": "Book - System Health",
+  "version": 1
+}

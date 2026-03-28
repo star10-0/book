@@ -45,7 +45,9 @@ This repository includes a production-first Docker/VPS deployment flow with expl
 - `Dockerfile`: multi-stage production image.
 - `docker-compose.prod.yml`: production orchestration for `db`, one-off `migrate`, and `app`.
 - `docker-compose.app.yml`: app + one-off `migrate` (for managed PostgreSQL).
+- `docker-compose.monitoring.yml`: production monitoring stack (`prometheus`, `grafana`, `loki`, `promtail`, `uptime-kuma`, exporters).
 - `.env.production.example`: complete production variable template including mount and compose overrides.
+- `monitoring/`: observability configs, dashboards, alert rules, and operator runbooks.
 
 ### Build/start contract
 
@@ -194,6 +196,34 @@ docker compose -f docker-compose.app.yml --env-file .env.production up -d --buil
 ```
 
 This runs `migrate` first, then starts `app`.
+
+### Production monitoring deployment (Compose / VPS)
+
+Start app + monitoring together:
+
+```bash
+docker compose \
+  -f docker-compose.prod.yml \
+  -f docker-compose.monitoring.yml \
+  --env-file .env.production \
+  up -d --build
+```
+
+For managed PostgreSQL:
+
+```bash
+docker compose \
+  -f docker-compose.app.yml \
+  -f docker-compose.monitoring.yml \
+  --env-file .env.production \
+  up -d --build
+```
+
+Key UIs:
+- Grafana: `http://<host>:3300`
+- Uptime Kuma: `http://<host>:3301`
+
+Full setup details, alerts, and runbooks are documented in `monitoring/README.md` and `monitoring/runbooks/OPERATIONS.md`.
 
 ### Redeploy to latest Syriatel implementation (manual-transfer + `find_tx`)
 

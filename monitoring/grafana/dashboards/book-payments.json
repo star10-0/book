@@ -1,0 +1,54 @@
+{
+  "annotations": {"list": []},
+  "editable": true,
+  "fiscalYearStartMonth": 0,
+  "graphTooltip": 0,
+  "panels": [
+    {
+      "type": "timeseries",
+      "title": "Create Success vs Failure",
+      "gridPos": {"h": 8, "w": 12, "x": 0, "y": 0},
+      "targets": [
+        {"expr": "sum(rate(book_payment_events_total{flow='create',outcome='success'}[5m]))", "legendFormat": "success", "refId": "A"},
+        {"expr": "sum(rate(book_payment_events_total{flow='create',outcome='failure'}[5m]))", "legendFormat": "failure", "refId": "B"}
+      ]
+    },
+    {
+      "type": "timeseries",
+      "title": "Verify Success vs Failure",
+      "gridPos": {"h": 8, "w": 12, "x": 12, "y": 0},
+      "targets": [
+        {"expr": "sum(rate(book_payment_events_total{flow='verify',outcome='success'}[5m]))", "legendFormat": "success", "refId": "A"},
+        {"expr": "sum(rate(book_payment_events_total{flow='verify',outcome='failure'}[5m]))", "legendFormat": "failure", "refId": "B"}
+      ]
+    },
+    {
+      "type": "timeseries",
+      "title": "Submit Proof Success vs Failure",
+      "gridPos": {"h": 8, "w": 12, "x": 0, "y": 8},
+      "targets": [
+        {"expr": "sum(rate(book_payment_events_total{flow='submit_proof',outcome='success'}[5m]))", "legendFormat": "success", "refId": "A"},
+        {"expr": "sum(rate(book_payment_events_total{flow='submit_proof',outcome='failure'}[5m]))", "legendFormat": "failure", "refId": "B"}
+      ]
+    },
+    {
+      "type": "timeseries",
+      "title": "Payment Verify 502s",
+      "gridPos": {"h": 8, "w": 12, "x": 12, "y": 8},
+      "targets": [{"expr": "increase(book_api_responses_total{route='/api/payments/verify',status='502'}[15m])", "refId": "A"}]
+    },
+    {
+      "type": "timeseries",
+      "title": "Payment Failure Reasons",
+      "gridPos": {"h": 8, "w": 24, "x": 0, "y": 16},
+      "targets": [{"expr": "sum by (flow, reason) (increase(book_payment_events_total{outcome='failure'}[30m]))", "refId": "A"}]
+    }
+  ],
+  "schemaVersion": 40,
+  "style": "dark",
+  "tags": ["book", "payments"],
+  "templating": {"list": []},
+  "time": {"from": "now-24h", "to": "now"},
+  "title": "Book - Payment Flow Health",
+  "version": 1
+}
