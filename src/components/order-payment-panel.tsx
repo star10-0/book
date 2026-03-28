@@ -406,6 +406,7 @@ export function OrderPaymentPanel({
               <dl className="mt-3 rounded-xl border border-indigo-100 bg-indigo-50 p-3 text-slate-800">
                 <div className="flex items-center justify-between gap-3">
                   <dt className="font-semibold">حساب الاستلام</dt>
+                  <dd className="font-mono text-xs sm:text-sm">{shamDestinationLabel}</dd>
                 </div>
                 <div className="mt-2 flex items-center justify-between gap-3">
                   <dt className="font-semibold">المبلغ</dt>

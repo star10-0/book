@@ -103,6 +103,36 @@ Use `.env.production.example` as the source of truth.
 
 ---
 
+## Verify Deployed Branch/Commit Before Payment Debugging
+
+To quickly detect deployment drift versus local/main code:
+
+1. Check deployed metadata:
+
+   ```bash
+   curl -fsS https://<your-domain>/api/version
+   ```
+
+2. Compare to your local branch:
+
+   ```bash
+   git rev-parse HEAD
+   git show -s --format='%H %D' HEAD
+   ```
+
+3. If you track `main` locally/remotely, compare against it directly:
+
+   ```bash
+   git fetch origin
+   git rev-parse origin/main
+   git log --oneline --decorate --max-count=20 origin/main..HEAD
+   git log --oneline --decorate --max-count=20 HEAD..origin/main
+   ```
+
+`/api/version` reports the commit SHA/branch when your platform exposes them (for example Vercel, Railway, Render), and also reports payment mode/provider selection to speed up checkout troubleshooting.
+
+---
+
 ## Exact Production Deployment Steps (Docker/VPS)
 
 1. Install Docker Engine + Docker Compose plugin.
@@ -256,9 +286,8 @@ This runs `migrate` first, then starts `app`.
 
 Before broad public launch:
 
-1. Syriatel Cash live integration remains incomplete and must be finalized before enabling that provider.
-2. Centralized logs/metrics/alerting stack is still environment-specific (outside this repo).
-3. Backup restore drills should be scheduled and evidenced operationally.
+1. Centralized logs/metrics/alerting stack is still environment-specific (outside this repo).
+2. Backup restore drills should be scheduled and evidenced operationally.
 
 ---
 
