@@ -94,3 +94,44 @@ test("ShamCashGateway verify rejects destination-account mismatch from provider"
   process.env = originalEnv;
   global.fetch = originalFetch;
 });
+
+test("ShamCashGateway verify accepts real find_tx response shape when transaction is valid", async () => {
+  const originalFetch = global.fetch;
+  const originalEnv = { ...process.env };
+
+  setLiveEnv();
+  global.fetch = async () =>
+    new Response(
+      JSON.stringify({
+        found: true,
+        transaction: {
+          tran_id: 162045000,
+          from_name: "sender",
+          to_name: "merchant",
+          currency: "SYP",
+          amount: 14,
+          datetime: "2026-03-28 15:52:17",
+          account: "dest-acc-1",
+          note: "",
+        },
+        account: {
+          account_address: "dest-acc-1",
+        },
+      }),
+      { status: 200 },
+    );
+
+  const result = await gateway.verifyPayment({
+    paymentId: "p-1",
+    providerReference: "ref-1",
+    transactionReference: "162045000",
+    expectedAmountCents: 14,
+    expectedCurrency: "SYP",
+  });
+
+  assert.equal(result.isPaid, true);
+  assert.equal(result.failureReason, undefined);
+
+  process.env = originalEnv;
+  global.fetch = originalFetch;
+});
