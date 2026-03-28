@@ -16,6 +16,11 @@ type EnvIssue = {
 };
 
 let hasValidated = false;
+const DEPRECATED_ENV_KEYS: readonly string[] = [
+  "SYRIATEL_CASH_MERCHANT_ID",
+  "SYRIATEL_CASH_CREATE_PAYMENT_PATH",
+  "SYRIATEL_CASH_VERIFY_PAYMENT_PATH",
+];
 
 function readEnv(key: string): string | undefined {
   const value = process.env[key];
@@ -155,6 +160,16 @@ function validateEnvironment(): EnvIssue[] {
           message: `${envKey} is required when PAYMENT_GATEWAY_MODE=live and ${provider} is selected in ${getLiveProvidersEnvKey()}.`,
         });
       }
+    }
+  }
+
+  for (const deprecatedKey of DEPRECATED_ENV_KEYS) {
+    if (readEnv(deprecatedKey)) {
+      issues.push({
+        severity: "warning",
+        key: deprecatedKey,
+        message: `${deprecatedKey} is deprecated and ignored by the current Syriatel Cash manual-transfer/find_tx integration.`,
+      });
     }
   }
 

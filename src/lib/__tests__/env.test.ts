@@ -225,3 +225,27 @@ test("validateServerEnv requires cloud storage vars for s3/r2 providers", () => 
   if (typeof originalBucket === "string") process.env.BOOK_STORAGE_S3_PUBLIC_BUCKET = originalBucket;
   else delete process.env.BOOK_STORAGE_S3_PUBLIC_BUCKET;
 });
+
+test("validateServerEnv warns when deprecated Syriatel legacy env keys are set", () => {
+  const originalMerchantId = process.env.SYRIATEL_CASH_MERCHANT_ID;
+  const originalCreatePath = process.env.SYRIATEL_CASH_CREATE_PAYMENT_PATH;
+  const originalVerifyPath = process.env.SYRIATEL_CASH_VERIFY_PAYMENT_PATH;
+
+  process.env.SYRIATEL_CASH_MERCHANT_ID = "legacy-merchant";
+  process.env.SYRIATEL_CASH_CREATE_PAYMENT_PATH = "/payments/create";
+  process.env.SYRIATEL_CASH_VERIFY_PAYMENT_PATH = "/payments/verify";
+
+  const result = validateServerEnv();
+  assert.ok(result.warnings.some((issue) => issue.key === "SYRIATEL_CASH_MERCHANT_ID"));
+  assert.ok(result.warnings.some((issue) => issue.key === "SYRIATEL_CASH_CREATE_PAYMENT_PATH"));
+  assert.ok(result.warnings.some((issue) => issue.key === "SYRIATEL_CASH_VERIFY_PAYMENT_PATH"));
+
+  if (typeof originalMerchantId === "string") process.env.SYRIATEL_CASH_MERCHANT_ID = originalMerchantId;
+  else delete process.env.SYRIATEL_CASH_MERCHANT_ID;
+
+  if (typeof originalCreatePath === "string") process.env.SYRIATEL_CASH_CREATE_PAYMENT_PATH = originalCreatePath;
+  else delete process.env.SYRIATEL_CASH_CREATE_PAYMENT_PATH;
+
+  if (typeof originalVerifyPath === "string") process.env.SYRIATEL_CASH_VERIFY_PAYMENT_PATH = originalVerifyPath;
+  else delete process.env.SYRIATEL_CASH_VERIFY_PAYMENT_PATH;
+});
