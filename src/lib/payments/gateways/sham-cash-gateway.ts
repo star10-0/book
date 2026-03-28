@@ -54,6 +54,28 @@ function pickNumber(payload: Record<string, unknown>, keys: string[]) {
   return undefined;
 }
 
+function asRecord(value: unknown): Record<string, unknown> | undefined {
+  if (!value || typeof value !== "object" || Array.isArray(value)) {
+    return undefined;
+  }
+
+  return value as Record<string, unknown>;
+}
+
+function normalizeShamCashPayload(payload: Record<string, unknown>) {
+  const transaction = asRecord(payload.transaction);
+  const account = asRecord(payload.account);
+
+  return {
+    found: payload.found === true,
+    hasTransaction: Boolean(transaction),
+    amount: pickNumber(transaction ?? payload, ["amountCents", "amount"]),
+    currency: pickString(transaction ?? payload, ["currency"]),
+    destination: pickString(transaction ?? payload, ["to_account", "to", "account_address", "account", "destinationAccount", "receiverAccount", "merchantAccount"])
+      ?? pickString(account ?? payload, ["account_address", "address", "destinationAccount"]),
+  };
+}
+
 export class ShamCashGateway implements PaymentGateway {
   readonly provider = PaymentProvider.SHAM_CASH;
 
@@ -115,9 +137,11 @@ export class ShamCashGateway implements PaymentGateway {
       transactionReference: input.transactionReference.trim(),
     });
 
-    const verifiedAmountCents = pickNumber(payload, ["amountCents", "amount"]);
-    const verifiedCurrency = pickString(payload, ["currency"]);
-    const verifiedDestination = pickString(payload, ["account_address", "destinationAccount", "receiverAccount", "merchantAccount"]);
+    const normalized = normalizeShamCashPayload(payload);
+
+    const verifiedAmountCents = normalized.amount;
+    const verifiedCurrency = normalized.currency;
+    const verifiedDestination = normalized.destination;
 
     if (typeof verifiedAmountCents === "number" && verifiedAmountCents !== input.expectedAmountCents) {
       throw new GatewayRequestError({
@@ -143,7 +167,7 @@ export class ShamCashGateway implements PaymentGateway {
       });
     }
 
-    const isPaid = isPaidStatus(payload);
+    const isPaid = normalized.found && normalized.hasTransaction && isPaidStatus(payload);
 
     return {
       isPaid,
@@ -151,7 +175,13 @@ export class ShamCashGateway implements PaymentGateway {
         mode: "live",
         ...payload,
       },
-      failureReason: isPaid ? undefined : extractFailureReason(payload) ?? "Sham Cash reported an unsuccessful transaction status.",
+      failureReason:
+        isPaid
+          ? undefined
+          : extractFailureReason(payload)
+            ?? (!normalized.found ? "Sham Cash did not find the submitted transaction reference." : undefined)
+            ?? (!normalized.hasTransaction ? "Sham Cash verify response did not include transaction details." : undefined)
+            ?? "Sham Cash reported an unsuccessful transaction status.",
     };
   }
 }

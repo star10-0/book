@@ -169,6 +169,10 @@ export function extractProviderReference(payload: Record<string, unknown>): stri
 }
 
 export function isPaidStatus(payload: Record<string, unknown>): boolean {
+  if (payload.found === true) {
+    return true;
+  }
+
   const rawStatus = [payload.status, payload.paymentStatus, payload.transactionStatus].find(
     (candidate): candidate is string => typeof candidate === "string",
   );
