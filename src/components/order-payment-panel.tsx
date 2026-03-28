@@ -87,6 +87,8 @@ export function OrderPaymentPanel({
   const [isPending, startTransition] = useTransition();
 
   const selectedOption = availablePaymentOptions.find((option) => option.provider === selectedProvider) ?? availablePaymentOptions[0];
+  const shamDestinationLabel = shamCashDestinationAccount?.trim() ? shamCashDestinationAccount.trim() : "غير متاح حالياً";
+  const syriatelDestinationLabel = syriatelCashDestinationAccount?.trim() ? syriatelCashDestinationAccount.trim() : "غير متاح حالياً";
   const uiStatus = mapAttemptStatusToUiStatus(attemptStatus);
 
   const applyPromoCode = () => {
@@ -331,7 +333,7 @@ export function OrderPaymentPanel({
               <dl className="mt-3 rounded-xl border border-indigo-100 bg-indigo-50 p-3 text-slate-800">
                 <div className="flex items-center justify-between gap-3">
                   <dt className="font-semibold">حساب الاستلام</dt>
-                  <dd className="font-mono text-xs sm:text-sm">{shamCashDestinationAccount ?? "غير متاح حالياً"}</dd>
+                  <dd className="font-mono text-xs sm:text-sm">{shamDestinationLabel}</dd>
                 </div>
                 <div className="mt-2 flex items-center justify-between gap-3">
                   <dt className="font-semibold">المبلغ</dt>
@@ -356,7 +358,7 @@ export function OrderPaymentPanel({
               <dl className="mt-3 rounded-xl border border-emerald-100 bg-emerald-50 p-3 text-slate-800">
                 <div className="flex items-center justify-between gap-3">
                   <dt className="font-semibold">رقم/حساب الاستلام</dt>
-                  <dd className="font-mono text-xs sm:text-sm">{syriatelCashDestinationAccount ?? "غير متاح حالياً"}</dd>
+                  <dd className="font-mono text-xs sm:text-sm">{syriatelDestinationLabel}</dd>
                 </div>
                 <div className="mt-2 flex items-center justify-between gap-3">
                   <dt className="font-semibold">المبلغ</dt>
