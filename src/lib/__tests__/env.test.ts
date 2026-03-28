@@ -99,10 +99,7 @@ test("validateServerEnv in live mode requires selected live provider env vars on
   const originalShamDestination = process.env.SHAM_CASH_DESTINATION_ACCOUNT;
   const originalSyriatelBaseUrl = process.env.SYRIATEL_CASH_API_BASE_URL;
   const originalSyriatelApiKey = process.env.SYRIATEL_CASH_API_KEY;
-  const originalSyriatelMerchantId = process.env.SYRIATEL_CASH_MERCHANT_ID;
   const originalSyriatelDestination = process.env.SYRIATEL_CASH_DESTINATION_ACCOUNT;
-  const originalSyriatelCreatePath = process.env.SYRIATEL_CASH_CREATE_PAYMENT_PATH;
-  const originalSyriatelVerifyPath = process.env.SYRIATEL_CASH_VERIFY_PAYMENT_PATH;
 
   process.env.PAYMENT_GATEWAY_MODE = "live";
   process.env.PAYMENT_LIVE_PROVIDERS = "SHAM_CASH";
@@ -111,10 +108,7 @@ test("validateServerEnv in live mode requires selected live provider env vars on
   delete process.env.SHAM_CASH_DESTINATION_ACCOUNT;
   delete process.env.SYRIATEL_CASH_API_BASE_URL;
   delete process.env.SYRIATEL_CASH_API_KEY;
-  delete process.env.SYRIATEL_CASH_MERCHANT_ID;
   delete process.env.SYRIATEL_CASH_DESTINATION_ACCOUNT;
-  delete process.env.SYRIATEL_CASH_CREATE_PAYMENT_PATH;
-  delete process.env.SYRIATEL_CASH_VERIFY_PAYMENT_PATH;
 
   const result = validateServerEnv();
   assert.ok(result.issues.some((issue) => issue.key === "SHAM_CASH_API_BASE_URL"));
@@ -143,17 +137,8 @@ test("validateServerEnv in live mode requires selected live provider env vars on
   if (typeof originalSyriatelApiKey === "string") process.env.SYRIATEL_CASH_API_KEY = originalSyriatelApiKey;
   else delete process.env.SYRIATEL_CASH_API_KEY;
 
-  if (typeof originalSyriatelMerchantId === "string") process.env.SYRIATEL_CASH_MERCHANT_ID = originalSyriatelMerchantId;
-  else delete process.env.SYRIATEL_CASH_MERCHANT_ID;
-
   if (typeof originalSyriatelDestination === "string") process.env.SYRIATEL_CASH_DESTINATION_ACCOUNT = originalSyriatelDestination;
   else delete process.env.SYRIATEL_CASH_DESTINATION_ACCOUNT;
-
-  if (typeof originalSyriatelCreatePath === "string") process.env.SYRIATEL_CASH_CREATE_PAYMENT_PATH = originalSyriatelCreatePath;
-  else delete process.env.SYRIATEL_CASH_CREATE_PAYMENT_PATH;
-
-  if (typeof originalSyriatelVerifyPath === "string") process.env.SYRIATEL_CASH_VERIFY_PAYMENT_PATH = originalSyriatelVerifyPath;
-  else delete process.env.SYRIATEL_CASH_VERIFY_PAYMENT_PATH;
 });
 
 test("validateServerEnv reports invalid PAYMENT_LIVE_PROVIDERS entries", () => {
@@ -182,27 +167,18 @@ test("validateServerEnv in live mode requires only Syriatel manual-transfer env 
   const originalSyriatelBaseUrl = process.env.SYRIATEL_CASH_API_BASE_URL;
   const originalSyriatelApiKey = process.env.SYRIATEL_CASH_API_KEY;
   const originalSyriatelDestination = process.env.SYRIATEL_CASH_DESTINATION_ACCOUNT;
-  const originalSyriatelMerchantId = process.env.SYRIATEL_CASH_MERCHANT_ID;
-  const originalSyriatelCreatePath = process.env.SYRIATEL_CASH_CREATE_PAYMENT_PATH;
-  const originalSyriatelVerifyPath = process.env.SYRIATEL_CASH_VERIFY_PAYMENT_PATH;
 
   process.env.PAYMENT_GATEWAY_MODE = "live";
   process.env.PAYMENT_LIVE_PROVIDERS = "SYRIATEL_CASH";
   process.env.SYRIATEL_CASH_API_BASE_URL = "https://syriatel.example";
   process.env.SYRIATEL_CASH_API_KEY = "secret";
   process.env.SYRIATEL_CASH_DESTINATION_ACCOUNT = "9639XXXXXXX";
-  delete process.env.SYRIATEL_CASH_MERCHANT_ID;
-  delete process.env.SYRIATEL_CASH_CREATE_PAYMENT_PATH;
-  delete process.env.SYRIATEL_CASH_VERIFY_PAYMENT_PATH;
 
   const result = validateServerEnv();
 
   assert.equal(result.issues.some((issue) => issue.key === "SYRIATEL_CASH_API_BASE_URL"), false);
   assert.equal(result.issues.some((issue) => issue.key === "SYRIATEL_CASH_API_KEY"), false);
   assert.equal(result.issues.some((issue) => issue.key === "SYRIATEL_CASH_DESTINATION_ACCOUNT"), false);
-  assert.equal(result.issues.some((issue) => issue.key === "SYRIATEL_CASH_MERCHANT_ID"), false);
-  assert.equal(result.issues.some((issue) => issue.key === "SYRIATEL_CASH_CREATE_PAYMENT_PATH"), false);
-  assert.equal(result.issues.some((issue) => issue.key === "SYRIATEL_CASH_VERIFY_PAYMENT_PATH"), false);
 
   if (typeof originalPaymentMode === "string") process.env.PAYMENT_GATEWAY_MODE = originalPaymentMode;
   else delete process.env.PAYMENT_GATEWAY_MODE;
@@ -218,15 +194,6 @@ test("validateServerEnv in live mode requires only Syriatel manual-transfer env 
 
   if (typeof originalSyriatelDestination === "string") process.env.SYRIATEL_CASH_DESTINATION_ACCOUNT = originalSyriatelDestination;
   else delete process.env.SYRIATEL_CASH_DESTINATION_ACCOUNT;
-
-  if (typeof originalSyriatelMerchantId === "string") process.env.SYRIATEL_CASH_MERCHANT_ID = originalSyriatelMerchantId;
-  else delete process.env.SYRIATEL_CASH_MERCHANT_ID;
-
-  if (typeof originalSyriatelCreatePath === "string") process.env.SYRIATEL_CASH_CREATE_PAYMENT_PATH = originalSyriatelCreatePath;
-  else delete process.env.SYRIATEL_CASH_CREATE_PAYMENT_PATH;
-
-  if (typeof originalSyriatelVerifyPath === "string") process.env.SYRIATEL_CASH_VERIFY_PAYMENT_PATH = originalSyriatelVerifyPath;
-  else delete process.env.SYRIATEL_CASH_VERIFY_PAYMENT_PATH;
 });
 
 test("validateServerEnv requires cloud storage vars for s3/r2 providers", () => {
