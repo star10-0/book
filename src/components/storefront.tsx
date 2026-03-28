@@ -59,7 +59,7 @@ const offerLabels: Record<OfferType, string> = {
   RENTAL: "استئجار",
 };
 
-const defaultCover = "https://placehold.co/600x900/e2e8f0/334155?text=Book";
+const defaultCover = "https://placehold.co/600x900/png/e2e8f0/334155?text=Book";
 
 export function HeroSection() {
   return (

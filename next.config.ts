@@ -15,7 +15,7 @@ function buildContentSecurityPolicy() {
     "default-src 'self'",
     `script-src ${scriptSrc.join(" ")}`,
     "style-src 'self' 'unsafe-inline'",
-    "img-src 'self' data: https://placehold.co",
+    "img-src 'self' data: https://placehold.co https://api.qrserver.com",
     "font-src 'self' data:",
     `connect-src ${connectSrc.join(" ")}`,
     "frame-ancestors 'none'",
@@ -67,6 +67,17 @@ const nextConfig: NextConfig = {
       {
         protocol: "https",
         hostname: "placehold.co",
+        pathname: "/**",
+      },
+      {
+        protocol: "https",
+        hostname: "images.unsplash.com",
+        pathname: "/**",
+      },
+      {
+        protocol: "https",
+        hostname: "api.qrserver.com",
+        pathname: "/**",
       },
     ],
   },

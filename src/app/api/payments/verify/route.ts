@@ -4,6 +4,7 @@ import { logError, getClientIp, getRequestId } from "@/lib/observability/logger"
 import { GatewayConfigurationError, GatewayRequestError } from "@/lib/payments/gateways/provider-http";
 import { isPaymentError, PAYMENT_ERROR_CODES } from "@/lib/payments/errors";
 import { verifyPayment } from "@/lib/payments/payment-service";
+import { getVerifyGatewayErrorMessage } from "@/lib/payments/verify-diagnostics";
 import { enforceRateLimit, isSameOriginMutation, jsonNoStore, rejectCrossOriginMutation, rejectRateLimitUnavailable, rejectRateLimited } from "@/lib/security";
 
 interface VerifyPaymentRequestBody {
@@ -93,7 +94,7 @@ export async function POST(request: Request) {
     }
 
     if (error instanceof GatewayRequestError) {
-      return jsonNoStore({ message: "تعذر التحقق من الدفع عبر مزود الخدمة حالياً." }, { status: 502 });
+      return jsonNoStore({ message: getVerifyGatewayErrorMessage(error) }, { status: 502 });
     }
 
     logError("Failed to verify payment", error, { route: "/api/payments/verify", requestId, ip: clientIp, userId: user.id });

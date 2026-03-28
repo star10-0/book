@@ -1,4 +1,5 @@
 import { PaymentProvider } from "@prisma/client";
+import { logInfo } from "@/lib/observability/logger";
 import { createMockPaymentResult, verifyMockPaymentResult } from "@/lib/payments/gateways/mock-payment-gateway";
 import {
   extractFailureReason,
@@ -8,6 +9,7 @@ import {
   readOptionalTimeoutMs,
   readRequiredEnv,
   safeLogProviderResponse,
+  sanitizeForLogs,
 } from "@/lib/payments/gateways/provider-http";
 import { getShamCashIntegrationConfig } from "@/lib/payments/gateways/provider-integration";
 import { isMockPaymentGatewayEnabled } from "@/lib/payments/mock-mode";
@@ -81,6 +83,13 @@ function normalizeShamCashPayload(payload: Record<string, unknown>) {
     currency: pickString(transaction ?? payload, ["currency"]),
     destination: destinationAccountFromTransaction,
   };
+}
+
+function normalizeComparable(value: string | undefined) {
+  if (!value) {
+    return undefined;
+  }
+  return value.trim().toLowerCase();
 }
 
 function normalizeAmountCents(input: {
@@ -162,10 +171,11 @@ export class ShamCashGateway implements PaymentGateway {
     }
 
     const config = getShamCashLiveConfig();
-    const payload = await findShamCashTransaction({
+    const verificationResponse = await findShamCashTransaction({
       config,
       transactionReference: input.transactionReference.trim(),
     });
+    const payload = verificationResponse.normalizedPayload;
 
     const normalized = normalizeShamCashPayload(payload);
 
@@ -174,30 +184,22 @@ export class ShamCashGateway implements PaymentGateway {
     const verifiedDestination = normalized.destination;
     const amountMatches = typeof verifiedAmountCents === "number" && verifiedAmountCents === input.expectedAmountCents;
     const currencyMatches = typeof verifiedCurrency === "string" && verifiedCurrency.toUpperCase() === input.expectedCurrency.toUpperCase();
-    const destinationMatches = typeof verifiedDestination === "string" && verifiedDestination === config.destinationAccount;
+    const destinationMatches =
+      typeof verifiedDestination === "string"
+      && normalizeComparable(verifiedDestination) === normalizeComparable(config.destinationAccount);
+
+    const mismatchReasons: string[] = [];
 
     if (typeof verifiedAmountCents === "number" && !amountMatches) {
-      throw new GatewayRequestError({
-        provider: "sham_cash",
-        phase: "verify",
-        message: "Sham Cash verify response amount does not match expected amount.",
-      });
+      mismatchReasons.push("Sham Cash verify response amount does not match expected amount.");
     }
 
     if (verifiedCurrency && !currencyMatches) {
-      throw new GatewayRequestError({
-        provider: "sham_cash",
-        phase: "verify",
-        message: "Sham Cash verify response currency does not match expected currency.",
-      });
+      mismatchReasons.push("Sham Cash verify response currency does not match expected currency.");
     }
 
     if (verifiedDestination && !destinationMatches) {
-      throw new GatewayRequestError({
-        provider: "sham_cash",
-        phase: "verify",
-        message: "Sham Cash verify response destination account mismatch.",
-      });
+      mismatchReasons.push("Sham Cash verify response destination account mismatch.");
     }
 
     const isPaid = normalized.found
@@ -208,23 +210,53 @@ export class ShamCashGateway implements PaymentGateway {
       && destinationMatches
       && isPaidStatus(payload);
 
+    const unpaidReason =
+      mismatchReasons[0]
+      ?? extractFailureReason(payload)
+      ?? (!normalized.found ? "Sham Cash did not find the submitted transaction reference." : undefined)
+      ?? (!normalized.hasTransaction ? "Sham Cash verify response did not include transaction details." : undefined)
+      ?? (!normalized.hasAccount ? "Sham Cash verify response did not include destination account details." : undefined)
+      ?? (!amountMatches ? "Sham Cash verify response amount does not match expected amount." : undefined)
+      ?? (!currencyMatches ? "Sham Cash verify response currency does not match expected currency." : undefined)
+      ?? (!destinationMatches ? "Sham Cash verify response destination account mismatch." : undefined)
+      ?? "Sham Cash reported an unsuccessful transaction status.";
+
+    logInfo("Sham Cash verification decision", {
+      provider: "sham_cash",
+      phase: "verify",
+      endpoint: verificationResponse.endpoint,
+      responseStatus: verificationResponse.responseStatus,
+      rawPayload: sanitizeForLogs(verificationResponse.rawPayload),
+      normalizedPayload: sanitizeForLogs(payload),
+      expected: {
+        amountCents: input.expectedAmountCents,
+        currency: input.expectedCurrency,
+        destinationAccount: config.destinationAccount,
+      },
+      normalizedValues: {
+        found: normalized.found,
+        hasTransaction: normalized.hasTransaction,
+        hasAccount: normalized.hasAccount,
+        amountCents: verifiedAmountCents,
+        currency: verifiedCurrency,
+        destination: verifiedDestination,
+      },
+      comparisons: {
+        amountMatches,
+        currencyMatches,
+        destinationMatches,
+      },
+      isPaid,
+      reason: isPaid ? "All paid conditions matched." : unpaidReason,
+    });
+
     return {
       isPaid,
       rawPayload: {
         mode: "live",
         ...payload,
       },
-      failureReason:
-        isPaid
-          ? undefined
-          : extractFailureReason(payload)
-            ?? (!normalized.found ? "Sham Cash did not find the submitted transaction reference." : undefined)
-            ?? (!normalized.hasTransaction ? "Sham Cash verify response did not include transaction details." : undefined)
-            ?? (!normalized.hasAccount ? "Sham Cash verify response did not include destination account details." : undefined)
-            ?? (!amountMatches ? "Sham Cash verify response amount does not match expected amount." : undefined)
-            ?? (!currencyMatches ? "Sham Cash verify response currency does not match expected currency." : undefined)
-            ?? (!destinationMatches ? "Sham Cash verify response destination account mismatch." : undefined)
-            ?? "Sham Cash reported an unsuccessful transaction status.",
+      failureReason: isPaid ? undefined : unpaidReason,
     };
   }
 }
@@ -232,17 +264,39 @@ export class ShamCashGateway implements PaymentGateway {
 async function findShamCashTransaction(input: {
   config: ReturnType<typeof getShamCashLiveConfig>;
   transactionReference: string;
-}): Promise<Record<string, unknown>> {
+}): Promise<{
+  endpoint: string;
+  responseStatus: number;
+  rawPayload: Record<string, unknown>;
+  normalizedPayload: Record<string, unknown>;
+}> {
   const endpoint = new URL(input.config.baseUrl);
   endpoint.searchParams.set("resource", "shamcash");
   endpoint.searchParams.set("action", "find_tx");
   endpoint.searchParams.set("tx", input.transactionReference);
+  endpoint.searchParams.set("transaction_id", input.transactionReference);
   endpoint.searchParams.set("account_address", input.config.destinationAccount);
 
   const controller = new AbortController();
   const timeout = setTimeout(() => controller.abort(), input.config.timeoutMs);
 
   try {
+    logInfo("Sham Cash verify request", {
+      provider: "sham_cash",
+      phase: "verify",
+      endpoint: endpoint.toString(),
+      requestShape: {
+        method: "GET",
+        query: {
+          resource: "shamcash",
+          action: "find_tx",
+          tx: input.transactionReference,
+          transaction_id: input.transactionReference,
+          account_address: input.config.destinationAccount,
+        },
+      },
+    });
+
     const response = await fetch(endpoint.toString(), {
       method: "GET",
       headers: {
@@ -271,7 +325,12 @@ async function findShamCashTransaction(input: {
       });
     }
 
-    return normalizedPayload;
+    return {
+      endpoint: endpoint.toString(),
+      responseStatus: response.status,
+      rawPayload: payload,
+      normalizedPayload,
+    };
   } catch (error) {
     if (error instanceof GatewayRequestError) {
       throw error;

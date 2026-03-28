@@ -1,6 +1,7 @@
 "use client";
 
 import { PaymentAttemptStatus, PaymentProvider } from "@prisma/client";
+import Image from "next/image";
 import Link from "next/link";
 import { useRouter } from "next/navigation";
 import { useEffect, useMemo, useState, useTransition } from "react";
@@ -442,7 +443,13 @@ export function OrderPaymentPanel({
                   <p className="text-xs font-semibold text-slate-900">رمز QR للدفع السريع</p>
                   {shamCashQrImageUrl ? (
                     <div className="mt-2 flex flex-col items-center gap-2">
-                      <img src={shamCashQrImageUrl} alt="رمز QR لتحويل Sham Cash" className="h-44 w-44 rounded-md border border-slate-200 bg-white p-2" />
+                      <Image
+                        src={shamCashQrImageUrl}
+                        alt="رمز QR لتحويل Sham Cash"
+                        width={176}
+                        height={176}
+                        className="h-44 w-44 rounded-md border border-slate-200 bg-white p-2"
+                      />
                       <p className="text-center text-[11px] text-slate-600">
                         بيانات QR بصيغة مساعدة منظمة تشمل الحساب والمبلغ ومرجع الطلب.
                       </p>
