@@ -1,6 +1,7 @@
 import { API_ERROR_CODES, jsonError, parseJsonBody } from "@/lib/api-response";
 import { getCurrentUser } from "@/lib/auth-session";
 import { logError, getClientIp, getRequestId } from "@/lib/observability/logger";
+import { recordApiResponse, recordPaymentEvent } from "@/lib/observability/metrics";
 import { GatewayConfigurationError, GatewayRequestError } from "@/lib/payments/gateways/provider-http";
 import { isPaymentError, PAYMENT_ERROR_CODES } from "@/lib/payments/errors";
 import { verifyPayment } from "@/lib/payments/payment-service";
@@ -50,6 +51,8 @@ export async function POST(request: Request) {
       attemptId,
       userId: user.id,
     });
+    recordApiResponse({ route: "/api/payments/verify", status: 200 });
+    recordPaymentEvent({ flow: "verify", outcome: "success", reason: "verified" });
 
     return jsonNoStore({
       message: "تم التحقق من حالة الدفع لدى مزود الخدمة.",
@@ -90,13 +93,19 @@ export async function POST(request: Request) {
     }
 
     if (error instanceof GatewayConfigurationError) {
+      recordApiResponse({ route: "/api/payments/verify", status: 500 });
+      recordPaymentEvent({ flow: "verify", outcome: "failure", reason: "provider_env_missing" });
       return jsonNoStore({ message: "إعدادات مزود الدفع غير مكتملة على الخادم." }, { status: 500 });
     }
 
     if (error instanceof GatewayRequestError) {
+      recordApiResponse({ route: "/api/payments/verify", status: 502 });
+      recordPaymentEvent({ flow: "verify", outcome: "failure", reason: "gateway_request_failed" });
       return jsonNoStore({ message: getVerifyGatewayErrorMessage(error) }, { status: 502 });
     }
 
+    recordApiResponse({ route: "/api/payments/verify", status: 500 });
+    recordPaymentEvent({ flow: "verify", outcome: "failure", reason: "internal_error" });
     logError("Failed to verify payment", error, { route: "/api/payments/verify", requestId, ip: clientIp, userId: user.id });
     return jsonError(API_ERROR_CODES.server_error, "تعذر التحقق من الدفع حالياً. حاول لاحقاً.", 500);
   }
