@@ -99,11 +99,38 @@ Select at least one provider via `PAYMENT_LIVE_PROVIDERS` and fully configure on
 Optional override (defaults to `/find_tx`):
 - `SYRIATEL_CASH_FIND_TX_PATH`
 
-> Legacy Syriatel variables are no longer used by current `main`:
-> `SYRIATEL_CASH_MERCHANT_ID`, `SYRIATEL_CASH_CREATE_PAYMENT_PATH`, `SYRIATEL_CASH_VERIFY_PAYMENT_PATH`.
-> If your deployment reports these keys as missing, it is running an outdated build.
 
 Use `.env.production.example` as the source of truth.
+
+---
+
+## Verify Deployed Branch/Commit Before Payment Debugging
+
+To quickly detect deployment drift versus local/main code:
+
+1. Check deployed metadata:
+
+   ```bash
+   curl -fsS https://<your-domain>/api/version
+   ```
+
+2. Compare to your local branch:
+
+   ```bash
+   git rev-parse HEAD
+   git show -s --format='%H %D' HEAD
+   ```
+
+3. If you track `main` locally/remotely, compare against it directly:
+
+   ```bash
+   git fetch origin
+   git rev-parse origin/main
+   git log --oneline --decorate --max-count=20 origin/main..HEAD
+   git log --oneline --decorate --max-count=20 HEAD..origin/main
+   ```
+
+`/api/version` reports the commit SHA/branch when your platform exposes them (for example Vercel, Railway, Render), and also reports payment mode/provider selection to speed up checkout troubleshooting. It also reports `syriatelIntegration=manual_transfer_find_tx_v1` to confirm the new Syriatel contract is active.
 
 ---
 
@@ -131,6 +158,18 @@ Use `.env.production.example` as the source of truth.
    ```bash
    cd /opt/book
    docker compose -f docker-compose.prod.yml --env-file .env.production up -d --build
+   ```
+
+   Drift-recovery redeploy (force fresh code/image, skip stale cache):
+
+   ```bash
+   cd /opt/book
+   git fetch origin
+   git checkout main
+   git reset --hard origin/main
+   docker compose -f docker-compose.prod.yml --env-file .env.production down
+   docker compose -f docker-compose.prod.yml --env-file .env.production build --no-cache --pull
+   docker compose -f docker-compose.prod.yml --env-file .env.production up -d
    ```
 
 7. Verify migration succeeded before app traffic:
@@ -306,9 +345,8 @@ Use this when production appears to run older Syriatel code or reports missing l
 
 Before broad public launch:
 
-1. Syriatel Cash live integration remains incomplete and must be finalized before enabling that provider.
-2. Centralized logs/metrics/alerting stack is still environment-specific (outside this repo).
-3. Backup restore drills should be scheduled and evidenced operationally.
+1. Centralized logs/metrics/alerting stack is still environment-specific (outside this repo).
+2. Backup restore drills should be scheduled and evidenced operationally.
 
 ---
 
