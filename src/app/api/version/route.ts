@@ -31,6 +31,7 @@ export async function GET() {
     branch,
     mode: process.env.PAYMENT_GATEWAY_MODE?.trim() ?? "mock",
     liveProviders: process.env.PAYMENT_LIVE_PROVIDERS?.trim() ?? null,
+    syriatelIntegration: "manual_transfer_find_tx_v1",
     generatedAt: new Date().toISOString(),
   });
 }

@@ -99,6 +99,11 @@ Select at least one provider via `PAYMENT_LIVE_PROVIDERS` and fully configure on
 Optional override (defaults to `/find_tx`):
 - `SYRIATEL_CASH_FIND_TX_PATH`
 
+Deprecated/ignored legacy Syriatel keys (do not use):
+- `SYRIATEL_CASH_MERCHANT_ID`
+- `SYRIATEL_CASH_CREATE_PAYMENT_PATH`
+- `SYRIATEL_CASH_VERIFY_PAYMENT_PATH`
+
 Use `.env.production.example` as the source of truth.
 
 ---
@@ -129,7 +134,7 @@ To quickly detect deployment drift versus local/main code:
    git log --oneline --decorate --max-count=20 HEAD..origin/main
    ```
 
-`/api/version` reports the commit SHA/branch when your platform exposes them (for example Vercel, Railway, Render), and also reports payment mode/provider selection to speed up checkout troubleshooting.
+`/api/version` reports the commit SHA/branch when your platform exposes them (for example Vercel, Railway, Render), and also reports payment mode/provider selection to speed up checkout troubleshooting. It also reports `syriatelIntegration=manual_transfer_find_tx_v1` to confirm the new Syriatel contract is active.
 
 ---
 
@@ -157,6 +162,18 @@ To quickly detect deployment drift versus local/main code:
    ```bash
    cd /opt/book
    docker compose -f docker-compose.prod.yml --env-file .env.production up -d --build
+   ```
+
+   Drift-recovery redeploy (force fresh code/image, skip stale cache):
+
+   ```bash
+   cd /opt/book
+   git fetch origin
+   git checkout main
+   git reset --hard origin/main
+   docker compose -f docker-compose.prod.yml --env-file .env.production down
+   docker compose -f docker-compose.prod.yml --env-file .env.production build --no-cache --pull
+   docker compose -f docker-compose.prod.yml --env-file .env.production up -d
    ```
 
 7. Verify migration succeeded before app traffic:
