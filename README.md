@@ -94,10 +94,10 @@ Select at least one provider via `PAYMENT_LIVE_PROVIDERS` and fully configure on
 **Syriatel Cash (if enabled/selected)**
 - `SYRIATEL_CASH_API_BASE_URL`
 - `SYRIATEL_CASH_API_KEY`
-- `SYRIATEL_CASH_MERCHANT_ID`
 - `SYRIATEL_CASH_DESTINATION_ACCOUNT`
-- `SYRIATEL_CASH_CREATE_PAYMENT_PATH`
-- `SYRIATEL_CASH_VERIFY_PAYMENT_PATH`
+
+Optional override (defaults to `/find_tx`):
+- `SYRIATEL_CASH_FIND_TX_PATH`
 
 Use `.env.production.example` as the source of truth.
 

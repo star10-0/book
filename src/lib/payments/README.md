@@ -6,7 +6,7 @@ This folder defines a modular payment architecture where route handlers call the
 
 - `gateways/payment-gateway.ts`: provider-agnostic interface consumed by the service layer.
 - `gateways/sham-cash-gateway.ts`: Sham Cash gateway with live manual-transfer + `find_tx` verification and payload integrity checks.
-- `gateways/syriatel-cash-gateway.ts`: Syriatel Cash gateway with live create/verify + payload integrity checks.
+- `gateways/syriatel-cash-gateway.ts`: Syriatel Cash gateway with live manual-transfer + `find_tx` verification and payload integrity checks.
 - `gateways/provider-integration.ts`: clean integration seam for live-vs-mock provider mode and readiness checks.
 - `gateways/mock-payment-gateway.ts`: shared mock helpers used by placeholder providers.
 - `gateways/provider-http.ts`: shared HTTP helpers with response sanitization for safe logs/storage.
@@ -33,6 +33,6 @@ This folder defines a modular payment architecture where route handlers call the
 - Lifecycle claim step prevents concurrent verification workers from finalizing the same attempt twice.
 
 > Sham Cash live mode currently uses manual transfer by user + transaction-number verification (`find_tx`).
-> Syriatel Cash still uses provider create/verify flow.
+> Syriatel Cash live mode now uses manual transfer by user + transaction-number verification (`find_tx`).
 > In live mode, gateways enforce amount/currency/destination-account integrity before marking attempts as paid.
 > Mock gateways are now hard-gated to explicit development/test mode with `ALLOW_MOCK_PAYMENTS=true`.

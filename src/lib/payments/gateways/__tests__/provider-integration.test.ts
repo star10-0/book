@@ -25,9 +25,6 @@ test("getProviderIntegrationConfig reports missing env for Syriatel Cash only", 
   process.env.PAYMENT_GATEWAY_MODE = "live";
   process.env.SYRIATEL_CASH_API_BASE_URL = "https://syriatel.example";
   process.env.SYRIATEL_CASH_API_KEY = "secret-key";
-  process.env.SYRIATEL_CASH_MERCHANT_ID = "merchant-1";
-  process.env.SYRIATEL_CASH_CREATE_PAYMENT_PATH = "/create";
-  process.env.SYRIATEL_CASH_VERIFY_PAYMENT_PATH = "/verify";
   delete process.env.SYRIATEL_CASH_DESTINATION_ACCOUNT;
 
   const integration = getProviderIntegrationConfig("SYRIATEL_CASH");
