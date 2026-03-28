@@ -1,11 +1,13 @@
 import assert from "node:assert/strict";
 import test from "node:test";
-import { AccessGrantStatus, AccessGrantType, ContentAccessPolicy, OfferType } from "@prisma/client";
+import { AccessGrantStatus, AccessGrantType, ContentAccessPolicy, OfferType, OrderStatus, PaymentStatus } from "@prisma/client";
 import { grantAccessForPaidOrder } from "@/lib/access-grants";
 import { hashPassword, verifyPassword } from "@/lib/auth-password";
 import { canAccessProtectedAsset } from "@/lib/files/protected-asset-policy";
 import { createStorageProvider } from "@/lib/files/storage-provider";
 import { calculateOrderTotals, mapOfferTypeToAccessGrantType, validateCreateOrderPayload } from "@/lib/orders/create-order";
+import { ShamCashGateway } from "@/lib/payments/gateways/sham-cash-gateway";
+import { ensurePaymentStatusTransition } from "@/lib/payments/status-flow";
 
 type AccessGrantRecord = {
   id: string;
@@ -19,6 +21,44 @@ type AccessGrantRecord = {
 };
 
 test("e2e happy path: sign in -> order -> payment completion -> grant -> reader", async () => {
+  const originalFetch = global.fetch;
+  const originalEnv = { ...process.env };
+
+  process.env.PAYMENT_GATEWAY_MODE = "live";
+  process.env.SHAM_CASH_API_BASE_URL = "https://sham.example";
+  process.env.SHAM_CASH_API_KEY = "secret-key";
+  process.env.SHAM_CASH_DESTINATION_ACCOUNT = "dest-acc-1";
+  process.env.APP_BASE_URL = "https://book.example";
+
+  const gateway = new ShamCashGateway();
+  const freshOrderId = `order-e2e-${Date.now()}`;
+  const freshTransactionReference = `tx-e2e-${Date.now()}`;
+
+  let paymentAttemptStatus: "PENDING" | "SUBMITTED" | "VERIFYING" | "PAID" | "FAILED" = "SUBMITTED";
+  let paymentStatus: PaymentStatus = PaymentStatus.PENDING;
+  let orderStatus: OrderStatus = OrderStatus.PENDING;
+
+  global.fetch = async () =>
+    new Response(
+      JSON.stringify({
+        found: true,
+        transaction: {
+          tran_id: Number(freshTransactionReference.replace("tx-e2e-", "")),
+          from_name: "sender",
+          to_name: "merchant",
+          currency: "SYP",
+          amount: 15,
+          datetime: "2026-03-28 15:52:17",
+          account: "a0998366aeb6733b9513aaed75b55d71",
+          note: "",
+        },
+        account: {
+          account_address: "dest-acc-1",
+        },
+      }),
+      { status: 200 },
+    );
+
   const user = {
     id: "user12345",
     email: "reader@example.com",
@@ -118,15 +158,41 @@ test("e2e happy path: sign in -> order -> payment completion -> grant -> reader"
     },
   };
 
+  const verifyResult = await gateway.verifyPayment({
+    paymentId: "payment-e2e-1",
+    providerReference: "sham-manual:payment-e2e-1",
+    transactionReference: freshTransactionReference,
+    expectedAmountCents: 1500,
+    expectedCurrency: "SYP",
+  });
+
+  assert.equal(verifyResult.isPaid, true, "real Sham Cash verify shape should be accepted for a valid tx");
+
+  ensurePaymentStatusTransition(paymentAttemptStatus, "VERIFYING");
+  paymentAttemptStatus = "VERIFYING";
+  ensurePaymentStatusTransition(paymentAttemptStatus, "PAID");
+  paymentAttemptStatus = "PAID";
+  paymentStatus = PaymentStatus.SUCCEEDED;
+  orderStatus = OrderStatus.PAID;
+
   await grantAccessForPaidOrder(tx as never, {
-    orderId: "order12345",
+    orderId: freshOrderId,
     userId: user.id,
     grantedAt: new Date("2026-03-26T00:00:00.000Z"),
   });
 
+  assert.equal(paymentAttemptStatus, "PAID");
+  assert.equal(paymentStatus, PaymentStatus.SUCCEEDED);
+  assert.equal(orderStatus, OrderStatus.PAID);
+
   assert.equal(grants.length, 1, "payment completion should issue one active grant");
   assert.equal(grants[0]?.status, AccessGrantStatus.ACTIVE);
   assert.equal(grants[0]?.type, AccessGrantType.PURCHASE);
+
+  const libraryOwnedBooks = grants.filter(
+    (grant) => grant.userId === user.id && grant.type === AccessGrantType.PURCHASE && grant.status === AccessGrantStatus.ACTIVE,
+  );
+  assert.equal(libraryOwnedBooks.length, 1, "library should include purchased book after successful payment");
 
   const readerAccess = canAccessProtectedAsset({
     policy: ContentAccessPolicy.PAID_ONLY,
@@ -138,6 +204,20 @@ test("e2e happy path: sign in -> order -> payment completion -> grant -> reader"
     allowed: true,
     disposition: "inline",
   });
+
+  const unpaidReaderAccess = canAccessProtectedAsset({
+    policy: ContentAccessPolicy.PAID_ONLY,
+    hasActiveGrant: false,
+    requestedDisposition: "inline",
+  });
+  assert.deepEqual(
+    unpaidReaderAccess,
+    {
+      allowed: false,
+      reason: "UNAUTHORIZED",
+    },
+    "unpaid users should still be denied access to protected reader content",
+  );
 
   const originals = {
     provider: process.env.BOOK_STORAGE_PROVIDER,
@@ -169,6 +249,9 @@ test("e2e happy path: sign in -> order -> payment completion -> grant -> reader"
     assert.ok(signed, "private reader file should be delivered through signed url in S3 mode");
     assert.match(signed ?? "", /X-Amz-Signature=/);
   } finally {
+    process.env = originalEnv;
+    global.fetch = originalFetch;
+
     if (typeof originals.provider === "string") process.env.BOOK_STORAGE_PROVIDER = originals.provider;
     else delete process.env.BOOK_STORAGE_PROVIDER;
     if (typeof originals.accessKey === "string") process.env.BOOK_STORAGE_S3_ACCESS_KEY_ID = originals.accessKey;
