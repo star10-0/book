@@ -1,7 +1,6 @@
 import assert from "node:assert/strict";
 import test from "node:test";
 import { ShamCashGateway } from "@/lib/payments/gateways/sham-cash-gateway";
-import { GatewayRequestError } from "@/lib/payments/gateways/provider-http";
 
 const gateway = new ShamCashGateway();
 
@@ -33,7 +32,7 @@ test("ShamCashGateway create returns internal manual provider reference", async 
   process.env = originalEnv;
 });
 
-test("ShamCashGateway verify rejects mismatched amount from provider", async () => {
+test("ShamCashGateway verify marks payment unpaid when provider amount mismatches", async () => {
   const originalFetch = global.fetch;
   const originalEnv = { ...process.env };
 
@@ -54,22 +53,22 @@ test("ShamCashGateway verify rejects mismatched amount from provider", async () 
       { status: 200 },
     );
 
-  await assert.rejects(
-    gateway.verifyPayment({
-      paymentId: "p-1",
-      providerReference: "ref-1",
-      transactionReference: "tx-123",
-      expectedAmountCents: 1000,
-      expectedCurrency: "SYP",
-    }),
-    (error: unknown) => error instanceof GatewayRequestError && error.phase === "verify",
-  );
+  const result = await gateway.verifyPayment({
+    paymentId: "p-1",
+    providerReference: "ref-1",
+    transactionReference: "tx-123",
+    expectedAmountCents: 1000,
+    expectedCurrency: "SYP",
+  });
+
+  assert.equal(result.isPaid, false);
+  assert.match(result.failureReason ?? "", /amount does not match/i);
 
   process.env = originalEnv;
   global.fetch = originalFetch;
 });
 
-test("ShamCashGateway verify rejects destination-account mismatch from provider", async () => {
+test("ShamCashGateway verify marks payment unpaid when destination-account mismatches", async () => {
   const originalFetch = global.fetch;
   const originalEnv = { ...process.env };
 
@@ -90,16 +89,53 @@ test("ShamCashGateway verify rejects destination-account mismatch from provider"
       { status: 200 },
     );
 
-  await assert.rejects(
-    gateway.verifyPayment({
-      paymentId: "p-1",
-      providerReference: "ref-1",
-      transactionReference: "tx-123",
-      expectedAmountCents: 1000,
-      expectedCurrency: "SYP",
-    }),
-    (error: unknown) => error instanceof GatewayRequestError && error.phase === "verify",
-  );
+  const result = await gateway.verifyPayment({
+    paymentId: "p-1",
+    providerReference: "ref-1",
+    transactionReference: "tx-123",
+    expectedAmountCents: 1000,
+    expectedCurrency: "SYP",
+  });
+
+  assert.equal(result.isPaid, false);
+  assert.match(result.failureReason ?? "", /destination account mismatch/i);
+
+  process.env = originalEnv;
+  global.fetch = originalFetch;
+});
+
+test("ShamCashGateway verify accepts case/whitespace differences in destination account", async () => {
+  const originalFetch = global.fetch;
+  const originalEnv = { ...process.env };
+
+  setLiveEnv();
+  process.env.SHAM_CASH_DESTINATION_ACCOUNT = "DEST-ACC-1";
+  global.fetch = async () =>
+    new Response(
+      JSON.stringify({
+        found: true,
+        transaction: {
+          tran_id: 162045000,
+          amount: 10,
+          currency: "SYP",
+        },
+        account: {
+          account_address: "  dest-acc-1  ",
+        },
+      }),
+      { status: 200 },
+    );
+
+  const result = await gateway.verifyPayment({
+    paymentId: "p-1",
+    providerReference: "ref-1",
+    transactionReference: "tx-123",
+    expectedAmountCents: 1000,
+    expectedCurrency: "SYP",
+  });
+
+  assert.equal(result.isPaid, true);
+  assert.equal(result.failureReason, undefined);
 
   process.env = originalEnv;
   global.fetch = originalFetch;
