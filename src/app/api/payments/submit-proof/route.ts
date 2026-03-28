@@ -1,6 +1,7 @@
 import { API_ERROR_CODES, jsonError, parseJsonBody } from "@/lib/api-response";
 import { getCurrentUser } from "@/lib/auth-session";
 import { logError, getClientIp, getRequestId } from "@/lib/observability/logger";
+import { recordApiResponse, recordPaymentEvent } from "@/lib/observability/metrics";
 import { isPaymentError, PAYMENT_ERROR_CODES } from "@/lib/payments/errors";
 import { submitPaymentProof } from "@/lib/payments/payment-service";
 import { enforceRateLimit, isSameOriginMutation, jsonNoStore, rejectCrossOriginMutation, rejectRateLimitUnavailable, rejectRateLimited } from "@/lib/security";
@@ -53,6 +54,8 @@ export async function POST(request: Request) {
       transactionReference,
       proofNote: body.proofNote,
     });
+    recordApiResponse({ route: "/api/payments/submit-proof", status: 200 });
+    recordPaymentEvent({ flow: "submit_proof", outcome: "success", reason: "submitted" });
 
     return jsonNoStore({
       message: "تم إرسال مرجع الدفع بنجاح.",
@@ -90,6 +93,8 @@ export async function POST(request: Request) {
       return jsonNoStore({ message: "هذا الطلب مجاني بالكامل ولا يتطلب إرسال إثبات دفع." }, { status: 409 });
     }
 
+    recordApiResponse({ route: "/api/payments/submit-proof", status: 500 });
+    recordPaymentEvent({ flow: "submit_proof", outcome: "failure", reason: "internal_error" });
     logError("Failed to submit payment proof", error, { route: "/api/payments/submit-proof", requestId, ip: clientIp, userId: user.id });
     return jsonError(API_ERROR_CODES.server_error, "تعذر إرسال إثبات الدفع حالياً. حاول لاحقاً.", 500);
   }

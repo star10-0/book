@@ -1,4 +1,5 @@
 import { jsonNoStore } from "@/lib/security";
+import { recordApiResponse } from "@/lib/observability/metrics";
 
 function readFirstSetEnvKey(keys: readonly string[]) {
   for (const key of keys) {
@@ -9,6 +10,7 @@ function readFirstSetEnvKey(keys: readonly string[]) {
 }
 
 export async function GET() {
+  recordApiResponse({ route: "/api/version", status: 200 });
   const commitSha = readFirstSetEnvKey([
     "APP_GIT_SHA",
     "VERCEL_GIT_COMMIT_SHA",

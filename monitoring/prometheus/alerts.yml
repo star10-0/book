@@ -1,0 +1,125 @@
+groups:
+  - name: book-critical
+    rules:
+      - alert: BookAppDown
+        expr: up{job="book-app"} == 0
+        for: 2m
+        labels:
+          severity: critical
+        annotations:
+          summary: "Book app is down"
+          description: "Prometheus cannot scrape app /api/metrics for 2 minutes."
+
+      - alert: BookHealthEndpointFailing
+        expr: probe_success{job="book-health", instance="http://app:3000/api/health"} == 0
+        for: 2m
+        labels:
+          severity: critical
+        annotations:
+          summary: "Book health endpoint is failing"
+          description: "/api/health is not returning 2xx from blackbox probe."
+
+      - alert: BookDatabaseDegraded
+        expr: increase(book_health_checks_total{result="degraded"}[5m]) > 0
+        for: 1m
+        labels:
+          severity: critical
+        annotations:
+          summary: "Book database degraded"
+          description: "Health checks reported degraded status in the last 5 minutes."
+
+      - alert: BookApi5xxSpike
+        expr: sum(increase(book_api_responses_total{status_class="5xx"}[5m])) >= 10
+        for: 3m
+        labels:
+          severity: warning
+        annotations:
+          summary: "Book API 5xx spike"
+          description: "At least 10 5xx API responses were recorded in 5 minutes."
+
+      - alert: BookPaymentVerify502Spike
+        expr: increase(book_api_responses_total{route="/api/payments/verify",status="502"}[10m]) >= 3
+        for: 2m
+        labels:
+          severity: critical
+        annotations:
+          summary: "Payment verify 502 spike"
+          description: "/api/payments/verify is repeatedly returning 502."
+
+      - alert: BookPaymentCreateFailureRateHigh
+        expr: |
+          (
+            sum(increase(book_payment_events_total{flow="create",outcome="failure"}[10m]))
+            /
+            clamp_min(sum(increase(book_payment_events_total{flow="create"}[10m])), 1)
+          ) > 0.30
+        for: 5m
+        labels:
+          severity: warning
+        annotations:
+          summary: "Payment create failure rate is high"
+          description: "More than 30% of payment create events failed in the last 10 minutes."
+
+      - alert: BookPaymentSubmitFailureRateHigh
+        expr: |
+          (
+            sum(increase(book_payment_events_total{flow="submit_proof",outcome="failure"}[10m]))
+            /
+            clamp_min(sum(increase(book_payment_events_total{flow="submit_proof"}[10m])), 1)
+          ) > 0.30
+        for: 5m
+        labels:
+          severity: warning
+        annotations:
+          summary: "Payment submit-proof failure rate is high"
+          description: "More than 30% of payment submit-proof events failed in the last 10 minutes."
+
+      - alert: BookPaymentVerifyFailureRateHigh
+        expr: |
+          (
+            sum(increase(book_payment_events_total{flow="verify",outcome="failure"}[10m]))
+            /
+            clamp_min(sum(increase(book_payment_events_total{flow="verify"}[10m])), 1)
+          ) > 0.30
+        for: 5m
+        labels:
+          severity: warning
+        annotations:
+          summary: "Payment verify failure rate is high"
+          description: "More than 30% of payment verify events failed in the last 10 minutes."
+
+      - alert: BookContainerRestartLoop
+        expr: increase(container_start_time_seconds{name=~".+"}[10m]) > 2
+        for: 2m
+        labels:
+          severity: warning
+        annotations:
+          summary: "Container restart loop detected"
+          description: "A container restarted multiple times in the last 10 minutes."
+
+      - alert: BookMigrationContainerFailed
+        expr: max_over_time(container_last_seen{name=~".*migrate.*"}[15m]) > 0 and up{job="book-app"} == 0
+        for: 5m
+        labels:
+          severity: critical
+        annotations:
+          summary: "Migration may have failed"
+          description: "Migrate container was observed recently but app is still down. Check migrate logs."
+
+      - alert: HostDiskSpaceLow
+        expr: (node_filesystem_avail_bytes{fstype!="tmpfs",mountpoint="/"} / node_filesystem_size_bytes{fstype!="tmpfs",mountpoint="/"}) < 0.15
+        for: 10m
+        labels:
+          severity: warning
+        annotations:
+          summary: "Host disk space is low"
+          description: "Root filesystem has less than 15% free space."
+
+      - alert: BackupHeartbeatMissing
+        expr: (time() - book_backup_last_success_timestamp_seconds) > 93600
+        for: 30m
+        labels:
+          severity: warning
+        annotations:
+          summary: "Backup heartbeat stale"
+          description: "Backup success heartbeat is older than 26 hours."

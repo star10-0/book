@@ -2,6 +2,7 @@ import { PaymentProvider } from "@prisma/client";
 import { API_ERROR_CODES, jsonError, parseJsonBody } from "@/lib/api-response";
 import { getCurrentUser } from "@/lib/auth-session";
 import { logError, getClientIp, getRequestId } from "@/lib/observability/logger";
+import { recordApiResponse, recordPaymentEvent } from "@/lib/observability/metrics";
 import { GatewayConfigurationError, GatewayRequestError } from "@/lib/payments/gateways/provider-http";
 import { getProviderIntegrationConfig, parseSelectedLiveProviders } from "@/lib/payments/gateways/provider-integration";
 import { isPaymentError, PAYMENT_ERROR_CODES } from "@/lib/payments/errors";
@@ -124,6 +125,8 @@ export async function POST(request: Request) {
       provider,
       userId: user.id,
     });
+    recordApiResponse({ route: "/api/payments/create", status: result.reused ? 200 : 201 });
+    recordPaymentEvent({ flow: "create", outcome: "success", reason: result.reused ? "reused_attempt" : "created" });
 
     return jsonNoStore(
       {
@@ -163,6 +166,8 @@ export async function POST(request: Request) {
     }
 
     if (error instanceof GatewayConfigurationError) {
+      recordApiResponse({ route: "/api/payments/create", status: 500 });
+      recordPaymentEvent({ flow: "create", outcome: "failure", reason: "provider_env_missing" });
       const integration = getProviderIntegrationConfig(provider);
       return jsonNoStore(
         {
@@ -179,9 +184,13 @@ export async function POST(request: Request) {
     }
 
     if (error instanceof GatewayRequestError) {
+      recordApiResponse({ route: "/api/payments/create", status: 502 });
+      recordPaymentEvent({ flow: "create", outcome: "failure", reason: "gateway_request_failed" });
       return jsonNoStore({ message: "تعذر إنشاء عملية الدفع لدى مزود الخدمة حالياً." }, { status: 502 });
     }
 
+    recordApiResponse({ route: "/api/payments/create", status: 500 });
+    recordPaymentEvent({ flow: "create", outcome: "failure", reason: "internal_error" });
     logError("Failed to create payment", error, { route: "/api/payments/create", requestId, ip: clientIp, userId: user.id });
     return jsonError(API_ERROR_CODES.server_error, "تعذر إنشاء محاولة الدفع حالياً. حاول لاحقاً.", 500);
   }
