@@ -105,7 +105,6 @@ export function OrderPaymentPanel({
   const [isPending, startTransition] = useTransition();
 
   const selectedOption = availablePaymentOptions.find((option) => option.provider === selectedProvider) ?? availablePaymentOptions[0];
-  const shamDestinationLabel = shamCashDestinationAccount?.trim() ? shamCashDestinationAccount.trim() : "غير متاح حالياً";
   const syriatelDestinationLabel = syriatelCashDestinationAccount?.trim() ? syriatelCashDestinationAccount.trim() : "غير متاح حالياً";
   const uiStatus = mapAttemptStatusToUiStatus(attemptStatus);
   const shamCashQrPayload = useMemo(
