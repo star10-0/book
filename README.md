@@ -99,6 +99,10 @@ Select at least one provider via `PAYMENT_LIVE_PROVIDERS` and fully configure on
 Optional override (defaults to `/find_tx`):
 - `SYRIATEL_CASH_FIND_TX_PATH`
 
+> Legacy Syriatel variables are no longer used by current `main`:
+> `SYRIATEL_CASH_MERCHANT_ID`, `SYRIATEL_CASH_CREATE_PAYMENT_PATH`, `SYRIATEL_CASH_VERIFY_PAYMENT_PATH`.
+> If your deployment reports these keys as missing, it is running an outdated build.
+
 Use `.env.production.example` as the source of truth.
 
 ---
@@ -151,6 +155,52 @@ docker compose -f docker-compose.app.yml --env-file .env.production up -d --buil
 ```
 
 This runs `migrate` first, then starts `app`.
+
+### Redeploy to latest Syriatel implementation (manual-transfer + `find_tx`)
+
+Use this when production appears to run older Syriatel code or reports missing legacy Syriatel env keys.
+
+1. Update deployment source to latest `main` commit:
+
+   ```bash
+   cd /opt/book
+   git fetch origin --prune
+   git checkout main
+   git reset --hard origin/main
+   git rev-parse --short HEAD
+   ```
+
+2. Update `.env.production` for current Syriatel flow:
+   - Keep only:
+     - `SYRIATEL_CASH_API_BASE_URL`
+     - `SYRIATEL_CASH_API_KEY`
+     - `SYRIATEL_CASH_DESTINATION_ACCOUNT`
+     - optional `SYRIATEL_CASH_FIND_TX_PATH`
+   - Remove deprecated keys if present:
+     - `SYRIATEL_CASH_MERCHANT_ID`
+     - `SYRIATEL_CASH_CREATE_PAYMENT_PATH`
+     - `SYRIATEL_CASH_VERIFY_PAYMENT_PATH`
+
+3. Rebuild and redeploy app image:
+
+   ```bash
+   docker compose -f docker-compose.prod.yml --env-file .env.production build --no-cache app
+   docker compose -f docker-compose.prod.yml --env-file .env.production up -d migrate app
+   ```
+
+4. Verify running container is on the expected commit and healthy:
+
+   ```bash
+   docker compose -f docker-compose.prod.yml ps
+   docker compose -f docker-compose.prod.yml logs --tail=200 app
+   curl -fsS http://127.0.0.1:${APP_PORT:-3000}/api/health
+   ```
+
+5. Smoke-check checkout Syriatel flow:
+   - Open checkout page.
+   - Select `Syriatel Cash`.
+   - Confirm instructions mention manual transfer + entering transaction number + verify via `find_tx`.
+   - Create payment and confirm no `PAYMENT_PROVIDER_ENV_MISSING` error for legacy Syriatel keys.
 
 ---
 
