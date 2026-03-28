@@ -45,13 +45,65 @@ function pickNumber(payload: Record<string, unknown>, keys: string[]) {
       return value;
     }
     if (typeof value === "string" && value.trim().length > 0) {
-      const parsed = Number.parseInt(value.trim(), 10);
+      const parsed = Number.parseFloat(value.trim());
       if (Number.isFinite(parsed)) {
         return parsed;
       }
     }
   }
   return undefined;
+}
+
+function asRecord(value: unknown): Record<string, unknown> | undefined {
+  if (!value || typeof value !== "object" || Array.isArray(value)) {
+    return undefined;
+  }
+
+  return value as Record<string, unknown>;
+}
+
+function normalizeShamCashPayload(payload: Record<string, unknown>) {
+  const transaction = asRecord(payload.transaction);
+  const account = asRecord(payload.account);
+  const majorAmount = pickNumber(transaction ?? payload, ["amount"]);
+  const amountCents = pickNumber(transaction ?? payload, ["amountCents"]);
+  const destinationAccountFromTransaction =
+    pickString(transaction ?? payload, ["to_account", "to", "account_address", "destinationAccount", "receiverAccount", "merchantAccount"])
+    ?? pickString(account ?? payload, ["account_address", "address", "destinationAccount"]);
+  const normalizedAmountCents = normalizeAmountCents({ majorAmount, amountCents });
+
+  return {
+    found: payload.found === true,
+    hasTransaction: Boolean(transaction),
+    hasAccount: Boolean(account),
+    transactionId: pickNumber(transaction ?? payload, ["tran_id", "tx", "transaction_id", "id"]),
+    amountCents: normalizedAmountCents,
+    currency: pickString(transaction ?? payload, ["currency"]),
+    destination: destinationAccountFromTransaction,
+  };
+}
+
+function normalizeAmountCents(input: {
+  majorAmount: number | undefined;
+  amountCents: number | undefined;
+}): number | undefined {
+  if (typeof input.amountCents === "number") {
+    const roundedCents = Math.round(input.amountCents);
+    if (Number.isSafeInteger(roundedCents)) {
+      return roundedCents;
+    }
+  }
+
+  if (typeof input.majorAmount !== "number") {
+    return undefined;
+  }
+
+  const converted = Math.round(input.majorAmount * 100);
+  if (!Number.isSafeInteger(converted)) {
+    return undefined;
+  }
+
+  return converted;
 }
 
 export class ShamCashGateway implements PaymentGateway {
@@ -115,11 +167,16 @@ export class ShamCashGateway implements PaymentGateway {
       transactionReference: input.transactionReference.trim(),
     });
 
-    const verifiedAmountCents = pickNumber(payload, ["amountCents", "amount"]);
-    const verifiedCurrency = pickString(payload, ["currency"]);
-    const verifiedDestination = pickString(payload, ["account_address", "destinationAccount", "receiverAccount", "merchantAccount"]);
+    const normalized = normalizeShamCashPayload(payload);
 
-    if (typeof verifiedAmountCents === "number" && verifiedAmountCents !== input.expectedAmountCents) {
+    const verifiedAmountCents = normalized.amountCents;
+    const verifiedCurrency = normalized.currency;
+    const verifiedDestination = normalized.destination;
+    const amountMatches = typeof verifiedAmountCents === "number" && verifiedAmountCents === input.expectedAmountCents;
+    const currencyMatches = typeof verifiedCurrency === "string" && verifiedCurrency.toUpperCase() === input.expectedCurrency.toUpperCase();
+    const destinationMatches = typeof verifiedDestination === "string" && verifiedDestination === config.destinationAccount;
+
+    if (typeof verifiedAmountCents === "number" && !amountMatches) {
       throw new GatewayRequestError({
         provider: "sham_cash",
         phase: "verify",
@@ -127,7 +184,7 @@ export class ShamCashGateway implements PaymentGateway {
       });
     }
 
-    if (verifiedCurrency && verifiedCurrency.toUpperCase() !== input.expectedCurrency.toUpperCase()) {
+    if (verifiedCurrency && !currencyMatches) {
       throw new GatewayRequestError({
         provider: "sham_cash",
         phase: "verify",
@@ -135,7 +192,7 @@ export class ShamCashGateway implements PaymentGateway {
       });
     }
 
-    if (verifiedDestination && verifiedDestination !== config.destinationAccount) {
+    if (verifiedDestination && !destinationMatches) {
       throw new GatewayRequestError({
         provider: "sham_cash",
         phase: "verify",
@@ -143,7 +200,13 @@ export class ShamCashGateway implements PaymentGateway {
       });
     }
 
-    const isPaid = isPaidStatus(payload);
+    const isPaid = normalized.found
+      && normalized.hasTransaction
+      && normalized.hasAccount
+      && amountMatches
+      && currencyMatches
+      && destinationMatches
+      && isPaidStatus(payload);
 
     return {
       isPaid,
@@ -151,7 +214,17 @@ export class ShamCashGateway implements PaymentGateway {
         mode: "live",
         ...payload,
       },
-      failureReason: isPaid ? undefined : extractFailureReason(payload) ?? "Sham Cash reported an unsuccessful transaction status.",
+      failureReason:
+        isPaid
+          ? undefined
+          : extractFailureReason(payload)
+            ?? (!normalized.found ? "Sham Cash did not find the submitted transaction reference." : undefined)
+            ?? (!normalized.hasTransaction ? "Sham Cash verify response did not include transaction details." : undefined)
+            ?? (!normalized.hasAccount ? "Sham Cash verify response did not include destination account details." : undefined)
+            ?? (!amountMatches ? "Sham Cash verify response amount does not match expected amount." : undefined)
+            ?? (!currencyMatches ? "Sham Cash verify response currency does not match expected currency." : undefined)
+            ?? (!destinationMatches ? "Sham Cash verify response destination account mismatch." : undefined)
+            ?? "Sham Cash reported an unsuccessful transaction status.",
     };
   }
 }

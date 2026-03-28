@@ -105,7 +105,8 @@ export function OrderPaymentPanel({
   const [isPending, startTransition] = useTransition();
 
   const selectedOption = availablePaymentOptions.find((option) => option.provider === selectedProvider) ?? availablePaymentOptions[0];
-  const syriatelDestinationLabel = syriatelCashDestinationAccount?.trim() ? syriatelCashDestinationAccount.trim() : "غير متاح حالياً";
+  const shamDestinationLabel = shamCashDestinationAccount?.trim() || "غير متاح حالياً";
+  const syriatelDestinationLabel = syriatelCashDestinationAccount?.trim() || "غير متاح حالياً";
   const uiStatus = mapAttemptStatusToUiStatus(attemptStatus);
   const shamCashQrPayload = useMemo(
     () =>
@@ -418,7 +419,7 @@ export function OrderPaymentPanel({
                 <div className="mt-3 flex flex-wrap gap-2">
                   <button
                     type="button"
-                    onClick={() => copyText(shamCashDestinationAccount ?? "", "تم نسخ حساب الاستلام.")}
+                    onClick={() => copyText(shamDestinationLabel, "تم نسخ حساب الاستلام.")}
                     className="rounded-lg border border-indigo-200 bg-white px-3 py-1 text-xs font-semibold text-indigo-700 hover:bg-indigo-50"
                   >
                     نسخ الحساب

@@ -41,10 +41,15 @@ test("ShamCashGateway verify rejects mismatched amount from provider", async () 
   global.fetch = async () =>
     new Response(
       JSON.stringify({
-        status: "paid",
-        amount: 990,
-        currency: "SYP",
-        account_address: "dest-acc-1",
+        found: true,
+        transaction: {
+          tran_id: 162045000,
+          amount: 9.9,
+          currency: "SYP",
+        },
+        account: {
+          account_address: "dest-acc-1",
+        },
       }),
       { status: 200 },
     );
@@ -72,10 +77,15 @@ test("ShamCashGateway verify rejects destination-account mismatch from provider"
   global.fetch = async () =>
     new Response(
       JSON.stringify({
-        status: "paid",
-        amountCents: 1000,
-        currency: "SYP",
-        account_address: "wrong-destination",
+        found: true,
+        transaction: {
+          tran_id: 162045000,
+          amount: 10,
+          currency: "SYP",
+        },
+        account: {
+          account_address: "wrong-destination",
+        },
       }),
       { status: 200 },
     );
@@ -90,6 +100,84 @@ test("ShamCashGateway verify rejects destination-account mismatch from provider"
     }),
     (error: unknown) => error instanceof GatewayRequestError && error.phase === "verify",
   );
+
+  process.env = originalEnv;
+  global.fetch = originalFetch;
+});
+
+test("ShamCashGateway verify accepts real find_tx response shape when transaction is valid", async () => {
+  const originalFetch = global.fetch;
+  const originalEnv = { ...process.env };
+
+  setLiveEnv();
+  global.fetch = async () =>
+    new Response(
+      JSON.stringify({
+        found: true,
+        transaction: {
+          tran_id: 162045000,
+          from_name: "sender",
+          to_name: "merchant",
+          currency: "SYP",
+          amount: 14,
+          datetime: "2026-03-28 15:52:17",
+          account: "a0998366aeb6733b9513aaed75b55d71",
+          note: "",
+        },
+        account: {
+          account_address: "dest-acc-1",
+        },
+      }),
+      { status: 200 },
+    );
+
+  const result = await gateway.verifyPayment({
+    paymentId: "p-1",
+    providerReference: "ref-1",
+    transactionReference: "162045000",
+    expectedAmountCents: 1400,
+    expectedCurrency: "SYP",
+  });
+
+  assert.equal(result.isPaid, true);
+  assert.equal(result.failureReason, undefined);
+
+  process.env = originalEnv;
+  global.fetch = originalFetch;
+});
+
+test("ShamCashGateway verify marks transaction unpaid when account details are missing", async () => {
+  const originalFetch = global.fetch;
+  const originalEnv = { ...process.env };
+
+  setLiveEnv();
+  global.fetch = async () =>
+    new Response(
+      JSON.stringify({
+        found: true,
+        transaction: {
+          tran_id: 162045000,
+          from_name: "sender",
+          to_name: "merchant",
+          currency: "SYP",
+          amount: 14,
+          datetime: "2026-03-28 15:52:17",
+          note: "",
+        },
+      }),
+      { status: 200 },
+    );
+
+  const result = await gateway.verifyPayment({
+    paymentId: "p-1",
+    providerReference: "ref-1",
+    transactionReference: "162045000",
+    expectedAmountCents: 1400,
+    expectedCurrency: "SYP",
+  });
+
+  assert.equal(result.isPaid, false);
+  assert.match(result.failureReason ?? "", /destination account details/i);
 
   process.env = originalEnv;
   global.fetch = originalFetch;
