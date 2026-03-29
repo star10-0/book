@@ -1,5 +1,4 @@
-import { PrismaClient, BookFormat, BookStatus, CurrencyCode, OfferType, UserRole } from '@prisma/client';
-import { hashPassword } from '../src/lib/auth-password';
+import { PrismaClient, BookFormat, BookStatus, CurrencyCode, OfferType } from '@prisma/client';
 
 const prisma = new PrismaClient();
 
@@ -21,25 +20,6 @@ type SeedBook = {
 };
 
 const seed = async () => {
-  const adminPasswordHash = await hashPassword('AdminPass123!');
-
-  const adminUser = await prisma.user.upsert({
-    where: { email: 'admin@book.local' },
-    update: {
-      fullName: 'مدير المنصة',
-      role: UserRole.ADMIN,
-      isActive: true,
-      passwordHash: adminPasswordHash,
-    },
-    create: {
-      email: 'admin@book.local',
-      fullName: 'مدير المنصة',
-      role: UserRole.ADMIN,
-      isActive: true,
-      passwordHash: adminPasswordHash,
-    },
-  });
-
   const authors = [
     {
       slug: 'layth-haddad',
@@ -296,8 +276,7 @@ const seed = async () => {
     });
   }
 
-  console.log(`Seed complete: users(1), authors(${authors.length}), categories(${categories.length}), books(${books.length}).`);
-  console.log(`Admin user: ${adminUser.email}`);
+  console.log(`Seed complete: users(0), authors(${authors.length}), categories(${categories.length}), books(${books.length}).`);
 };
 
 seed()
