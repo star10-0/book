@@ -40,6 +40,7 @@ function verifySignature(payload: string, signature: string) {
 type SessionPayload = {
   sub: string;
   exp: number;
+  sv: number;
 };
 
 function encodeSession(payload: SessionPayload) {
@@ -62,7 +63,7 @@ function decodeSession(token: string): SessionPayload | null {
   try {
     const payload = JSON.parse(base64UrlDecode(encodedPayload)) as SessionPayload;
 
-    if (!payload.sub || typeof payload.exp !== "number") {
+    if (!payload.sub || typeof payload.exp !== "number" || typeof payload.sv !== "number") {
       return null;
     }
 
@@ -77,10 +78,20 @@ function decodeSession(token: string): SessionPayload | null {
 }
 
 export async function startUserSession(userId: string) {
+  const user = await prisma.user.findUnique({
+    where: { id: userId },
+    select: { sessionVersion: true },
+  });
+
+  if (!user) {
+    throw new Error("Cannot start session for non-existent user.");
+  }
+
   const expires = new Date(Date.now() + SESSION_DURATION_SECONDS * 1000);
   const token = encodeSession({
     sub: userId,
     exp: Math.floor(expires.getTime() / 1000),
+    sv: user.sessionVersion,
   });
 
   const store = await cookies();
@@ -121,6 +132,7 @@ export async function getCurrentUser() {
       fullName: true,
       role: true,
       isActive: true,
+      sessionVersion: true,
       creatorProfile: {
         select: {
           slug: true,
@@ -131,6 +143,10 @@ export async function getCurrentUser() {
   });
 
   if (!user || !user.isActive) {
+    return null;
+  }
+
+  if (user.sessionVersion !== payload.sv) {
     return null;
   }
 
