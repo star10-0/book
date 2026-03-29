@@ -1,11 +1,10 @@
-import { randomUUID } from "node:crypto";
 import type { NextRequest } from "next/server";
 import { NextResponse } from "next/server";
-import { buildContentSecurityPolicy } from "./src/lib/security/csp";
+import { buildContentSecurityPolicy } from "./lib/security/csp";
 
 export function middleware(request: NextRequest) {
   const isDevelopment = process.env.NODE_ENV === "development";
-  const nonce = isDevelopment ? undefined : randomUUID().replace(/-/g, "");
+  const nonce = isDevelopment ? undefined : crypto.randomUUID().replace(/-/g, "");
   const requestHeaders = new Headers(request.headers);
 
   if (nonce) {
