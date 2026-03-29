@@ -1,113 +1,118 @@
-# SECURITY_SECRET_ROTATION.md
+# SECURITY_SECRET_ROTATION
 
-This runbook defines the minimum incident response for secret exposure in `book`.
+This runbook defines the minimum required rotation steps for high-impact secrets used by `book`.
 
 ## Scope
-Rotate immediately if any of the following are exposed in logs, screenshots, chat, commits, backups, or third-party systems:
+
+Secrets covered here:
 - `AUTH_SECRET`
-- `DATABASE_URL` and/or database user password
+- `DATABASE_URL` / database password
 - `SHAM_CASH_API_KEY`
 - `SYRIATEL_CASH_API_KEY`
 - `KV_REST_API_TOKEN`
 
-## Storage rules
-- Never commit real secrets to git.
-- Local development secrets: `.env` only (uncommitted).
-- Production secrets: host-level `.env.production` or platform-managed secret manager.
-- Keep `.env.example` and `.env.production.example` as placeholders only.
+Use this runbook when a secret is suspected exposed (logs, screenshots, chat paste, leaked `.env`, CI output, etc.).
 
-## Standard rotation workflow (all secrets)
-1. Identify exposure window and impacted environments (dev/staging/prod).
-2. Generate a new secret/credential from the upstream provider.
-3. Update secret storage (`.env.production` or host/platform secret manager).
-4. Redeploy/restart application services so new values are loaded.
-5. Revoke/disable old secret where supported.
-6. Verify health-critical flows.
-7. Record incident details (what rotated, when, by whom).
+## General incident workflow (applies to every secret)
+
+1. **Contain**: remove exposed content from public places and limit access to affected systems.
+2. **Rotate**: generate a new credential in the authoritative provider.
+3. **Update runtime config**: update deployment secret storage (`.env.production` or hosting secret manager).
+4. **Redeploy/restart**: ensure all running instances use the new secret.
+5. **Invalidate old access**: revoke old tokens/passwords/keys.
+6. **Audit**: inspect auth/payment/database logs during the exposure window.
+7. **Document**: record time of exposure, rotation completion, and systems verified.
 
 ---
 
-## AUTH_SECRET
-Used to sign/authenticate application sessions.
+## 1) Rotate `AUTH_SECRET`
 
-### Rotate
-1. Generate a new random secret (minimum 32 chars, recommended 64+).
-2. Set both:
-   - `AUTH_SECRET`
-   - `NEXTAUTH_SECRET` (same value)
-3. Redeploy app.
-4. Invalidate old sessions as needed by policy (rotation will generally force re-authentication).
+`AUTH_SECRET` signs authentication/session data. Exposure can allow forged or replayed sessions.
 
-### Impact
-- Existing sessions may become invalid.
-- Users may need to sign in again.
+### Rotation steps
+1. Generate a new high-entropy secret (minimum 32 characters).
+2. Update `AUTH_SECRET` (and `NEXTAUTH_SECRET` if mirrored) in production secret storage.
+3. Redeploy/restart the app.
+4. Force re-authentication for users if your incident policy requires immediate session invalidation.
+
+### Expected impact
+- Existing sessions may become invalid; users may need to sign in again.
 
 ---
 
-## DATABASE_URL / database password
-`DATABASE_URL` contains database credentials and connection details.
+## 2) Rotate `DATABASE_URL` / database password
 
-### Rotate
-1. Create a new database password (or new DB user with least privilege).
-2. Update database user credential in PostgreSQL.
-3. Update `DATABASE_URL` in secret storage.
-4. Restart/redeploy app and migration jobs that use this URL.
-5. Revoke old password/user.
+`DATABASE_URL` includes DB credentials and direct database access details.
 
-### Impact
-- Brief connection interruptions during restart.
-- Failed queries if app uses stale credentials.
+### Rotation steps
+1. Create a new database password/user credential in PostgreSQL (or managed DB console).
+2. Update `DATABASE_URL` in production secret storage.
+3. Restart/redeploy services that connect to PostgreSQL (app, workers, exporters using DB DSN).
+4. Revoke/remove old DB credential.
 
----
-
-## SHAM_CASH_API_KEY
-Used for Sham Cash payment verification calls.
-
-### Rotate
-1. Generate/reissue key in Sham Cash merchant/admin console.
-2. Update `SHAM_CASH_API_KEY` in secret storage.
-3. Redeploy/restart app.
-4. Revoke old key in Sham Cash.
-5. Run a controlled payment verification test.
-
-### Impact
-- Payment verification can fail until all services use new key.
+### Expected impact
+- Short-lived connection interruptions during restarts.
+- Any service still using old credentials will fail until updated.
 
 ---
 
-## SYRIATEL_CASH_API_KEY
-Used for Syriatel Cash manual-transfer/find_tx verification calls.
+## 3) Rotate `SHAM_CASH_API_KEY`
 
-### Rotate
-1. Generate/reissue key in Syriatel Cash merchant/admin console.
-2. Update `SYRIATEL_CASH_API_KEY` in secret storage.
-3. Redeploy/restart app.
-4. Revoke old key in Syriatel Cash.
-5. Run a controlled Syriatel verification test.
+`SHAM_CASH_API_KEY` authorizes live payment verification calls to Sham Cash.
 
-### Impact
-- Syriatel payment verification can fail until services are restarted.
+### Rotation steps
+1. Generate/reissue a new API key in the Sham Cash merchant/provider portal.
+2. Update `SHAM_CASH_API_KEY` in production secret storage.
+3. Redeploy/restart app instances.
+4. Revoke old API key in Sham Cash.
+5. Run a controlled payment verification test in production-safe conditions.
+
+### Expected impact
+- Live Sham Cash verification fails until all instances use the new key.
 
 ---
 
-## KV_REST_API_TOKEN
-Used for Redis REST rate-limiting/auth guards.
+## 4) Rotate `SYRIATEL_CASH_API_KEY`
 
-### Rotate
-1. Create a new REST token in your KV/Upstash provider.
-2. Update `KV_REST_API_TOKEN` in secret storage.
-3. Redeploy/restart app.
+`SYRIATEL_CASH_API_KEY` authorizes Syriatel `find_tx` verification requests.
+
+### Rotation steps
+1. Generate/reissue a new API key in Syriatel Cash merchant/provider controls.
+2. Update `SYRIATEL_CASH_API_KEY` in production secret storage.
+3. Redeploy/restart app instances.
+4. Revoke old API key.
+5. Run a controlled Syriatel verification test (`manual-transfer` + `find_tx`).
+
+### Expected impact
+- Syriatel verification calls fail until all instances use the new key.
+
+---
+
+## 5) Rotate `KV_REST_API_TOKEN`
+
+`KV_REST_API_TOKEN` secures Redis/Upstash REST operations used for auth/payment rate limiting.
+
+### Rotation steps
+1. Issue a new REST token from your KV provider.
+2. Update `KV_REST_API_TOKEN` in production secret storage.
+3. Redeploy/restart app instances.
 4. Revoke old token.
-5. Verify auth/payment rate limiting paths and app health.
+5. Verify rate-limiting behavior on login/checkout paths.
 
-### Impact
-- Rate limiting may temporarily fail open/closed depending on runtime behavior.
+### Expected impact
+- Rate-limiting reads/writes may fail or degrade until all instances use the new token.
 
 ---
 
-## Post-rotation verification checklist
-- `GET /api/health` returns success.
-- Authentication works (login/logout/session refresh).
-- Checkout and payment verification flows work for enabled providers.
-- No env validation errors at startup.
-- Monitoring/alerts do not show secret-auth failures.
+## Verification checklist after any rotation
+
+- `/api/health` returns success.
+- Authentication flow works (login/logout/session refresh).
+- Checkout and payment verification paths work for enabled providers.
+- No recurring authentication, DB auth, payment provider auth, or KV token errors in logs.
+
+## Repository hygiene reminders
+
+- Never commit real secrets to git.
+- Keep `.env`, `.env.production`, and exported secret files out of version control.
+- Use placeholder values in `.env.example` and `.env.production.example` only.

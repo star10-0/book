@@ -120,19 +120,25 @@ Use `.env.production.example` as the source of truth.
 
 ### Secrets storage and exposure response
 
-Required secrets for production operations:
+Production secrets (rotate immediately if exposed):
 - `AUTH_SECRET`
-- `DATABASE_URL` (contains database credentials; treat as secret)
+- `DATABASE_URL` (the connection string embeds DB credentials)
 - `SHAM_CASH_API_KEY` (when Sham Cash is enabled)
 - `SYRIATEL_CASH_API_KEY` (when Syriatel Cash is enabled)
 - `KV_REST_API_TOKEN`
 
-Where to store them:
+Where secrets must be stored:
 - Local development: only in uncommitted `.env` files on trusted machines.
-- Docker/VPS: in `.env.production` on the server, never committed to git.
-- Managed hosting: use the platform secret manager/environment variable UI, not source files.
+- Docker/VPS: only in uncommitted `.env.production` on the server.
+- Managed hosting: use the platform secret manager/environment variable UI (never commit secrets to git).
 
-If any secret is exposed, rotate it immediately and restart/redeploy with new values. Follow `SECURITY_SECRET_ROTATION.md` for exact steps and impact notes.
+Exposure response requirements:
+1. Rotate the exposed secret before restoring normal traffic.
+2. Redeploy/restart all affected services with the new value.
+3. Invalidate existing sessions/tokens where applicable.
+4. Review logs/audit trails for suspicious usage during the exposure window.
+
+Use `SECURITY_SECRET_ROTATION.md` for exact per-secret procedures and impact notes.
 
 ---
 
