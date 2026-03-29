@@ -117,6 +117,22 @@ Optional override (defaults to `/find_tx`):
 
 Use `.env.production.example` as the source of truth.
 
+### Secrets storage and exposure response
+
+Required secrets for production operations:
+- `AUTH_SECRET`
+- `DATABASE_URL` (contains database credentials; treat as secret)
+- `SHAM_CASH_API_KEY` (when Sham Cash is enabled)
+- `SYRIATEL_CASH_API_KEY` (when Syriatel Cash is enabled)
+- `KV_REST_API_TOKEN`
+
+Where to store them:
+- Local development: only in uncommitted `.env` files on trusted machines.
+- Docker/VPS: in `.env.production` on the server, never committed to git.
+- Managed hosting: use the platform secret manager/environment variable UI, not source files.
+
+If any secret is exposed, rotate it immediately and restart/redeploy with new values. Follow `SECURITY_SECRET_ROTATION.md` for exact steps and impact notes.
+
 ---
 
 ## Verify Deployed Branch/Commit Before Payment Debugging
