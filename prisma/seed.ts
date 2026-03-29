@@ -20,6 +20,8 @@ type SeedBook = {
 };
 
 const seed = async () => {
+  // Safety note: seed data intentionally excludes privileged users.
+  // Create the first admin explicitly via `npm run prisma:bootstrap-admin`.
   const authors = [
     {
       slug: 'layth-haddad',
@@ -276,7 +278,9 @@ const seed = async () => {
     });
   }
 
-  console.log(`Seed complete: users(0), authors(${authors.length}), categories(${categories.length}), books(${books.length}).`);
+  console.log(
+    `Seed complete: users(0), authors(${authors.length}), categories(${categories.length}), books(${books.length}).`,
+  );
 };
 
 seed()
