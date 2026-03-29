@@ -125,7 +125,7 @@ const seed = async () => {
       titleEn: 'City of Shadows',
       descriptionAr:
         'رواية تدور في دمشق الحديثة، حيث يحاول صحفي شاب كشف شبكة مصالح تخفي أسراراً قديمة تربط الماضي بالحاضر.',
-      coverImageUrl: 'https://placehold.co/600x900?text=Book+Cover+01',
+      coverImageUrl: 'https://placehold.co/600x900/png?text=Book+Cover+01',
       publicationDate: new Date('2023-03-18'),
       authorSlug: 'layth-haddad',
       categorySlug: 'riwayat',
@@ -140,7 +140,7 @@ const seed = async () => {
       titleEn: 'Threads of the River',
       descriptionAr:
         'مجموعة قصصية تتتبع حكايات عائلات تعيش قرب النهر، وتكشف كيف يمكن لتفاصيل يومية بسيطة أن تغيّر مصير الإنسان.',
-      coverImageUrl: 'https://placehold.co/600x900?text=Book+Cover+02',
+      coverImageUrl: 'https://placehold.co/600x900/png?text=Book+Cover+02',
       publicationDate: new Date('2022-11-04'),
       authorSlug: 'rana-masri',
       categorySlug: 'adab',
@@ -152,7 +152,7 @@ const seed = async () => {
       titleEn: 'Journey Through Aleppo Memory',
       descriptionAr:
         'كتاب تاريخي يوثق التحولات العمرانية والثقافية في مدينة حلب عبر شهادات وصور ونصوص أرشيفية.',
-      coverImageUrl: 'https://placehold.co/600x900?text=Book+Cover+03',
+      coverImageUrl: 'https://placehold.co/600x900/png?text=Book+Cover+03',
       publicationDate: new Date('2021-06-12'),
       authorSlug: 'omar-khayyat',
       categorySlug: 'tarikh',
@@ -167,7 +167,7 @@ const seed = async () => {
       titleEn: 'Daily Focus Machine',
       descriptionAr:
         'دليل عملي باللغة العربية لبناء روتين يومي متوازن يساعد على زيادة التركيز وتقليل التشتيت في بيئة العمل.',
-      coverImageUrl: 'https://placehold.co/600x900?text=Book+Cover+04',
+      coverImageUrl: 'https://placehold.co/600x900/png?text=Book+Cover+04',
       publicationDate: new Date('2024-01-09'),
       authorSlug: 'rana-masri',
       categorySlug: 'tatwir-dhat',
@@ -179,7 +179,7 @@ const seed = async () => {
       titleEn: 'Questions of Identity',
       descriptionAr:
         'نص فكري يناقش معنى الهوية العربية في العصر الرقمي من خلال أمثلة ثقافية واجتماعية قريبة من الواقع.',
-      coverImageUrl: 'https://placehold.co/600x900?text=Book+Cover+05',
+      coverImageUrl: 'https://placehold.co/600x900/png?text=Book+Cover+05',
       publicationDate: new Date('2020-09-22'),
       authorSlug: 'layth-haddad',
       categorySlug: 'fikr',
@@ -191,7 +191,7 @@ const seed = async () => {
       titleEn: 'Morning Coffee',
       descriptionAr:
         'رواية اجتماعية دافئة ترصد حياة أربعة أصدقاء يجتمعون كل صباح في مقهى قديم ويتبادلون أحلامهم ومخاوفهم.',
-      coverImageUrl: 'https://placehold.co/600x900?text=Book+Cover+06',
+      coverImageUrl: 'https://placehold.co/600x900/png?text=Book+Cover+06',
       publicationDate: new Date('2023-08-01'),
       authorSlug: 'rana-masri',
       categorySlug: 'riwayat',
@@ -206,7 +206,7 @@ const seed = async () => {
       titleEn: 'Stories of Al-Hamidiya Souq',
       descriptionAr:
         'سرد أدبي يستعيد ذاكرة السوق الدمشقي الأشهر من خلال حكايات التجار والزوّار في فصول قصيرة ممتعة.',
-      coverImageUrl: 'https://placehold.co/600x900?text=Book+Cover+07',
+      coverImageUrl: 'https://placehold.co/600x900/png?text=Book+Cover+07',
       publicationDate: new Date('2019-12-15'),
       authorSlug: 'omar-khayyat',
       categorySlug: 'adab',
@@ -218,7 +218,7 @@ const seed = async () => {
       titleEn: 'The Future of Reading',
       descriptionAr:
         'كتاب ثقافي يستعرض كيف غيّرت التقنيات الحديثة طريقة القراءة والتعلّم، وما الفرص المتاحة للقارئ العربي.',
-      coverImageUrl: 'https://placehold.co/600x900?text=Book+Cover+08',
+      coverImageUrl: 'https://placehold.co/600x900/png?text=Book+Cover+08',
       publicationDate: new Date('2024-05-19'),
       authorSlug: 'layth-haddad',
       categorySlug: 'fikr',
