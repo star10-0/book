@@ -35,9 +35,9 @@
 4. (Optional, one-time) Bootstrap the first admin user explicitly:
 
    ```bash
-   INITIAL_ADMIN_EMAIL=admin@example.com \
+   INITIAL_ADMIN_EMAIL=your-admin-email@example.com \
    INITIAL_ADMIN_PASSWORD='replace-with-strong-password' \
-   INITIAL_ADMIN_FULL_NAME='Platform Admin' \
+   INITIAL_ADMIN_FULL_NAME='Initial Platform Admin' \
    npm run prisma:bootstrap-admin
    ```
 
