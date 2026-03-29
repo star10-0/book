@@ -3,9 +3,10 @@
 import { UserRole } from "@prisma/client";
 import { redirect } from "next/navigation";
 import { hashPassword, verifyPassword } from "@/lib/auth-password";
-import { endUserSession, startUserSession } from "@/lib/auth-session";
+import { endUserSession, getCurrentUser, startUserSession } from "@/lib/auth-session";
 import { prisma } from "@/lib/prisma";
 import { checkRateLimit } from "@/lib/security/rate-limit";
+import { invalidateUserSessions } from "@/lib/session-invalidation";
 
 export type AuthFormState = {
   error?: string;
@@ -168,6 +169,17 @@ export async function signUpAction(_prevState: AuthFormState, formData: FormData
 }
 
 export async function signOutAction() {
+  await endUserSession();
+  redirect("/");
+}
+
+export async function signOutAllDevicesAction() {
+  const currentUser = await getCurrentUser();
+
+  if (currentUser) {
+    await invalidateUserSessions(currentUser.id);
+  }
+
   await endUserSession();
   redirect("/");
 }

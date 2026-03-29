@@ -130,6 +130,7 @@ model User {
   role              UserRole          @default(USER)
   isActive          Boolean           @default(true)
   passwordHash      String?
+  sessionVersion    Int               @default(0)
   orders            Order[]
   payments          Payment[]
   paymentAttempts   PaymentAttempt[]
