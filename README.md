@@ -46,6 +46,7 @@
    - `INITIAL_ADMIN_PASSWORD` must be at least 12 characters.
    - The command aborts if any admin user already exists.
    - `prisma:seed` no longer creates a privileged user automatically.
+   - Quick wiring check (script + entrypoint): run `npm run prisma:bootstrap-admin` without env vars; it should fail fast with `Missing required environment variable: INITIAL_ADMIN_EMAIL`, which confirms the command is wired and executable.
 
 ---
 
