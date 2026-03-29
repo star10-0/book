@@ -32,7 +32,20 @@
    npm run dev
    ```
 
-> Seed currently creates an admin account (`admin@book.local` / `AdminPass123!`).
+4. (Optional, one-time) Bootstrap the first admin user explicitly:
+
+   ```bash
+   INITIAL_ADMIN_EMAIL=admin@example.com \
+   INITIAL_ADMIN_PASSWORD='replace-with-strong-password' \
+   INITIAL_ADMIN_FULL_NAME='Platform Admin' \
+   npm run prisma:bootstrap-admin
+   ```
+
+   Notes:
+   - `INITIAL_ADMIN_EMAIL` and `INITIAL_ADMIN_PASSWORD` are required.
+   - `INITIAL_ADMIN_PASSWORD` must be at least 12 characters.
+   - The command aborts if any admin user already exists.
+   - `prisma:seed` no longer creates a privileged user automatically.
 
 ---
 
