@@ -1,7 +1,7 @@
 import { Prisma, PaymentStatus, type PaymentAttemptStatus, type PaymentProvider } from "@prisma/client";
 import { prisma } from "@/lib/prisma";
 import { resolvePaymentGateway } from "@/lib/payments/gateways";
-import { sanitizeForLogs } from "@/lib/payments/gateways/provider-http";
+import { sanitizeForLogs } from "@/lib/observability/redaction";
 import { isMockPaymentVerificationEnabled } from "@/lib/payments/mock-mode";
 import {
   canTransitionPaymentStatus,

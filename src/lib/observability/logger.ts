@@ -1,4 +1,5 @@
 import { randomUUID } from "node:crypto";
+import { redactSensitiveData } from "@/lib/observability/redaction";
 
 type LogLevel = "info" | "warn" | "error";
 
@@ -12,23 +13,23 @@ type LogContext = {
 
 function serializeError(error: unknown) {
   if (error instanceof Error) {
-    return {
+    return redactSensitiveData({
       name: error.name,
       message: error.message,
       stack: error.stack,
-    };
+    });
   }
 
-  return error;
+  return redactSensitiveData(error);
 }
 
 function write(level: LogLevel, message: string, context?: LogContext) {
-  const payload = {
+  const payload = redactSensitiveData({
     level,
     message,
     timestamp: new Date().toISOString(),
     ...context,
-  };
+  });
 
   if (level === "error") {
     console.error(JSON.stringify(payload));

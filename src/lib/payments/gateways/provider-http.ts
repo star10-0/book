@@ -1,8 +1,9 @@
 import { logInfo } from "@/lib/observability/logger";
+import { sanitizeForLogs } from "@/lib/observability/redaction";
 
 const DEFAULT_TIMEOUT_MS = 10_000;
 
-const SENSITIVE_KEY_PATTERN = /(authorization|token|secret|password|api[-_]?key|signature)/i;
+export { sanitizeForLogs };
 
 export class GatewayConfigurationError extends Error {
   constructor(message: string) {
@@ -55,25 +56,6 @@ export function safeLogProviderResponse(provider: string, phase: "create" | "ver
   logInfo("Payment provider response", { provider, phase, payload: sanitizeForLogs(payload) });
 }
 
-export function sanitizeForLogs(value: unknown): unknown {
-  if (Array.isArray(value)) {
-    return value.map((item) => sanitizeForLogs(item));
-  }
-
-  if (!value || typeof value !== "object") {
-    return value;
-  }
-
-  return Object.fromEntries(
-    Object.entries(value).map(([key, nestedValue]) => {
-      if (SENSITIVE_KEY_PATTERN.test(key)) {
-        return [key, "[REDACTED]"];
-      }
-
-      return [key, sanitizeForLogs(nestedValue)];
-    }),
-  );
-}
 
 export async function postProviderJson(input: {
   provider: string;
