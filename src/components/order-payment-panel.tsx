@@ -241,6 +241,12 @@ export function OrderPaymentPanel({
       return;
     }
 
+    if (attemptStatus !== "SUBMITTED") {
+      setMessage("لا يمكن إرسال رقم العملية الآن. أنشئ محاولة دفع جديدة أو استخدم زر التحقق حسب حالة المحاولة.");
+      setMessageTone("error");
+      return;
+    }
+
     startTransition(async () => {
       setMessage("");
       setMessageTone("info");
@@ -261,7 +267,11 @@ export function OrderPaymentPanel({
       };
 
       if (!response.ok || !payload.attempt) {
-        setMessage(payload.message ?? "تعذر إرسال إثبات الدفع.");
+        if (response.status === 409) {
+          setMessage(payload.message ?? "لا يمكن إرسال إثبات الدفع لهذه المحاولة في حالتها الحالية.");
+        } else {
+          setMessage(payload.message ?? "تعذر إرسال إثبات الدفع.");
+        }
         setMessageTone("error");
         return;
       }
@@ -536,7 +546,7 @@ export function OrderPaymentPanel({
             <button
               type="button"
               onClick={submitProof}
-              disabled={isPending || !attemptId}
+              disabled={isPending || !attemptId || attemptStatus !== "SUBMITTED"}
               className="rounded-xl border border-indigo-200 bg-indigo-50 px-4 py-2 text-sm font-semibold text-indigo-700 disabled:cursor-not-allowed disabled:border-slate-200 disabled:bg-slate-100 disabled:text-slate-400"
             >
               إرسال رقم العملية
