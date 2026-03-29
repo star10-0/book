@@ -136,7 +136,7 @@ function validateEnvironment(): EnvIssue[] {
       issues.push({
         severity: nodeEnv === "production" ? "error" : "warning",
         key: getLiveProvidersEnvKey(),
-        message: `${getLiveProvidersEnvKey()} contains unsupported provider value(s). Use only: ${getSupportedLiveProviders().join(", ")}.`,
+        message: `${getLiveProvidersEnvKey()} contains unsupported providers. Use only: ${getSupportedLiveProviders().join(", ")}.`,
       });
     }
 
