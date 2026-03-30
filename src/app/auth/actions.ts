@@ -3,13 +3,20 @@
 import { UserRole } from "@prisma/client";
 import { redirect } from "next/navigation";
 import { hashPassword, verifyPassword } from "@/lib/auth-password";
-import { endUserSession, startUserSession } from "@/lib/auth-session";
+import { endUserSession, getCurrentUser, startUserSession } from "@/lib/auth-session";
 import { prisma } from "@/lib/prisma";
 import { checkRateLimit } from "@/lib/security/rate-limit";
+import { invalidateUserSessions, updatePasswordAndInvalidateSessions } from "@/lib/session-invalidation";
 
 export type AuthFormState = {
   error?: string;
   fieldErrors?: Partial<Record<"fullName" | "email" | "password", string>>;
+};
+
+export type PasswordChangeFormState = {
+  error?: string;
+  success?: string;
+  fieldErrors?: Partial<Record<"currentPassword" | "newPassword", string>>;
 };
 
 function readField(formData: FormData, key: string) {
@@ -170,4 +177,72 @@ export async function signUpAction(_prevState: AuthFormState, formData: FormData
 export async function signOutAction() {
   await endUserSession();
   redirect("/");
+}
+
+export async function signOutAllDevicesAction() {
+  const currentUser = await getCurrentUser();
+
+  if (currentUser) {
+    await invalidateUserSessions(currentUser.id);
+  }
+
+  await endUserSession();
+  redirect("/");
+}
+
+export async function changePasswordAction(
+  _prevState: PasswordChangeFormState,
+  formData: FormData,
+): Promise<PasswordChangeFormState> {
+  const currentPassword = readField(formData, "currentPassword");
+  const newPassword = readField(formData, "newPassword");
+
+  const fieldErrors: PasswordChangeFormState["fieldErrors"] = {};
+
+  if (!currentPassword) {
+    fieldErrors.currentPassword = "يرجى إدخال كلمة المرور الحالية.";
+  }
+
+  if (!newPassword) {
+    fieldErrors.newPassword = "يرجى إدخال كلمة المرور الجديدة.";
+  } else if (newPassword.length < 8) {
+    fieldErrors.newPassword = "كلمة المرور الجديدة يجب أن تكون 8 أحرف على الأقل.";
+  }
+
+  if (Object.keys(fieldErrors).length > 0) {
+    return { error: "تحقق من الحقول المطلوبة ثم أعد المحاولة.", fieldErrors };
+  }
+
+  const currentUser = await getCurrentUser();
+
+  if (!currentUser) {
+    return { error: "يجب تسجيل الدخول أولاً." };
+  }
+
+  const user = await prisma.user.findUnique({
+    where: { id: currentUser.id },
+    select: {
+      id: true,
+      passwordHash: true,
+      isActive: true,
+    },
+  });
+
+  if (!user || !user.isActive || !user.passwordHash) {
+    return { error: "تعذر تحديث كلمة المرور لهذا الحساب." };
+  }
+
+  const isCurrentPasswordValid = await verifyPassword(currentPassword, user.passwordHash);
+
+  if (!isCurrentPasswordValid) {
+    return {
+      error: "كلمة المرور الحالية غير صحيحة.",
+      fieldErrors: { currentPassword: "كلمة المرور الحالية غير صحيحة." },
+    };
+  }
+
+  await updatePasswordAndInvalidateSessions(user.id, newPassword);
+  await startUserSession(user.id);
+
+  return { success: "تم تحديث كلمة المرور وإنهاء الجلسات الأخرى بنجاح." };
 }

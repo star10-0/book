@@ -32,7 +32,21 @@
    npm run dev
    ```
 
-> Seed currently creates an admin account (`admin@book.local` / `AdminPass123!`).
+4. (Optional, one-time) Bootstrap the first admin user explicitly:
+
+   ```bash
+   INITIAL_ADMIN_EMAIL=your-admin-email@example.com \
+   INITIAL_ADMIN_PASSWORD='replace-with-strong-password' \
+   INITIAL_ADMIN_FULL_NAME='Initial Platform Admin' \
+   npm run prisma:bootstrap-admin
+   ```
+
+   Notes:
+   - `INITIAL_ADMIN_EMAIL` and `INITIAL_ADMIN_PASSWORD` are required.
+   - `INITIAL_ADMIN_PASSWORD` must be at least 12 characters.
+   - The command aborts if any admin user already exists.
+   - `prisma:seed` no longer creates a privileged user automatically.
+   - Quick wiring check (script + entrypoint): run `npm run prisma:bootstrap-admin` without env vars; it should fail fast with `Missing required environment variable: INITIAL_ADMIN_EMAIL`, which confirms the command is wired and executable.
 
 ---
 
@@ -103,6 +117,28 @@ Optional override (defaults to `/find_tx`):
 
 
 Use `.env.production.example` as the source of truth.
+
+### Secrets storage and exposure response
+
+Production secrets (rotate immediately if exposed):
+- `AUTH_SECRET`
+- `DATABASE_URL` (the connection string embeds DB credentials)
+- `SHAM_CASH_API_KEY` (when Sham Cash is enabled)
+- `SYRIATEL_CASH_API_KEY` (when Syriatel Cash is enabled)
+- `KV_REST_API_TOKEN`
+
+Where secrets must be stored:
+- Local development: only in uncommitted `.env` files on trusted machines.
+- Docker/VPS: only in uncommitted `.env.production` on the server.
+- Managed hosting: use the platform secret manager/environment variable UI (never commit secrets to git).
+
+Exposure response requirements:
+1. Rotate the exposed secret before restoring normal traffic.
+2. Redeploy/restart all affected services with the new value.
+3. Invalidate existing sessions/tokens where applicable.
+4. Review logs/audit trails for suspicious usage during the exposure window.
+
+Use `SECURITY_SECRET_ROTATION.md` for exact per-secret procedures and impact notes.
 
 ---
 

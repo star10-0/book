@@ -136,9 +136,7 @@ function validateEnvironment(): EnvIssue[] {
       issues.push({
         severity: nodeEnv === "production" ? "error" : "warning",
         key: getLiveProvidersEnvKey(),
-        message: `${getLiveProvidersEnvKey()} contains unsupported providers: ${providersSelection.invalidProviders.join(
-          ", ",
-        )}. Supported values are: ${getSupportedLiveProviders().join(", ")}.`,
+        message: `${getLiveProvidersEnvKey()} contains unsupported providers. Use only: ${getSupportedLiveProviders().join(", ")}.`,
       });
     }
 
@@ -279,8 +277,8 @@ export function assertServerEnv() {
   const result = validateServerEnv();
 
   if (!result.isValid) {
-    const details = result.errors.map((issue) => `${issue.key}: ${issue.message}`).join("; ");
-    throw new Error(`Invalid server environment configuration. ${details}`);
+    const keys = result.errors.map((issue) => issue.key).join(", ");
+    throw new Error(`Invalid server environment configuration. Missing or invalid keys: ${keys}`);
   }
 
   return result;
@@ -305,8 +303,8 @@ export function validateServerEnvOnce(logger?: Pick<Console, "warn" | "error">) 
     }
 
     if (getNodeEnv() === "production") {
-      const details = result.errors.map((issue) => `${issue.key}: ${issue.message}`).join("; ");
-      throw new Error(`Invalid server environment configuration. ${details}`);
+      const keys = result.errors.map((issue) => issue.key).join(", ");
+      throw new Error(`Invalid server environment configuration. Missing or invalid keys: ${keys}`);
     }
   }
 }
