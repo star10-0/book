@@ -108,7 +108,7 @@ Select at least one provider via `PAYMENT_LIVE_PROVIDERS` and fully configure on
 - `SHAM_CASH_DESTINATION_ACCOUNT`
 
 **Syriatel Cash (if enabled/selected)**
-- `SYRIATEL_CASH_API_BASE_URL` (API SYRIA base endpoint, for example `https://apisyria.com/api/v1`)
+- `SYRIATEL_CASH_API_BASE_URL` (API SYRIA base endpoint, for example `https://apisyria.com/api/v1`; verification uses this base endpoint directly with query params `resource=syriatel`, `action=find_tx`, `tx`, `gsm`)
 - `SYRIATEL_CASH_API_KEY`
 - `SYRIATEL_CASH_DESTINATION_ACCOUNT` (linked Syriatel gsm or cash code recognized by API SYRIA)
 
@@ -281,6 +281,7 @@ Use this when production appears to run older Syriatel code or reports missing l
      - `SYRIATEL_CASH_MERCHANT_ID`
      - `SYRIATEL_CASH_CREATE_PAYMENT_PATH`
      - `SYRIATEL_CASH_VERIFY_PAYMENT_PATH`
+     - `SYRIATEL_CASH_FIND_TX_PATH`
 
 3. Rebuild and redeploy app image:
 
