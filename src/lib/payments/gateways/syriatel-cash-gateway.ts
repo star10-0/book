@@ -28,6 +28,8 @@ function getSyriatelCashLiveConfig() {
   };
 }
 
+// Builds API SYRIA verification URL directly from the configured base endpoint.
+// The contract is query-param based (resource/action/tx/gsm), without a configurable find_tx path.
 function buildSyriatelFindTxEndpoint(input: {
   baseUrl: string;
   transactionReference: string;
