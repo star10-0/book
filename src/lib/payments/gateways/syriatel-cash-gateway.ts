@@ -24,13 +24,21 @@ function getSyriatelCashLiveConfig() {
     baseUrl: readRequiredEnv("SYRIATEL_CASH_API_BASE_URL"),
     apiKey: readRequiredEnv("SYRIATEL_CASH_API_KEY"),
     destinationAccount: readRequiredEnv("SYRIATEL_CASH_DESTINATION_ACCOUNT"),
-    findTxPath: process.env.SYRIATEL_CASH_FIND_TX_PATH?.trim() || "/find_tx",
     timeoutMs: readOptionalTimeoutMs("SYRIATEL_CASH_TIMEOUT_MS"),
   };
 }
 
-function buildSyriatelEndpoint(baseUrl: string, path: string) {
-  return new URL(path, baseUrl).toString();
+function buildSyriatelFindTxEndpoint(input: {
+  baseUrl: string;
+  transactionReference: string;
+  destinationAccount: string;
+}) {
+  const url = new URL(input.baseUrl);
+  url.searchParams.set("resource", "syriatel");
+  url.searchParams.set("action", "find_tx");
+  url.searchParams.set("tx", input.transactionReference);
+  url.searchParams.set("gsm", input.destinationAccount);
+  return url.toString();
 }
 
 function pickString(payload: Record<string, unknown>, keys: string[]) {
@@ -122,7 +130,7 @@ export class SyriatelCashGateway implements PaymentGateway {
 
     const verifiedAmountCents = pickNumber(payload, ["amountCents", "amount"]);
     const verifiedCurrency = pickString(payload, ["currency"]);
-    const verifiedDestination = pickString(payload, ["to", "destinationAccount", "receiverAccount", "merchantAccount", "gsm"]);
+    const verifiedDestination = pickString(payload, ["to", "gsm", "destinationAccount", "receiverAccount", "merchantAccount"]);
 
     if (typeof verifiedAmountCents === "number" && verifiedAmountCents !== input.expectedAmountCents) {
       throw new GatewayRequestError({
@@ -165,30 +173,28 @@ async function findSyriatelCashTransaction(input: {
   config: ReturnType<typeof getSyriatelCashLiveConfig>;
   transactionReference: string;
 }): Promise<Record<string, unknown>> {
-  const endpoint = buildSyriatelEndpoint(input.config.baseUrl, input.config.findTxPath);
+  const endpoint = buildSyriatelFindTxEndpoint({
+    baseUrl: input.config.baseUrl,
+    transactionReference: input.transactionReference,
+    destinationAccount: input.config.destinationAccount,
+  });
   const controller = new AbortController();
   const timeout = setTimeout(() => controller.abort(), input.config.timeoutMs);
 
   try {
     const response = await fetch(endpoint, {
-      method: "POST",
+      method: "GET",
       headers: {
-        "Content-Type": "application/json",
         "X-Api-Key": input.config.apiKey,
+        Accept: "application/json",
       },
-      body: JSON.stringify({
-        tx: input.transactionReference,
-        transactionReference: input.transactionReference,
-        account: input.config.destinationAccount,
-        destinationAccount: input.config.destinationAccount,
-      }),
       cache: "no-store",
       signal: controller.signal,
     });
 
     const textPayload = await response.text();
     const payload = parsePayload(textPayload);
-    const normalizedPayload = unwrapDataContainer(payload);
+    const normalizedPayload = normalizeSyriatelFindTxPayload(payload);
 
     safeLogProviderResponse("syriatel_cash", "verify", {
       status: response.status,
@@ -255,4 +261,27 @@ function unwrapDataContainer(payload: Record<string, unknown>) {
   }
 
   return nested as Record<string, unknown>;
+}
+
+function normalizeSyriatelFindTxPayload(payload: Record<string, unknown>) {
+  const unwrapped = unwrapDataContainer(payload);
+  const transaction = asRecord(unwrapped.transaction);
+  const account = asRecord(unwrapped.account);
+
+  return {
+    ...unwrapped,
+    ...account,
+    ...transaction,
+    found: unwrapped.found,
+    transaction,
+    account,
+  };
+}
+
+function asRecord(value: unknown): Record<string, unknown> {
+  if (!value || typeof value !== "object" || Array.isArray(value)) {
+    return {};
+  }
+
+  return value as Record<string, unknown>;
 }
