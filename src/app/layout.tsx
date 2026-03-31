@@ -1,5 +1,6 @@
 import type { Metadata, Viewport } from "next";
 import { ServiceWorkerRegister } from "@/components/pwa/sw-register";
+import { SiteHeader } from "@/components/site-header";
 import { getStoreDirection, getStoreLocale } from "@/lib/locale";
 import { getAppBaseUrl } from "@/lib/env";
 import { APP_DESCRIPTION, APP_NAME } from "@/lib/constants/app";
@@ -77,6 +78,7 @@ export default async function RootLayout({
         <ServiceWorkerRegister />
         <div className="store-page-shell min-h-screen">
           <div className="store-container pb-6 pt-2 sm:pb-8 sm:pt-3 lg:pt-4">
+            <SiteHeader />
             <div id="main-content">{children}</div>
           </div>
         </div>

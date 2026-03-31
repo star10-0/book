@@ -1,6 +1,5 @@
 import Link from "next/link";
 import { notFound } from "next/navigation";
-import { SiteHeader } from "@/components/site-header";
 import { OrderDetailsCard } from "@/components/order-details";
 import { requireUser } from "@/lib/auth-session";
 import { prisma } from "@/lib/prisma";
@@ -34,7 +33,6 @@ export default async function OrderSummaryPage({ params }: OrderSummaryPageProps
 
   return (
     <main>
-      <SiteHeader />
       <div className="mb-4 flex flex-wrap items-center justify-between gap-2">
         <h1 className="text-2xl font-bold text-slate-900">ملخص الطلب</h1>
         <div className="flex flex-wrap items-center gap-4 text-sm font-semibold">

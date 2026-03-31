@@ -1,6 +1,5 @@
 import type { Metadata } from "next";
 import type { Prisma } from "@prisma/client";
-import { SiteHeader } from "@/components/site-header";
 import { SiteFooter } from "@/components/site-footer";
 import { BooksFilters, BooksGrid, RecommendedBooksSection, SearchHighlightResult } from "@/components/storefront";
 import { getCurrentUser } from "@/lib/auth-session";
@@ -287,7 +286,6 @@ export default async function BooksPage({
 
   return (
     <main>
-      <SiteHeader />
       <div className="space-y-5 sm:space-y-6">
         {highlightedResult ? (
           <SearchHighlightResult

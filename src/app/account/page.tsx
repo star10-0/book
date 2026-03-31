@@ -1,6 +1,5 @@
 import Link from "next/link";
 import { AccessGrantType } from "@prisma/client";
-import { SiteHeader } from "@/components/site-header";
 import { requireUser } from "@/lib/auth-session";
 import { formatArabicCurrency, formatArabicDate } from "@/lib/formatters/intl";
 import { prisma } from "@/lib/prisma";
@@ -41,7 +40,6 @@ export default async function AccountPage() {
 
   return (
     <main>
-      <SiteHeader />
       <section className="space-y-6">
         <header className="space-y-2 rounded-2xl bg-white p-5 shadow-sm ring-1 ring-slate-200">
           <h1 className="text-2xl font-bold text-slate-900">مرحبًا {user.name ?? "بك"}</h1>

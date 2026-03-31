@@ -1,7 +1,6 @@
 import Link from "next/link";
 import { notFound } from "next/navigation";
 import { SiteFooter } from "@/components/site-footer";
-import { SiteHeader } from "@/components/site-header";
 import { prisma } from "@/lib/prisma";
 
 type CreatorPageProps = {
@@ -39,7 +38,6 @@ export default async function CreatorPage({ params }: CreatorPageProps) {
 
   return (
     <main>
-      <SiteHeader />
       <section className="rounded-2xl border border-slate-200 bg-white p-6 shadow-sm">
         <h1 className="text-2xl font-bold text-slate-900">{profile.displayName}</h1>
         <p className="mt-2 text-sm text-slate-600">{profile.bio ?? "لا توجد نبذة متاحة بعد."}</p>
