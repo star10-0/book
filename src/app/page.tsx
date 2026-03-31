@@ -11,7 +11,7 @@ import {
 
 export const metadata: Metadata = {
   title: "الرئيسية",
-  description: "المتجر العربي للكتب الرقمية: شراء، استئجار، وقراءة فورية عبر تجربة حديثة وسريعة.",
+  description: "تصفح متجر Amjad العربي للكتب الرقمية بحرية، مع شراء أو استئجار عند تسجيل الدخول.",
 };
 
 export default async function HomePage() {

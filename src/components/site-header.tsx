@@ -39,8 +39,8 @@ export async function SiteHeader() {
     <header className="mb-8 overflow-hidden rounded-2xl bg-white shadow-sm ring-1 ring-slate-200">
       <div className="bg-slate-900 px-4 py-2 text-xs text-slate-200 sm:px-5">
         <div className="flex items-center justify-between gap-3">
-          <p className="font-medium">منصة Amjad للكتب الرقمية</p>
-          <p className="hidden text-slate-300 sm:block">تصفح وابحث بحرية، وسجّل الدخول فقط عند الشراء أو الاستئجار</p>
+          <p className="font-medium">Amjad | مكتبة رقمية عربية</p>
+          <p className="hidden text-slate-300 sm:block">التصفح والبحث متاحان للجميع • تسجيل الدخول عند الإجراءات المحمية فقط</p>
         </div>
       </div>
 
@@ -59,7 +59,7 @@ export async function SiteHeader() {
               <input
                 type="search"
                 name="q"
-                placeholder="ابحث عن كتاب أو كاتب..."
+                placeholder="ابحث عن كتاب، كاتب، أو تصنيف..."
                 className="h-10 w-full border-0 px-3 text-sm text-slate-900 outline-none placeholder:text-slate-400"
                 aria-label="البحث في الكتب"
               />
@@ -73,11 +73,11 @@ export async function SiteHeader() {
           </form>
 
           <div className="flex items-center gap-2 lg:justify-end">
-            <div className="flex items-center overflow-hidden rounded-md border border-slate-300 text-xs">
-              <Link href="?lang=ar" className="bg-slate-100 px-2.5 py-1.5 font-semibold text-slate-700 hover:bg-slate-200">
+            <div className="flex items-center overflow-hidden rounded-md border border-slate-300 text-[11px]" aria-label="تبديل اللغة">
+              <Link href="?lang=ar" className="bg-slate-100 px-2 py-1 font-semibold text-slate-700 hover:bg-slate-200">
                 AR
               </Link>
-              <Link href="?lang=en" className="px-2.5 py-1.5 font-semibold text-slate-700 hover:bg-slate-100">
+              <Link href="?lang=en" className="px-2 py-1 font-semibold text-slate-700 hover:bg-slate-100">
                 EN
               </Link>
             </div>
@@ -102,7 +102,7 @@ export async function SiteHeader() {
             ) : (
               <Link
                 href="/login"
-                className="h-8 rounded-md border border-slate-300 px-3 text-xs font-semibold leading-8 text-slate-700 hover:bg-slate-100 focus-visible:outline-none focus-visible:ring-2 focus-visible:ring-slate-400"
+                className="inline-flex h-8 items-center rounded-md border border-slate-300 px-3 text-xs font-semibold text-slate-700 hover:bg-slate-100 focus-visible:outline-none focus-visible:ring-2 focus-visible:ring-slate-400"
               >
                 تسجيل الدخول
               </Link>
