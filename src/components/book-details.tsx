@@ -77,10 +77,15 @@ export function BookDetailsSection({
   isWishlisted,
   userReview,
 }: BookDetailsProps) {
+  const metadataObject = book.metadata && typeof book.metadata === "object" && !Array.isArray(book.metadata)
+    ? (book.metadata as Record<string, unknown>)
+    : null;
+  const publisher = typeof metadataObject?.publisher === "string" ? metadataObject.publisher : null;
+
   return (
-    <section aria-labelledby="book-details-title" className="rounded-3xl bg-white p-6 shadow-sm ring-1 ring-slate-200 sm:p-8">
-      <div className="grid gap-8 lg:grid-cols-[320px_1fr]">
-        <div>
+    <section aria-labelledby="book-details-title" className="rounded-3xl bg-white p-5 shadow-sm ring-1 ring-slate-200 sm:p-8">
+      <div className="grid gap-6 lg:grid-cols-[260px_minmax(0,1fr)_320px] lg:gap-8">
+        <div className="space-y-4">
           <CoverImage
             src={book.coverImageUrl}
             alt={`غلاف كتاب ${book.title}`}
@@ -89,21 +94,61 @@ export function BookDetailsSection({
             className="h-auto w-full rounded-2xl object-cover shadow-sm ring-1 ring-slate-200"
             priority
           />
+          <WishlistSection bookId={book.id} slug={book.slug} isLoggedIn={isLoggedIn} isWishlisted={isWishlisted} />
         </div>
 
         <div className="space-y-6">
-          <header className="space-y-3">
-            <span className="inline-flex rounded-full bg-indigo-50 px-3 py-1 text-xs font-semibold text-indigo-700">
+          <header className="space-y-4">
+            <span className="inline-flex rounded-full bg-indigo-50 px-3 py-1 text-xs font-semibold text-indigo-700 ring-1 ring-indigo-200">
               {book.category}
             </span>
             <h1 id="book-details-title" className="text-3xl font-bold text-slate-900 sm:text-4xl">
               {book.title}
             </h1>
-            <p className="text-base text-slate-700">تأليف: {book.author}</p>
-            <p className="text-sm font-semibold text-amber-600">
-              {averageRating > 0 ? `★ ${averageRating.toFixed(1)} من 5 (${reviewsCount} مراجعة)` : "لا توجد تقييمات بعد"}
-            </p>
+            <div className="space-y-1 text-sm text-slate-700 sm:text-base">
+              <p>
+                تأليف: <span className="font-semibold text-slate-900">{book.author}</span>
+              </p>
+              {publisher ? (
+                <p>
+                  الناشر: <span className="font-semibold text-slate-900">{publisher}</span>
+                </p>
+              ) : null}
+            </div>
+            <div className="flex flex-wrap items-center gap-2 text-sm font-semibold">
+              <span className="rounded-full bg-amber-50 px-3 py-1 text-amber-700 ring-1 ring-amber-200">
+                {averageRating > 0 ? `★ ${averageRating.toFixed(1)} من 5` : "لا توجد تقييمات بعد"}
+              </span>
+              <span className="rounded-full bg-slate-100 px-3 py-1 text-slate-700">{reviewsCount} مراجعة</span>
+              <span className="rounded-full bg-slate-100 px-3 py-1 text-slate-700">{offers.length} عرض متاح</span>
+            </div>
           </header>
+
+          <section aria-label="إجراءات سريعة" className="flex flex-wrap gap-2">
+            {book.publicReadUrl ? (
+              <Link
+                href={book.publicReadUrl}
+                className="inline-flex rounded-xl bg-emerald-600 px-4 py-2 text-sm font-semibold text-white hover:bg-emerald-700 focus-visible:outline-none focus-visible:ring-2 focus-visible:ring-emerald-300"
+              >
+                {book.publicReadLabel ?? "اقرأ الآن"}
+              </Link>
+            ) : null}
+            {book.publicDownloadUrl ? (
+              <Link
+                href={book.publicDownloadUrl}
+                target="_blank"
+                className="inline-flex rounded-xl border border-indigo-300 px-4 py-2 text-sm font-semibold text-indigo-700 hover:bg-indigo-50 focus-visible:outline-none focus-visible:ring-2 focus-visible:ring-indigo-300"
+              >
+                تحميل
+              </Link>
+            ) : null}
+            <Link
+              href="#book-reviews"
+              className="inline-flex rounded-xl border border-slate-300 px-4 py-2 text-sm font-semibold text-slate-700 hover:bg-slate-50 focus-visible:outline-none focus-visible:ring-2 focus-visible:ring-slate-300"
+            >
+              تقييمات القرّاء
+            </Link>
+          </section>
 
           <section aria-labelledby="book-description" className="space-y-2">
             <h2 id="book-description" className="text-lg font-bold text-slate-900">
@@ -114,11 +159,15 @@ export function BookDetailsSection({
             </p>
           </section>
 
-          <WishlistSection bookId={book.id} slug={book.slug} isLoggedIn={isLoggedIn} isWishlisted={isWishlisted} />
-
-          <BookMetadata publicationDate={book.publicationDate} metadata={book.metadata} />
-
-          <BookOffers offers={offers} />
+          <BookMetadata
+            publicationDate={book.publicationDate}
+            metadata={book.metadata}
+            author={book.author}
+            category={book.category}
+            averageRating={averageRating}
+            reviewsCount={reviewsCount}
+            offers={offers}
+          />
 
           <section aria-labelledby="book-content-access" className="space-y-3">
             <h2 id="book-content-access" className="text-lg font-bold text-slate-900">
@@ -127,27 +176,7 @@ export function BookDetailsSection({
             {book.accessGuidance ? (
               <p className="rounded-xl border border-indigo-200 bg-indigo-50 px-4 py-3 text-sm text-indigo-900">{book.accessGuidance}</p>
             ) : null}
-            {book.publicReadUrl || book.publicDownloadUrl ? (
-              <div className="flex flex-wrap gap-3">
-                {book.publicReadUrl ? (
-                  <Link
-                    href={book.publicReadUrl}
-                    className="inline-flex rounded-xl bg-emerald-600 px-4 py-2 text-sm font-semibold text-white hover:bg-emerald-700 focus-visible:outline-none focus-visible:ring-2 focus-visible:ring-emerald-300"
-                  >
-                    {book.publicReadLabel ?? "اقرأ الآن"}
-                  </Link>
-                ) : null}
-                {book.publicDownloadUrl ? (
-                  <Link
-                    href={book.publicDownloadUrl}
-                    target="_blank"
-                    className="inline-flex rounded-xl border border-indigo-300 px-4 py-2 text-sm font-semibold text-indigo-700 hover:bg-indigo-50 focus-visible:outline-none focus-visible:ring-2 focus-visible:ring-indigo-300"
-                  >
-                    تحميل
-                  </Link>
-                ) : null}
-              </div>
-            ) : (
+            {book.publicReadUrl || book.publicDownloadUrl ? null : (
               <div className="space-y-2 rounded-xl border border-dashed border-slate-300 bg-slate-50 px-4 py-3 text-sm text-slate-600">
                 <p>لا تتوفر قراءة أو تحميل مباشر لهذا الكتاب حاليًا. استخدم خيارات الشراء أو الإيجار للوصول إلى المحتوى داخل المكتبة.</p>
                 {book.contentStateNote ? <p className="text-xs font-semibold text-slate-700">{book.contentStateNote}</p> : null}
@@ -155,6 +184,15 @@ export function BookDetailsSection({
             )}
           </section>
 
+          <div className="rounded-xl border border-slate-200 bg-slate-50 p-4 text-sm text-slate-700">
+            {userReview
+              ? "يمكنك تحديث تقييمك ومراجعتك لهذا الكتاب في قسم المراجعات أدناه."
+              : "أضف تقييمك ومراجعتك لمساعدة القراء الآخرين في اختيار الكتاب المناسب."}
+          </div>
+        </div>
+
+        <aside className="space-y-4 lg:sticky lg:top-24 lg:self-start">
+          <BookOffers offers={offers} />
           <OrderSummaryCard
             bookId={book.id}
             bookSlug={book.slug}
@@ -162,13 +200,10 @@ export function BookDetailsSection({
             isLoggedIn={isLoggedIn}
             offers={offers}
           />
-
-          <div className="rounded-xl border border-slate-200 bg-slate-50 p-4 text-sm text-slate-700">
-            {userReview
-              ? "يمكنك تحديث تقييمك ومراجعتك لهذا الكتاب في قسم المراجعات أدناه."
-              : "أضف تقييمك ومراجعتك لمساعدة القراء الآخرين في اختيار الكتاب المناسب."}
+          <div className="rounded-xl border border-slate-200 bg-slate-50 p-4 text-xs leading-6 text-slate-600">
+            بعد الشراء أو الاستئجار، ستجد الكتاب داخل مكتبتك الرقمية مباشرة.
           </div>
-        </div>
+        </aside>
       </div>
     </section>
   );
@@ -215,13 +250,40 @@ function WishlistSection({
   );
 }
 
-function BookMetadata({ publicationDate, metadata }: { publicationDate: Date | null; metadata: unknown }) {
+function BookMetadata({
+  publicationDate,
+  metadata,
+  author,
+  category,
+  averageRating,
+  reviewsCount,
+  offers,
+}: {
+  publicationDate: Date | null;
+  metadata: unknown;
+  author: string;
+  category: string;
+  averageRating: number;
+  reviewsCount: number;
+  offers: Pick<BookOffer, "id" | "type" | "priceCents" | "currency" | "rentalDays">[];
+}) {
   const metadataObject = metadata && typeof metadata === "object" && !Array.isArray(metadata) ? (metadata as Record<string, unknown>) : null;
   const pagesValue = metadataObject?.pages;
   const languageValue = metadataObject?.language;
   const publisherValue = metadataObject?.publisher;
+  const downloadsValue = metadataObject?.downloads;
+  const readersValue = metadataObject?.readers;
+  const formats = Array.from(
+    new Set(
+      offers.map((offer) =>
+        offer.type === "PURCHASE" ? "شراء رقمي" : offer.rentalDays ? `استئجار (${offer.rentalDays} يوم)` : "استئجار رقمي",
+      ),
+    ),
+  );
 
   const metadataItems = [
+    { label: "المؤلف", value: author },
+    { label: "التصنيف", value: category },
     { label: "اللغة", value: "العربية" },
     { label: "اللغة (metadata)", value: typeof languageValue === "string" ? languageValue : null },
     { label: "عدد الصفحات", value: typeof pagesValue === "number" || typeof pagesValue === "string" ? String(pagesValue) : null },
@@ -229,6 +291,17 @@ function BookMetadata({ publicationDate, metadata }: { publicationDate: Date | n
     {
       label: "سنة النشر",
       value: publicationDate ? String(publicationDate.getFullYear()) : null,
+    },
+    { label: "التقييم", value: averageRating > 0 ? `${averageRating.toFixed(1)} / 5` : null },
+    { label: "عدد المراجعات", value: reviewsCount > 0 ? String(reviewsCount) : null },
+    { label: "الصيغ/العروض المتاحة", value: formats.length > 0 ? formats.join("، ") : null },
+    {
+      label: "التنزيلات",
+      value: typeof downloadsValue === "number" || typeof downloadsValue === "string" ? String(downloadsValue) : null,
+    },
+    {
+      label: "القرّاء",
+      value: typeof readersValue === "number" || typeof readersValue === "string" ? String(readersValue) : null,
     },
   ].filter((item) => item.value);
 
@@ -255,8 +328,8 @@ function BookMetadata({ publicationDate, metadata }: { publicationDate: Date | n
 
 function BookOffers({ offers }: { offers: Pick<BookOffer, "id" | "type" | "priceCents" | "currency" | "rentalDays">[] }) {
   return (
-    <section aria-labelledby="book-offers" className="space-y-3">
-      <h2 id="book-offers" className="text-lg font-bold text-slate-900">
+    <section aria-labelledby="book-offers" className="space-y-3 rounded-2xl border border-slate-200 bg-white p-4">
+      <h2 id="book-offers" className="text-base font-bold text-slate-900">
         العروض المتاحة
       </h2>
 
@@ -268,7 +341,7 @@ function BookOffers({ offers }: { offers: Pick<BookOffer, "id" | "type" | "price
       ) : (
         <ul className="space-y-2">
           {offers.map((offer) => (
-            <li key={offer.id} className="flex items-center justify-between rounded-xl border border-slate-200 px-4 py-3 text-sm">
+            <li key={offer.id} className="flex items-center justify-between rounded-xl border border-slate-200 px-3 py-2 text-sm">
               <div className="flex items-center gap-2">
                 <span className="font-semibold text-slate-800">{offerLabelByType[offer.type]}</span>
                 {offer.type === "RENTAL" && offer.rentalDays ? (
@@ -389,13 +462,13 @@ export function RelatedBooksSection({ books }: RelatedBooksProps) {
       ) : (
         <div className="mt-6 grid gap-4 sm:grid-cols-2 lg:grid-cols-4">
           {books.map((book) => (
-            <article key={book.id} className="overflow-hidden rounded-2xl border border-slate-200 bg-slate-50">
+            <article key={book.id} className="overflow-hidden rounded-2xl border border-slate-200 bg-white transition hover:shadow-sm">
               <CoverImage
                 src={book.coverImageUrl}
                 alt={`غلاف كتاب ${book.title}`}
                 width={480}
                 height={720}
-                className="h-48 w-full object-cover"
+                className="h-52 w-full object-cover"
               />
               <div className="space-y-3 p-4">
                 <div>
