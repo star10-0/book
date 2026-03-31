@@ -139,7 +139,7 @@ export function OrderPaymentPanel({
       setMessage("");
       setMessageTone("info");
     }
-  }, [selectedProvider]);
+  }, [selectedProvider, attemptStatus]);
 
   useEffect(() => {
     if (!copyFeedback) return;
