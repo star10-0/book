@@ -85,13 +85,11 @@ export async function SiteHeader() {
               <summary className="inline-flex h-9 cursor-pointer list-none items-center rounded-md border border-slate-300 bg-white px-2.5 text-[11px] font-semibold text-slate-700 hover:bg-slate-50">
                 اللغة
               </summary>
-              <div className="absolute end-0 top-10 z-20 w-28 rounded-md border border-slate-200 bg-white p-1 shadow-lg">
-                <Link href="?lang=ar" className="block rounded px-2 py-1.5 text-xs hover:bg-slate-100">
+              <div className="absolute end-0 top-10 z-20 w-40 rounded-md border border-slate-200 bg-white p-1 shadow-lg">
+                <p className="block rounded bg-slate-100 px-2 py-1.5 text-xs font-semibold text-slate-700" aria-current="true">
                   العربية
-                </Link>
-                <Link href="?lang=en" className="mt-1 block rounded px-2 py-1.5 text-xs hover:bg-slate-100">
-                  English
-                </Link>
+                </p>
+                <p className="mt-1 block rounded px-2 py-1.5 text-xs text-slate-500">English (قريبًا)</p>
               </div>
             </details>
 

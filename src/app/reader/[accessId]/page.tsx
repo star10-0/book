@@ -188,6 +188,7 @@ export default async function ReaderPage({ params }: ReaderPageProps) {
           initialProgressPercent={readingProgress?.progressPercent ?? 0}
           initialLocator={readingProgress?.locator ?? "page:1"}
           source={readerSource}
+          returnHref="/account/library"
         />
       ) : (
         <section className="space-y-4 rounded-2xl bg-amber-50 p-6 ring-1 ring-amber-200">

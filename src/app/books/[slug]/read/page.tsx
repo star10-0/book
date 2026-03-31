@@ -1,5 +1,4 @@
 import { FileKind } from "@prisma/client";
-import Link from "next/link";
 import { notFound } from "next/navigation";
 import { PublicReaderShell } from "@/components/public-reader-shell";
 import { SiteHeader } from "@/components/site-header";
@@ -94,16 +93,13 @@ export default async function PublicReadPage({ params }: PublicReadPageProps) {
     <main className="space-y-6" dir="rtl">
       <SiteHeader />
       <div className="space-y-3">
-        <Link href={`/books/${book.slug}`} className="text-sm font-semibold text-indigo-700 hover:text-indigo-600">
-          ← العودة إلى صفحة الكتاب
-        </Link>
         {contentAccess.canReadPreview ? (
           <p className="rounded-xl border border-amber-200 bg-amber-50 px-4 py-3 text-sm text-amber-800">
             أنت تقرأ عينة من الكتاب. للحصول على الوصول الكامل استخدم خيارات الشراء/الإيجار.
           </p>
         ) : null}
       </div>
-      <PublicReaderShell bookTitle={book.titleAr} source={readerSource} />
+      <PublicReaderShell bookTitle={book.titleAr} source={readerSource} returnHref={`/books/${book.slug}`} />
     </main>
   );
 }

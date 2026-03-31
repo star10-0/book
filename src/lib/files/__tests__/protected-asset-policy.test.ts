@@ -34,14 +34,25 @@ test("public download allows attachments", () => {
   );
 });
 
-test("active grant allows read/download even in paid mode", () => {
+test("active grant allows inline read in paid mode", () => {
+  assert.deepEqual(
+    canAccessProtectedAsset({
+      policy: ContentAccessPolicy.PAID_ONLY,
+      hasActiveGrant: true,
+      requestedDisposition: "inline",
+    }),
+    { allowed: true, disposition: "inline" },
+  );
+});
+
+test("active grant does not bypass download restriction", () => {
   assert.deepEqual(
     canAccessProtectedAsset({
       policy: ContentAccessPolicy.PAID_ONLY,
       hasActiveGrant: true,
       requestedDisposition: "attachment",
     }),
-    { allowed: true, disposition: "attachment" },
+    { allowed: false, reason: "DOWNLOAD_NOT_ALLOWED" },
   );
 });
 

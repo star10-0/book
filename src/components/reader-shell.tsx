@@ -1,6 +1,7 @@
 "use client";
 
 import { useCallback, useEffect, useMemo, useRef, useState } from "react";
+import Link from "next/link";
 import { getReaderEngine } from "@/lib/reader/engines";
 import { normalizeProgress } from "@/lib/reader/locator";
 import { ReaderDocumentSource, ReaderTheme } from "@/lib/reader/types";
@@ -13,6 +14,7 @@ type ReaderShellProps = {
   initialProgressPercent: number;
   initialLocator: string | null;
   source: ReaderDocumentSource | null;
+  returnHref: string;
 };
 
 type ReaderControls = {
@@ -37,7 +39,7 @@ type Stroke = {
   points: [number, number][];
 };
 
-export function ReaderShell({ accessId, bookTitle, initialProgressPercent, initialLocator, source }: ReaderShellProps) {
+export function ReaderShell({ accessId, bookTitle, initialProgressPercent, initialLocator, source, returnHref }: ReaderShellProps) {
   const [progressPercent, setProgressPercent] = useState(normalizeProgress(initialProgressPercent));
   const [locator, setLocator] = useState(initialLocator ?? "page:1");
   const [theme, setTheme] = useState<ReaderTheme>("light");
@@ -208,6 +210,9 @@ export function ReaderShell({ accessId, bookTitle, initialProgressPercent, initi
   return (
     <section className="space-y-4 rounded-2xl bg-white p-4 shadow-sm ring-1 ring-slate-200 dark:bg-slate-950 dark:ring-slate-800 lg:p-6">
       <header className="space-y-1">
+        <Link href={returnHref} className="inline-flex text-xs font-semibold text-indigo-700 hover:text-indigo-600">
+          العودة إلى مكتبتي
+        </Link>
         <p className="text-xs font-medium text-indigo-600">قارئ الكتاب</p>
         <h1 className="text-2xl font-bold text-slate-900 dark:text-slate-100">{bookTitle}</h1>
         <p className="text-sm text-slate-500 dark:text-slate-400">
