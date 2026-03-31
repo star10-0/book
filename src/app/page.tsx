@@ -11,7 +11,7 @@ import {
 
 export const metadata: Metadata = {
   title: "الرئيسية",
-  description: "اكتشف أحدث الكتب الرقمية العربية للشراء والاستئجار عبر تجربة قراءة حديثة وسريعة.",
+  description: "المتجر العربي للكتب الرقمية: شراء، استئجار، وقراءة فورية عبر تجربة حديثة وسريعة.",
 };
 
 export default async function HomePage() {
