@@ -73,15 +73,15 @@ export async function SiteHeader() {
   const canAccessAdmin = user?.role === "ADMIN";
 
   return (
-    <header className="sticky top-2 z-40 mb-3 overflow-visible rounded-2xl bg-white shadow-sm ring-1 ring-slate-200 sm:mb-4">
-      <div className="px-3 py-2 sm:px-4 sm:py-2.5">
-        <div className="grid gap-2.5 lg:grid-cols-[auto_minmax(0,1fr)_auto] lg:items-center">
-          <div className="flex items-center gap-2">
+    <header className="sticky top-1 z-40 mb-3 overflow-visible rounded-2xl bg-white shadow-sm ring-1 ring-slate-200 sm:mb-4">
+      <div className="px-3 py-2 sm:px-4">
+        <div className="grid gap-2 lg:grid-cols-[auto_minmax(0,1fr)_auto] lg:items-center">
+          <div className="flex items-center gap-1.5 sm:gap-2">
             <Link
               href="/"
               className="rounded-lg px-1 py-0.5 focus-visible:outline-none focus-visible:ring-2 focus-visible:ring-indigo-400"
             >
-              <p className="text-2xl font-black leading-none tracking-tight text-slate-900 sm:text-3xl">أمجد</p>
+              <p className="text-2xl font-black leading-none tracking-tight text-slate-900 sm:text-[1.75rem]">أمجد</p>
               <p className="mt-0.5 text-[10px] font-semibold uppercase tracking-[0.18em] text-indigo-600">{t.brandSub}</p>
             </Link>
 
@@ -133,7 +133,7 @@ export async function SiteHeader() {
           </div>
         </div>
 
-        <div className="mt-2 flex flex-wrap gap-1.5">
+        <div className="mt-1.5 flex flex-wrap gap-1.5">
           <Link href="/books" className="store-chip bg-indigo-50 text-indigo-700 hover:bg-indigo-100">
             {t.allBooks}
           </Link>
@@ -146,8 +146,8 @@ export async function SiteHeader() {
         </div>
       </div>
 
-      <nav aria-label="التنقل الرئيسي" className="border-t border-slate-200 bg-slate-50 px-3 py-2 sm:px-4">
-        <ul className="flex min-w-max flex-wrap items-center gap-1.5 overflow-x-auto pb-1">
+      <nav aria-label="التنقل الرئيسي" className="border-t border-slate-200 bg-slate-50 px-3 py-1.5 sm:px-4">
+        <ul className="flex min-w-0 flex-wrap items-center gap-1.5 overflow-x-auto pb-1">
           {primaryLinks.map((link) => (
             <li key={link.href}>
               <Link

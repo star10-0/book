@@ -7,7 +7,7 @@
 }
 
 body {
-  @apply bg-slate-50 text-slate-900 antialiased;
+  @apply overflow-x-clip bg-slate-50 text-slate-900 antialiased;
   font-feature-settings: "kern" 1;
   text-rendering: optimizeLegibility;
 }

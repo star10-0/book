@@ -75,103 +75,6 @@ type BooksFilterCategory = {
   nameAr: string;
 };
 
-
-export function HeroSection() {
-  return (
-    <section
-      className="relative overflow-hidden rounded-3xl border border-indigo-200/50 bg-gradient-to-l from-slate-950 via-indigo-900 to-violet-700 p-5 text-white shadow-[0_24px_60px_-30px_rgba(15,23,42,0.85)] sm:p-8 lg:p-10"
-      aria-labelledby="hero-title"
-    >
-      <div className="pointer-events-none absolute inset-0 bg-[radial-gradient(circle_at_top,_rgba(255,255,255,0.22),_transparent_42%)]" aria-hidden />
-      <div className="pointer-events-none absolute -start-16 bottom-0 h-52 w-52 rounded-full bg-indigo-400/25 blur-3xl" aria-hidden />
-
-      <div className="relative grid gap-6 lg:grid-cols-[minmax(0,1fr)_320px] lg:items-end">
-        <div>
-          <p className="text-[11px] font-semibold tracking-wide text-indigo-100">متجر Amjad الرقمي</p>
-          <h1 id="hero-title" className="mt-2 text-3xl font-black leading-tight sm:text-4xl lg:text-5xl">
-            واجهتك الأسرع لاكتشاف وشراء الكتب العربية الرقمية
-          </h1>
-          <p className="mt-3 max-w-2xl text-sm leading-7 text-indigo-100/95 sm:text-base">
-            عروض يومية، كتب مميزة، وتجربة شراء أو استئجار واضحة — كل ما تحتاجه لبناء مكتبتك الرقمية في دقائق.
-          </p>
-          <div className="mt-6 flex flex-wrap items-center gap-2.5">
-            <Link
-              href="/books"
-              className="inline-flex h-9 items-center justify-center rounded-md bg-amber-300 px-4 text-xs font-bold text-slate-900 transition hover:bg-amber-200 focus-visible:outline-none focus-visible:ring-2 focus-visible:ring-white"
-            >
-              ابدأ التسوق
-            </Link>
-            <Link
-              href="/books?offer=rent"
-              className="inline-flex h-9 items-center justify-center rounded-md border border-indigo-200/60 bg-white/10 px-4 text-xs font-semibold text-white transition hover:bg-white/20 focus-visible:outline-none focus-visible:ring-2 focus-visible:ring-white"
-            >
-              عروض الاستئجار
-            </Link>
-          </div>
-        </div>
-
-        <div className="grid gap-2 sm:grid-cols-3 lg:grid-cols-1">
-          {[
-            { label: "كتب رقمية", value: "+120" },
-            { label: "عروض شراء", value: "يوميًا" },
-            { label: "استئجار مرن", value: "7-30 يوم" },
-          ].map((stat) => (
-            <div key={stat.label} className="rounded-xl border border-white/15 bg-white/10 p-3 backdrop-blur-sm">
-              <p className="text-[11px] text-indigo-100">{stat.label}</p>
-              <p className="mt-1 text-base font-extrabold">{stat.value}</p>
-            </div>
-          ))}
-          <div className="rounded-xl border border-amber-200/60 bg-amber-100/90 p-3 text-slate-900">
-            <p className="text-[11px] font-semibold">عرض ترويجي</p>
-            <p className="mt-1 text-sm font-black">خصومات دورية على الإصدارات الجديدة</p>
-          </div>
-        </div>
-      </div>
-    </section>
-  );
-}
-
-export function PromoHighlightsSection({
-  categories,
-  books,
-}: {
-  categories: CategoryPreviewItem[];
-  books: FeaturedBookItem[];
-}) {
-  return (
-    <section className="grid gap-3 lg:grid-cols-[1.4fr_1fr]" aria-label="عروض ترويجية">
-      <div className="rounded-2xl border border-slate-200 bg-white p-4 shadow-sm">
-        <p className="text-xs font-semibold text-slate-500">أقسام المتجر</p>
-        <div className="mt-3 grid gap-2 sm:grid-cols-2">
-          {categories.slice(0, 4).map((category) => (
-            <Link
-              key={category.name}
-              href="/books"
-              className="rounded-xl border border-slate-200 bg-slate-50 px-3 py-2.5 text-sm font-semibold text-slate-800 hover:bg-indigo-50 hover:text-indigo-700"
-            >
-              {category.name}
-            </Link>
-          ))}
-        </div>
-      </div>
-      <div className="rounded-2xl border border-indigo-200 bg-gradient-to-l from-indigo-600 to-violet-600 p-4 text-white shadow-sm">
-        <p className="text-xs font-semibold text-indigo-100">مميز هذا الأسبوع</p>
-        <div className="mt-3 space-y-2">
-          {books.slice(0, 2).map((book) => (
-            <Link key={book.id} href={`/books/${book.slug}`} className="flex items-center gap-3 rounded-xl bg-white/10 p-2.5 hover:bg-white/15">
-              <CoverImage src={book.coverImageUrl} alt={`غلاف ${book.title}`} width={120} height={170} className="h-16 w-12 rounded object-cover" />
-              <div className="min-w-0">
-                <p className="line-clamp-1 text-sm font-bold">{book.title}</p>
-                <p className="line-clamp-1 text-[11px] text-indigo-100">{book.author}</p>
-              </div>
-            </Link>
-          ))}
-        </div>
-      </div>
-    </section>
-  );
-}
-
 export function FeaturedBooksSection({ books }: { books: FeaturedBookItem[] }) {
   return (
     <section className="store-surface" aria-labelledby="featured-title">
@@ -317,7 +220,7 @@ export function BooksFilters({ categories, search, category, offerType, sort, re
   const selectedCategoryLabel = categories.find((item) => item.slug === category)?.nameAr;
 
   return (
-    <section className="rounded-2xl bg-white p-5 shadow-sm ring-1 ring-slate-200 sm:p-6">
+    <section className="rounded-2xl bg-white p-4 shadow-sm ring-1 ring-slate-200 sm:p-5 lg:p-6">
       <div className="mb-4 flex flex-wrap items-center justify-between gap-2.5 border-b border-slate-100 pb-4">
         <div>
           <p className="text-[11px] font-semibold text-slate-500">البحث والاكتشاف</p>
@@ -338,7 +241,7 @@ export function BooksFilters({ categories, search, category, offerType, sort, re
           />
         </label>
 
-        <div className="grid gap-4 sm:grid-cols-2 xl:grid-cols-3">
+        <div className="grid gap-3 sm:grid-cols-2 xl:grid-cols-1 2xl:grid-cols-3">
           <label className="space-y-2 text-sm font-medium text-slate-700">
             التصنيف
             <select
@@ -402,7 +305,7 @@ export function BooksFilters({ categories, search, category, offerType, sort, re
           ) : null}
         </div>
 
-        <div className="flex flex-wrap items-center gap-2.5">
+        <div className="flex flex-wrap items-center gap-2.5 pt-1">
           <button
             type="submit"
             className="store-btn-primary"
@@ -487,7 +390,7 @@ function AddToCartAction({
     return (
       <Link
         href={`/login?callbackUrl=${encodeURIComponent(addToCartHref)}`}
-        className="store-btn-primary h-9 px-3 text-xs"
+        className="store-btn-primary h-9 min-w-[9rem] px-3 text-[11px] sm:text-xs"
       >
         سجّل الدخول للإضافة إلى السلة
       </Link>
@@ -495,7 +398,7 @@ function AddToCartAction({
   }
 
   return (
-    <Link href={addToCartHref} className="store-btn-primary h-9 px-3 text-xs">
+    <Link href={addToCartHref} className="store-btn-primary h-9 min-w-[7.5rem] px-3 text-xs">
       أضف إلى السلة
     </Link>
   );
@@ -655,7 +558,7 @@ export function BooksGrid({
         <p className="text-xs font-semibold text-slate-500">{books.length} كتاب</p>
       </div>
 
-      <div className="grid gap-4 sm:grid-cols-2 lg:grid-cols-3 2xl:grid-cols-4">
+      <div className="grid gap-3.5 sm:grid-cols-2 lg:grid-cols-3 2xl:grid-cols-4">
         {books.map((book) => (
           <article key={book.id} className="group flex h-full flex-col overflow-hidden rounded-2xl bg-white shadow-sm ring-1 ring-slate-200 transition hover:-translate-y-0.5 hover:shadow-md focus-within:ring-indigo-300">
             <CoverImage src={book.coverImageUrl} alt={`غلاف كتاب ${book.title}`} width={600} height={900} className="h-52 w-full object-cover" />

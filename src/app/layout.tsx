@@ -68,7 +68,7 @@ export default async function RootLayout({
 
   return (
     <html lang={locale} dir={dir}>
-      <body className="font-sans bg-slate-50 text-slate-900">
+      <body className="min-h-screen font-sans bg-slate-50 text-slate-900">
         <a
           href="#main-content"
           className="sr-only focus:not-sr-only focus:fixed focus:right-4 focus:top-4 focus:z-50 focus:rounded-lg focus:bg-slate-900 focus:px-4 focus:py-2 focus:text-sm focus:font-semibold focus:text-white"
@@ -77,9 +77,11 @@ export default async function RootLayout({
         </a>
         <ServiceWorkerRegister />
         <div className="store-page-shell min-h-screen">
-          <div className="store-container pb-6 pt-2 sm:pb-8 sm:pt-3 lg:pt-4">
+          <div className="store-container flex min-h-screen flex-col pb-5 pt-2 sm:pb-7 sm:pt-3 lg:pt-4">
             <SiteHeader />
-            <div id="main-content">{children}</div>
+            <div id="main-content" className="flex-1">
+              {children}
+            </div>
           </div>
         </div>
 
