@@ -57,6 +57,21 @@ export default async function HomePage() {
       <div className="space-y-8 sm:space-y-10">
         <HeroSection />
 
+        <section className="grid gap-3 rounded-2xl bg-white p-4 shadow-sm ring-1 ring-slate-200 sm:grid-cols-3">
+          <div className="rounded-xl bg-slate-50 p-3">
+            <p className="text-xs text-slate-500">تجربة التسوق</p>
+            <p className="mt-1 text-sm font-bold text-slate-900">شراء أو استئجار بسهولة</p>
+          </div>
+          <div className="rounded-xl bg-slate-50 p-3">
+            <p className="text-xs text-slate-500">المحتوى</p>
+            <p className="mt-1 text-sm font-bold text-slate-900">تصنيفات متنوعة وكتب حديثة</p>
+          </div>
+          <div className="rounded-xl bg-slate-50 p-3">
+            <p className="text-xs text-slate-500">بعد الشراء</p>
+            <p className="mt-1 text-sm font-bold text-slate-900">الوصول الفوري داخل مكتبتك</p>
+          </div>
+        </section>
+
         <RecommendedBooksSection
           books={recommendedBooks
             .map((book, index) => {

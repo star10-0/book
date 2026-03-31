@@ -166,7 +166,7 @@ function validateEnvironment(): EnvIssue[] {
       issues.push({
         severity: "warning",
         key: deprecatedKey,
-        message: `${deprecatedKey} is deprecated and ignored by the current Syriatel Cash manual-transfer/find_tx integration.`,
+        message: `${deprecatedKey} is deprecated and ignored by the current Syriatel Cash manual-transfer verification integration.`,
       });
     }
   }

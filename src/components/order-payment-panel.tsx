@@ -35,22 +35,22 @@ const paymentOptions: Array<{
     provider: PaymentProvider.SHAM_CASH,
     label: "Sham Cash",
     tone: "indigo",
-    instructions: "حوّل المبلغ إلى حساب Sham Cash الموضّح، ثم أدخل رقم العملية بعد نجاح التحويل لإرسالها للتحقق.",
+    instructions: "استخدم QR أو حوّل يدويًا إلى حساب Sham Cash ثم أدخل رقم العملية لتأكيد الدفع.",
   },
   {
     provider: PaymentProvider.SYRIATEL_CASH,
     label: "Syriatel Cash",
     tone: "emerald",
-    instructions: "حوّل المبلغ إلى حساب Syriatel Cash الموضّح، ثم أدخل رقم العملية بعد نجاح التحويل لإرسالها للتحقق.",
+    instructions: "حوّل المبلغ إلى حساب Syriatel Cash الظاهر ثم أدخل رقم العملية لمتابعة التحقق.",
   },
 ];
 
 const statusLabel: Record<UiStatus, string> = {
-  idle: "بانتظار بدء الدفع",
-  pending: "بانتظار التحقق",
-  verifying: "جاري التحقق الآن",
-  success: "تم الدفع بنجاح",
-  failure: "فشل الدفع",
+  idle: "جاهز لبدء الدفع",
+  pending: "بانتظار رقم العملية",
+  verifying: "جاري التحقق من العملية",
+  success: "تم تأكيد الدفع",
+  failure: "تعذّر تأكيد الدفع",
 };
 
 const promoAudienceHints = [
@@ -68,7 +68,7 @@ function mapAttemptStatusToUiStatus(status?: PaymentAttemptStatus): UiStatus {
 }
 
 function toArabicFailureMessage(reason?: string | null): string {
-  if (!reason) return "تعذر تأكيد عملية الدفع. تحقق من رقم العملية ثم حاول مرة أخرى.";
+  if (!reason) return "تعذّر تأكيد الدفع. تأكد من رقم العملية ثم أعد المحاولة.";
 
   const normalized = reason.trim();
   const hasArabicCharacters = /[\u0600-\u06FF]/.test(normalized);
@@ -76,7 +76,7 @@ function toArabicFailureMessage(reason?: string | null): string {
     return normalized;
   }
 
-  return "تعذر تأكيد عملية الدفع لدى مزود الخدمة حاليًا. راجع رقم العملية ثم أعد المحاولة.";
+  return "تعذّر تأكيد الدفع لدى مزود الخدمة حاليًا. راجع رقم العملية ثم حاول مرة أخرى.";
 }
 
 export function OrderPaymentPanel({
@@ -126,7 +126,7 @@ export function OrderPaymentPanel({
     setAttemptId(initialAttemptId);
     setAttemptStatus(initialAttemptStatus);
     if (initialAttemptStatus === "PAID") {
-      setMessage("تم تأكيد الدفع بنجاح ويمكنك الآن الوصول إلى محتوى الطلب.");
+      setMessage("تم تأكيد الدفع بنجاح ويمكنك الآن الوصول إلى كتبك مباشرة.");
       setMessageTone("success");
     }
   }, [initialAttemptId, initialAttemptStatus]);
@@ -185,7 +185,7 @@ export function OrderPaymentPanel({
 
   const applyPromoCode = () => {
     if (!promoCodeInput.trim()) {
-      setMessage("الرجاء إدخال رمز الخصم أولاً.");
+      setMessage("الرجاء إدخال رمز الخصم أولًا.");
       setMessageTone("error");
       return;
     }
@@ -233,7 +233,7 @@ export function OrderPaymentPanel({
         return;
       }
 
-      setMessage("تم إتمام الطلب المجاني ومنح الوصول مباشرة.");
+      setMessage("تم إتمام الطلب المجاني بنجاح وتم منحك الوصول مباشرة.");
       setMessageTone("success");
       router.refresh();
     });
@@ -241,7 +241,7 @@ export function OrderPaymentPanel({
 
   const createPaymentAttempt = () => {
     if (selectedDestinationMissing) {
-      setMessage("بيانات حساب الاستلام لهذا المزود غير مهيأة على الخادم بعد.");
+      setMessage("حساب الاستلام غير متاح حاليًا لهذه الوسيلة.");
       setMessageTone("error");
       return;
     }
@@ -265,7 +265,7 @@ export function OrderPaymentPanel({
       };
 
       if (!response.ok || !payload.attempt) {
-        setMessage(payload.message ?? "تعذر بدء محاولة الدفع.");
+        setMessage(payload.message ?? "تعذّر بدء عملية الدفع.");
         setMessageTone("error");
         return;
       }
@@ -274,8 +274,8 @@ export function OrderPaymentPanel({
       setAttemptStatus(payload.attempt.status);
       setMessage(
         selectedProvider === PaymentProvider.SHAM_CASH
-          ? "تم تجهيز محاولة الدفع عبر Sham Cash. أكمل التحويل ثم أدخل رقم العملية."
-          : "تم تجهيز محاولة الدفع عبر Syriatel Cash. أكمل التحويل ثم أدخل رقم العملية.",
+          ? "تم تجهيز الدفع عبر Sham Cash. حوّل المبلغ ثم أدخل رقم العملية."
+          : "تم تجهيز الدفع عبر Syriatel Cash. حوّل المبلغ ثم أدخل رقم العملية.",
       );
       setMessageTone("info");
       router.refresh();
@@ -290,7 +290,7 @@ export function OrderPaymentPanel({
     }
 
     if (attemptStatus !== "SUBMITTED") {
-      setMessage("لا يمكن إرسال رقم العملية الآن. ابدأ محاولة دفع جديدة أو أكمل التحقق حسب الحالة الحالية.");
+      setMessage("لا يمكن إرسال رقم العملية الآن. ابدأ عملية دفع جديدة أو تابع التحقق حسب الحالة.");
       setMessageTone("error");
       return;
     }
@@ -321,7 +321,7 @@ export function OrderPaymentPanel({
       }
 
       setAttemptStatus(payload.attempt.status);
-      setMessage("تم حفظ رقم العملية بنجاح. يمكنك الآن تنفيذ التحقق.");
+      setMessage("تم حفظ رقم العملية. يمكنك الآن التحقق من حالة الدفع.");
       setMessageTone("success");
       router.refresh();
     });
@@ -329,7 +329,7 @@ export function OrderPaymentPanel({
 
   const verifyPaymentStatus = () => {
     if (!attemptId) {
-      setMessage("لا توجد محاولة دفع للتحقق.");
+      setMessage("لا توجد عملية دفع جاهزة للتحقق.");
       setMessageTone("error");
       return;
     }
@@ -354,7 +354,7 @@ export function OrderPaymentPanel({
 
       if (!response.ok || !payload.attempt) {
         setAttemptStatus(previousAttemptStatus);
-        setMessage(payload.message ?? "تعذر تنفيذ التحقق من الدفع.");
+        setMessage(payload.message ?? "تعذّر التحقق من حالة الدفع.");
         setMessageTone("error");
         router.refresh();
         return;
@@ -363,13 +363,13 @@ export function OrderPaymentPanel({
       setAttemptStatus(payload.attempt.status);
 
       if (payload.attempt.status === "PAID") {
-        setMessage("تم تأكيد الدفع بنجاح. أصبح الطلب جاهزًا ويمكنك المتابعة مباشرة.");
+        setMessage("تم تأكيد الدفع بنجاح. الطلب جاهز ويمكنك المتابعة.");
         setMessageTone("success");
       } else if (payload.attempt.status === "FAILED") {
         setMessage(toArabicFailureMessage(payload.attempt.failureReason));
         setMessageTone("error");
       } else {
-        setMessage("تم تحديث حالة الدفع وما تزال العملية قيد المتابعة.");
+        setMessage("تم تحديث الحالة. ما زلنا بانتظار تأكيد نهائي.");
         setMessageTone("info");
       }
 
@@ -383,15 +383,25 @@ export function OrderPaymentPanel({
     <section className="rounded-2xl border border-slate-200 bg-white p-5 shadow-sm">
       <div className="flex flex-wrap items-start justify-between gap-3">
         <div>
-          <h2 className="text-lg font-bold text-slate-900">الدفع للطلب</h2>
+          <h2 className="text-lg font-bold text-slate-900">إكمال الدفع</h2>
           <p className="mt-1 text-sm text-slate-600">
-            اختر وسيلة الدفع ثم نفّذ التحويل وأدخل رقم العملية لإرسالها للتحقق.
+            اختر الوسيلة المناسبة، حوّل المبلغ، ثم أدخل رقم العملية للتحقق.
           </p>
         </div>
         <div className="rounded-xl border border-slate-200 bg-slate-50 px-3 py-2 text-xs text-slate-700">
           <p className="font-semibold text-slate-900">المبلغ المستحق</p>
           <p className="mt-1 font-bold text-indigo-700">{formatArabicCurrency(totalCents / 100, { currency })}</p>
         </div>
+      </div>
+      <div className="mt-4 rounded-xl border border-slate-200 bg-slate-50 p-4">
+        <p className="text-sm font-semibold text-slate-900">خطوات الدفع</p>
+        <ol className="mt-2 grid gap-2 text-xs text-slate-700 sm:grid-cols-2">
+          <li className="rounded-lg bg-white px-3 py-2 ring-1 ring-slate-200">1) اختر وسيلة الدفع</li>
+          <li className="rounded-lg bg-white px-3 py-2 ring-1 ring-slate-200">2) أنشئ عملية الدفع</li>
+          <li className="rounded-lg bg-white px-3 py-2 ring-1 ring-slate-200">3) حوّل المبلغ المطلوب</li>
+          <li className="rounded-lg bg-white px-3 py-2 ring-1 ring-slate-200">4) أدخل رقم العملية</li>
+          <li className="rounded-lg bg-white px-3 py-2 ring-1 ring-slate-200 sm:col-span-2">5) تحقّق من حالة الدفع</li>
+        </ol>
       </div>
 
       <div className="mt-4 rounded-xl border border-slate-200 bg-slate-50 p-4 text-sm">
@@ -455,18 +465,24 @@ export function OrderPaymentPanel({
               <div className="mt-4 grid gap-3 sm:grid-cols-2">
                 {availablePaymentOptions.map((option) => {
                   const isActive = option.provider === selectedProvider;
+                  const toneClasses =
+                    option.tone === "indigo"
+                      ? isActive
+                        ? "border-indigo-500 bg-indigo-50 ring-2 ring-indigo-200"
+                        : "border-indigo-200 hover:border-indigo-400"
+                      : isActive
+                        ? "border-emerald-500 bg-emerald-50 ring-2 ring-emerald-200"
+                        : "border-emerald-200 hover:border-emerald-400";
                   return (
                     <button
                       key={option.provider}
                       type="button"
                       onClick={() => setSelectedProvider(option.provider)}
-                      className={`rounded-xl border p-3 text-right transition focus-visible:outline-none focus-visible:ring-2 focus-visible:ring-indigo-500 focus-visible:ring-offset-2 ${
-                        isActive ? "border-indigo-500 bg-indigo-50" : "border-slate-200 hover:border-indigo-300"
-                      }`}
+                      className={`rounded-xl border p-3 text-right transition focus-visible:outline-none focus-visible:ring-2 focus-visible:ring-indigo-500 focus-visible:ring-offset-2 ${toneClasses}`}
                     >
                       <p className="font-semibold text-slate-900">{option.label}</p>
                       <p className="mt-1 text-xs text-slate-600">
-                        {option.provider === PaymentProvider.SHAM_CASH ? "مسح QR أو تحويل يدوي" : "تحويل يدوي مع رقم العملية"}
+                        {option.provider === PaymentProvider.SHAM_CASH ? "QR + تحويل يدوي" : "تحويل يدوي مباشر"}
                       </p>
                     </button>
                   );
@@ -474,12 +490,12 @@ export function OrderPaymentPanel({
               </div>
 
               <div className="mt-4 rounded-xl bg-slate-50 p-4 text-sm text-slate-700">
-                <p className="font-semibold text-slate-900">تعليمات الدفع</p>
+                <p className="font-semibold text-slate-900">تعليمات الوسيلة المختارة</p>
                 <p className="mt-1">{selectedOption?.instructions}</p>
 
                 {selectedDestinationMissing ? (
                   <div className="mt-3 rounded-xl border border-rose-200 bg-rose-50 p-3 text-sm text-rose-800">
-                    بيانات حساب الاستلام لهذا المزود غير متاحة بعد. جهّز المتغيرات البيئية أولًا قبل استخدامه.
+                    حساب الاستلام لهذه الوسيلة غير متاح حاليًا. جرّب وسيلة أخرى أو تواصل مع الدعم.
                   </div>
                 ) : null}
 
@@ -544,7 +560,7 @@ export function OrderPaymentPanel({
                     </div>
 
                     <div className="mt-3 border-t border-indigo-200 pt-2">
-                      <p className="font-semibold">خطوات الدفع عبر Sham Cash</p>
+                      <p className="font-semibold">خطوات Sham Cash</p>
                       <ol className="mt-1 list-decimal space-y-1 pr-4 text-xs sm:text-sm">
                         <li>امسح رمز QR أو انسخ الحساب.</li>
                         <li>حوّل المبلغ المطلوب.</li>
@@ -594,7 +610,7 @@ export function OrderPaymentPanel({
                     {copyFeedback ? <p className="mt-2 text-xs text-emerald-700">{copyFeedback}</p> : null}
 
                     <div className="mt-3 border-t border-emerald-200 pt-2">
-                      <p className="font-semibold">خطوات الدفع عبر Syriatel Cash</p>
+                      <p className="font-semibold">خطوات Syriatel Cash</p>
                       <ol className="mt-1 list-decimal space-y-1 pr-4 text-xs sm:text-sm">
                         <li>افتح تطبيق Syriatel Cash وحوّل المبلغ إلى رقم/حساب الاستلام أعلاه.</li>
                         <li>أضف مرجع الطلب <span className="font-mono">{orderId}</span> داخل ملاحظات التحويل إن توفرت.</li>
@@ -620,14 +636,14 @@ export function OrderPaymentPanel({
                 />
 
                 <label className="block text-sm font-semibold text-slate-800" htmlFor="proof-note">
-                  إثبات أو ملاحظة الدفع
+                  ملاحظة إضافية (اختياري)
                 </label>
                 <textarea
                   id="proof-note"
                   value={proofNote}
                   onChange={(event) => setProofNote(event.target.value)}
                   rows={3}
-                  placeholder="أدخل أي تفاصيل إضافية عن التحويل"
+                  placeholder="أي تفاصيل تساعد فريق التحقق (اختياري)"
                   className="w-full rounded-xl border border-slate-300 px-3 py-2 text-sm text-slate-900 outline-none focus:border-indigo-500 focus:ring-2 focus:ring-indigo-100"
                 />
               </div>
@@ -637,9 +653,9 @@ export function OrderPaymentPanel({
                   type="button"
                   onClick={createPaymentAttempt}
                   disabled={isPending || !isPayable || selectedDestinationMissing}
-                  className="rounded-xl bg-indigo-600 px-4 py-2 text-sm font-semibold text-white disabled:cursor-not-allowed disabled:bg-slate-300"
+                  className="rounded-xl bg-indigo-600 px-4 py-2 text-sm font-semibold text-white hover:bg-indigo-500 disabled:cursor-not-allowed disabled:bg-slate-300"
                 >
-                  بدء عملية الدفع
+                  1) إنشاء عملية الدفع
                 </button>
                 <button
                   type="button"
@@ -647,7 +663,7 @@ export function OrderPaymentPanel({
                   disabled={isPending || !attemptId || attemptStatus !== "SUBMITTED"}
                   className="rounded-xl border border-indigo-200 bg-indigo-50 px-4 py-2 text-sm font-semibold text-indigo-700 disabled:cursor-not-allowed disabled:border-slate-200 disabled:bg-slate-100 disabled:text-slate-400"
                 >
-                  إرسال رقم العملية
+                  2) إرسال رقم العملية
                 </button>
                 <button
                   type="button"
@@ -655,7 +671,7 @@ export function OrderPaymentPanel({
                   disabled={isPending || !attemptId || attemptStatus === "PAID" || attemptStatus === "FAILED"}
                   className="rounded-xl border border-emerald-200 bg-emerald-50 px-4 py-2 text-sm font-semibold text-emerald-700 disabled:cursor-not-allowed disabled:border-slate-200 disabled:bg-slate-100 disabled:text-slate-400"
                 >
-                  تحقق من حالة الدفع
+                  3) تحقق من حالة الدفع
                 </button>
               </div>
             </>
@@ -679,7 +695,7 @@ export function OrderPaymentPanel({
         </p>
         {attemptId ? (
           <p className="mt-1">
-            رقم المحاولة: <span className="font-mono text-xs">{attemptId}</span>
+            مرجع التحقق: <span className="font-mono text-xs">{attemptId}</span>
           </p>
         ) : null}
         {uiStatus === "success" ? (

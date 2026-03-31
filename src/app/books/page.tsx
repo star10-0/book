@@ -222,10 +222,17 @@ export default async function BooksPage({
     <main>
       <SiteHeader />
       <section className="mb-6 rounded-2xl bg-white p-6 shadow-sm ring-1 ring-slate-200 sm:p-8">
-        <h1 className="text-3xl font-bold text-slate-900">مكتبة الكتب</h1>
-        <p className="mt-2 text-sm leading-8 text-slate-600 sm:text-base">
-          ابحث بالعنوان أو اسم الكاتب، واستخدم الفلاتر الذكية للشراء أو الاستئجار مع ترتيب يناسبك.
-        </p>
+        <div className="flex flex-wrap items-start justify-between gap-3">
+          <div>
+            <h1 className="text-3xl font-bold text-slate-900">متجر الكتب الرقمية</h1>
+            <p className="mt-2 text-sm leading-8 text-slate-600 sm:text-base">
+              ابحث بالعنوان أو اسم الكاتب، وفلتر النتائج بسرعة للوصول إلى أفضل عرض شراء أو استئجار.
+            </p>
+          </div>
+          <p className="rounded-xl bg-indigo-50 px-3 py-2 text-xs font-semibold text-indigo-700">
+            {sortedBooks.length} كتاب متاح الآن
+          </p>
+        </div>
       </section>
 
       <div className="space-y-6">

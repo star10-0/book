@@ -12,10 +12,16 @@ const supportLinks = [
   { href: "/about", label: "عن المنصة" },
 ];
 
+const shopLinks = [
+  { href: "/books?offer=buy", label: "كتب للشراء" },
+  { href: "/books?offer=rent", label: "كتب للاستئجار" },
+  { href: "/books", label: "أحدث الإصدارات" },
+];
+
 export function SiteFooter() {
   return (
     <footer className="mt-10 rounded-3xl bg-slate-950 px-6 py-8 text-slate-100 shadow-lg sm:px-8 sm:py-10">
-      <div className="grid gap-8 md:grid-cols-[1.3fr_1fr_1fr]">
+      <div className="grid gap-8 md:grid-cols-[1.5fr_1fr_1fr_1fr]">
         <div className="space-y-3">
           <p className="text-sm font-semibold text-indigo-300">Book</p>
           <h2 className="text-2xl font-bold">مكتبة عربية رقمية للشراء والاستئجار</h2>
@@ -42,6 +48,19 @@ export function SiteFooter() {
           <h3 className="text-base font-semibold text-white">الدعم والمعلومات</h3>
           <ul className="space-y-2 text-sm text-slate-300">
             {supportLinks.map((link) => (
+              <li key={link.href}>
+                <Link href={link.href} className="hover:text-white focus-visible:outline-none focus-visible:ring-2 focus-visible:ring-indigo-300">
+                  {link.label}
+                </Link>
+              </li>
+            ))}
+          </ul>
+        </nav>
+
+        <nav aria-label="التسوق" className="space-y-3">
+          <h3 className="text-base font-semibold text-white">روابط التسوق</h3>
+          <ul className="space-y-2 text-sm text-slate-300">
+            {shopLinks.map((link) => (
               <li key={link.href}>
                 <Link href={link.href} className="hover:text-white focus-visible:outline-none focus-visible:ring-2 focus-visible:ring-indigo-300">
                   {link.label}
