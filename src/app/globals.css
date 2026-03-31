@@ -20,3 +20,21 @@ html[lang="ar"] body {
 a {
   @apply transition-colors;
 }
+
+@layer components {
+  .store-btn-primary {
+    @apply inline-flex h-9 items-center justify-center rounded-md bg-indigo-600 px-4 text-xs font-semibold text-white transition hover:bg-indigo-700 focus-visible:outline-none focus-visible:ring-2 focus-visible:ring-indigo-300;
+  }
+
+  .store-btn-secondary {
+    @apply inline-flex h-9 items-center justify-center rounded-md border border-slate-300 bg-white px-4 text-xs font-semibold text-slate-700 transition hover:bg-slate-50 focus-visible:outline-none focus-visible:ring-2 focus-visible:ring-indigo-300;
+  }
+
+  .store-chip {
+    @apply inline-flex h-8 items-center rounded-full px-3 text-xs font-semibold;
+  }
+
+  .store-surface {
+    @apply rounded-3xl bg-white p-5 shadow-sm ring-1 ring-slate-200 sm:p-6;
+  }
+}

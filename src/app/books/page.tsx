@@ -221,16 +221,16 @@ export default async function BooksPage({
   return (
     <main>
       <SiteHeader />
-      <section className="mb-6 rounded-2xl bg-white p-6 shadow-sm ring-1 ring-slate-200 sm:p-8">
-        <p className="text-[11px] font-semibold text-indigo-600">Amjad Storefront</p>
+      <section className="store-surface mb-6">
+        <p className="text-[11px] font-semibold text-indigo-600">واجهة Amjad</p>
         <h1 className="mt-1 text-3xl font-bold text-slate-900">متجر الكتب الرقمية</h1>
         <p className="mt-2 text-sm leading-8 text-slate-600 sm:text-base">
           تصفّح وابحث بحرية بالعنوان أو اسم الكاتب، ثم صفِّ النتائج حسب التصنيف ونوع العرض والسعر والتقييم.
         </p>
         <div className="mt-4 flex flex-wrap gap-2 text-[11px]">
-          <span className="inline-flex h-7 items-center rounded-full bg-slate-100 px-3 font-semibold text-slate-700">تصفح عام بدون تسجيل</span>
-          <span className="inline-flex h-7 items-center rounded-full bg-slate-100 px-3 font-semibold text-slate-700">بحث مباشر عن الكتب</span>
-          <span className="inline-flex h-7 items-center rounded-full bg-slate-100 px-3 font-semibold text-slate-700">شراء واستئجار رقمي</span>
+          <span className="store-chip h-7 bg-slate-100 px-3 text-slate-700">تصفح عام بدون تسجيل</span>
+          <span className="store-chip h-7 bg-slate-100 px-3 text-slate-700">بحث مباشر عن الكتب</span>
+          <span className="store-chip h-7 bg-slate-100 px-3 text-slate-700">شراء واستئجار رقمي</span>
         </div>
       </section>
 
