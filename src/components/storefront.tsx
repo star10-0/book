@@ -54,11 +54,6 @@ type BooksFilterCategory = {
   nameAr: string;
 };
 
-const offerLabels: Record<OfferType, string> = {
-  PURCHASE: "شراء",
-  RENTAL: "استئجار",
-};
-
 const defaultCover = "https://placehold.co/600x900/png/e2e8f0/334155?text=Book";
 
 export function HeroSection() {
@@ -238,24 +233,37 @@ type BooksFiltersProps = {
   category: string;
   offerType: "all" | "buy" | "rent";
   sort: "newest" | "title" | "price_asc" | "price_desc" | "rating";
+  resultsCount?: number;
 };
 
-export function BooksFilters({ categories, search, category, offerType, sort }: BooksFiltersProps) {
+export function BooksFilters({ categories, search, category, offerType, sort, resultsCount = 0 }: BooksFiltersProps) {
+  const selectedCategoryLabel = categories.find((item) => item.slug === category)?.nameAr;
+
   return (
     <section className="rounded-2xl bg-white p-5 shadow-sm ring-1 ring-slate-200 sm:p-6">
-      <form className="space-y-4" method="get">
-        <div className="grid gap-4 md:grid-cols-2 xl:grid-cols-4">
-          <label className="space-y-2 text-sm font-medium text-slate-700">
-            بحث بالعنوان أو اسم الكاتب
-            <input
-              name="q"
-              type="search"
-              defaultValue={search}
-              placeholder="مثال: مدينة الظلال أو ليث حداد"
-              className="w-full rounded-xl border border-slate-300 bg-white px-4 py-2.5 text-sm text-slate-900 placeholder:text-slate-400 focus:border-indigo-500 focus:outline-none focus:ring-2 focus:ring-indigo-200"
-            />
-          </label>
+      <div className="mb-4 flex flex-wrap items-center justify-between gap-2.5 border-b border-slate-100 pb-4">
+        <div>
+          <p className="text-[11px] font-semibold text-slate-500">البحث والاكتشاف</p>
+          <h2 className="text-lg font-bold text-slate-900 sm:text-xl">ابحث عن كتابك القادم</h2>
+        </div>
+        <p className="inline-flex h-8 items-center rounded-full bg-indigo-50 px-3 text-xs font-bold text-indigo-700">
+          {resultsCount} نتيجة متاحة
+        </p>
+      </div>
 
+      <form className="space-y-4" method="get">
+        <label className="block space-y-2 text-sm font-medium text-slate-700">
+          بحث بالعنوان أو اسم الكاتب
+          <input
+            name="q"
+            type="search"
+            defaultValue={search}
+            placeholder="مثال: مدينة الظلال أو ليث حداد"
+            className="w-full rounded-xl border border-slate-300 bg-white px-4 py-2.5 text-sm text-slate-900 placeholder:text-slate-400 focus:border-indigo-500 focus:outline-none focus:ring-2 focus:ring-indigo-200"
+          />
+        </label>
+
+        <div className="grid gap-4 sm:grid-cols-2 xl:grid-cols-3">
           <label className="space-y-2 text-sm font-medium text-slate-700">
             التصنيف
             <select
@@ -301,16 +309,34 @@ export function BooksFilters({ categories, search, category, offerType, sort }: 
           </label>
         </div>
 
-        <div className="flex flex-wrap items-center gap-3">
+        <div className="flex flex-wrap items-center gap-2">
+          {search ? (
+            <span className="inline-flex h-7 items-center rounded-full bg-slate-100 px-2.5 text-[11px] font-semibold text-slate-700">
+              البحث: {search}
+            </span>
+          ) : null}
+          {selectedCategoryLabel ? (
+            <span className="inline-flex h-7 items-center rounded-full bg-slate-100 px-2.5 text-[11px] font-semibold text-slate-700">
+              التصنيف: {selectedCategoryLabel}
+            </span>
+          ) : null}
+          {offerType !== "all" ? (
+            <span className="inline-flex h-7 items-center rounded-full bg-slate-100 px-2.5 text-[11px] font-semibold text-slate-700">
+              العرض: {offerType === "buy" ? "شراء" : "استئجار"}
+            </span>
+          ) : null}
+        </div>
+
+        <div className="flex flex-wrap items-center gap-2.5">
           <button
             type="submit"
-            className="rounded-xl bg-indigo-600 px-4 py-2 text-sm font-semibold text-white hover:bg-indigo-700 focus-visible:outline-none focus-visible:ring-2 focus-visible:ring-indigo-300"
+            className="inline-flex h-8 items-center rounded-md bg-indigo-600 px-3 text-xs font-semibold text-white hover:bg-indigo-700 focus-visible:outline-none focus-visible:ring-2 focus-visible:ring-indigo-300"
           >
             تطبيق
           </button>
           <Link
             href="/books"
-            className="rounded-xl border border-slate-300 px-4 py-2 text-sm font-semibold text-slate-700 hover:bg-slate-50 focus-visible:outline-none focus-visible:ring-2 focus-visible:ring-indigo-300"
+            className="inline-flex h-8 items-center rounded-md border border-slate-300 px-3 text-xs font-semibold text-slate-700 hover:bg-slate-50 focus-visible:outline-none focus-visible:ring-2 focus-visible:ring-indigo-300"
           >
             إعادة التعيين
           </Link>
@@ -322,6 +348,29 @@ export function BooksFilters({ categories, search, category, offerType, sort }: 
 
 function formatPrice(priceCents: number, currency: string) {
   return formatArabicCurrency(priceCents / 100, { currency });
+}
+
+function ActiveOffersSummary({ offers }: { offers: BookCardOffer[] }) {
+  const hasPurchase = offers.some((offer) => offer.type === "PURCHASE");
+  const hasRental = offers.some((offer) => offer.type === "RENTAL");
+
+  if (hasPurchase && hasRental) {
+    return "شراء + استئجار";
+  }
+
+  if (hasPurchase) {
+    return "شراء";
+  }
+
+  return "استئجار";
+}
+
+function RatingLabel({ averageRating, reviewsCount }: { averageRating: number; reviewsCount: number }) {
+  if (averageRating <= 0) {
+    return <span className="font-semibold text-slate-500">بدون تقييم</span>;
+  }
+
+  return <span className="font-semibold text-amber-600">{`★ ${averageRating.toFixed(1)} (${reviewsCount})`}</span>;
 }
 
 export function BooksGrid({
@@ -347,53 +396,54 @@ export function BooksGrid({
   }
 
   return (
-    <section className="grid gap-5 sm:grid-cols-2 xl:grid-cols-3">
-      {books.map((book) => (
-        <article key={book.id} className="overflow-hidden rounded-2xl bg-white shadow-sm ring-1 ring-slate-200">
-          <Image src={book.coverImageUrl ?? defaultCover} alt={`غلاف كتاب ${book.title}`} width={600} height={900} className="h-64 w-full object-cover" />
-          <div className="space-y-3 p-5">
-            <div>
-              <h2 className="text-xl font-bold text-slate-900">{book.title}</h2>
-              <p className="mt-1 text-sm text-slate-600">{book.author}</p>
-            </div>
+    <section className="space-y-4">
+      <div className="flex flex-wrap items-center justify-between gap-2.5">
+        <h2 className="text-lg font-bold text-slate-900 sm:text-xl">كل الكتب المتاحة</h2>
+        <p className="text-xs font-semibold text-slate-500">{books.length} كتاب</p>
+      </div>
 
-            <div className="flex items-center justify-between gap-2 text-xs">
-              <span className="inline-flex rounded-full bg-slate-100 px-3 py-1 font-semibold text-slate-700">
-                {book.category}
-              </span>
-              <span className="font-semibold text-amber-600">
-                {book.averageRating > 0 ? `★ ${book.averageRating.toFixed(1)} (${book.reviewsCount})` : "بدون تقييم"}
-              </span>
-            </div>
+      <div className="grid gap-4 sm:grid-cols-2 lg:grid-cols-3 2xl:grid-cols-4">
+        {books.map((book) => (
+          <article key={book.id} className="overflow-hidden rounded-2xl bg-white shadow-sm ring-1 ring-slate-200">
+            <Image src={book.coverImageUrl ?? defaultCover} alt={`غلاف كتاب ${book.title}`} width={600} height={900} className="h-52 w-full object-cover" />
+            <div className="space-y-2.5 p-4">
+              <div className="space-y-1">
+                <h3 className="line-clamp-2 text-base font-bold text-slate-900">{book.title}</h3>
+                <p className="line-clamp-1 text-xs text-slate-600">{book.author}</p>
+              </div>
 
-            <div className="space-y-2">
-              {book.offers.map((offer) => (
-                <div key={offer.id} className="flex items-center justify-between rounded-xl border border-slate-200 bg-slate-50 px-3 py-2 text-xs">
-                  <div>
-                    <p className="font-semibold text-slate-700">{offerLabels[offer.type]}</p>
-                    {offer.rentalDays ? <p className="text-slate-500">لمدة {offer.rentalDays} يوم</p> : null}
-                  </div>
-                  <p className="text-sm font-bold text-slate-900">{formatPrice(offer.priceCents, offer.currency)}</p>
+              <div className="flex items-center justify-between gap-2 text-[11px]">
+                <span className="inline-flex rounded-full bg-slate-100 px-2.5 py-1 font-semibold text-slate-700">{book.category}</span>
+                <RatingLabel averageRating={book.averageRating} reviewsCount={book.reviewsCount} />
+              </div>
+
+              <div className="rounded-lg border border-slate-200 bg-slate-50 px-2.5 py-2 text-[11px]">
+                <div className="flex items-center justify-between gap-2">
+                  <span className="font-semibold text-slate-700">
+                    <ActiveOffersSummary offers={book.offers} />
+                  </span>
+                  <span className="font-bold text-slate-900">{formatPrice(Math.min(...book.offers.map((offer) => offer.priceCents)), book.offers[0].currency)}</span>
                 </div>
-              ))}
-            </div>
+                <p className="mt-1 text-slate-500">يبدأ من أقل سعر متاح</p>
+              </div>
 
-            <div className="flex flex-wrap gap-2">
-              <Link
-                href={`/books/${book.slug}`}
-                className="inline-flex h-9 items-center rounded-xl bg-indigo-600 px-4 text-sm font-semibold text-white hover:bg-indigo-700"
-              >
-                عرض التفاصيل
-              </Link>
-              {book.isWishlisted ? (
-                <span className="inline-flex h-9 items-center rounded-xl border border-amber-300 bg-amber-50 px-4 text-xs font-semibold text-amber-700">
-                  ضمن المفضلة
-                </span>
-              ) : null}
+              <div className="flex flex-wrap gap-2">
+                <Link
+                  href={`/books/${book.slug}`}
+                  className="inline-flex h-8 items-center rounded-md bg-indigo-600 px-3 text-xs font-semibold text-white hover:bg-indigo-700"
+                >
+                  عرض التفاصيل
+                </Link>
+                {book.isWishlisted ? (
+                  <span className="inline-flex h-8 items-center rounded-md border border-amber-300 bg-amber-50 px-3 text-[11px] font-semibold text-amber-700">
+                    ضمن المفضلة
+                  </span>
+                ) : null}
+              </div>
             </div>
-          </div>
-        </article>
-      ))}
+          </article>
+        ))}
+      </div>
     </section>
   );
 }
