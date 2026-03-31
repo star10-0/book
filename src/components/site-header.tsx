@@ -1,6 +1,7 @@
 import Link from "next/link";
 import { signOutAction } from "@/app/auth/actions";
 import { getCurrentUser } from "@/lib/auth-session";
+import { SiteDrawerNav } from "@/components/site-drawer-nav";
 
 const primaryLinks = [
   { href: "/", label: "الرئيسية" },
@@ -73,6 +74,8 @@ export async function SiteHeader() {
           </form>
 
           <div className="flex items-center gap-2 lg:justify-end">
+            <SiteDrawerNav primaryLinks={primaryLinks} accountLinks={accountNavigation} userSignedIn={Boolean(user)} />
+
             <div className="flex items-center overflow-hidden rounded-md border border-slate-300 text-[11px]" aria-label="تبديل اللغة">
               <Link href="?lang=ar" className="bg-slate-100 px-2 py-1 font-semibold text-slate-700 hover:bg-slate-200">
                 AR
