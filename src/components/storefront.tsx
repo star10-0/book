@@ -1,7 +1,7 @@
-import Image from "next/image";
 import Link from "next/link";
 import type { OfferType } from "@prisma/client";
 import { formatArabicCurrency } from "@/lib/formatters/intl";
+import { CoverImage } from "@/components/ui/cover-image";
 
 type CategoryPreviewItem = {
   name: string;
@@ -54,7 +54,6 @@ type BooksFilterCategory = {
   nameAr: string;
 };
 
-const defaultCover = "https://placehold.co/600x900/png/e2e8f0/334155?text=Book";
 
 export function HeroSection() {
   return (
@@ -128,7 +127,7 @@ export function FeaturedBooksSection({ books }: { books: FeaturedBookItem[] }) {
         <div className="mt-5 grid gap-4 sm:grid-cols-2 lg:grid-cols-3">
           {books.map((book, index) => (
             <article key={book.id} className="overflow-hidden rounded-2xl border border-slate-200 bg-white shadow-sm transition hover:shadow-md">
-              <Image src={book.coverImageUrl ?? defaultCover} alt={`غلاف كتاب ${book.title}`} width={600} height={900} className="h-52 w-full object-cover" />
+              <CoverImage src={book.coverImageUrl} alt={`غلاف كتاب ${book.title}`} width={600} height={900} className="h-52 w-full object-cover" />
               <div className="space-y-2.5 p-4">
                 <div className="flex items-center justify-between gap-2 text-[11px]">
                   <span className="rounded-full bg-amber-100 px-2.5 py-1 font-semibold text-amber-800">الأكثر إبرازًا</span>
@@ -179,7 +178,7 @@ export function RecommendedBooksSection({ books }: { books: RecommendedBookItem[
         {books.map((book) => (
           <article key={book.id} className="rounded-xl border border-slate-200 bg-slate-50 p-3.5">
             <div className="flex gap-3">
-              <Image src={book.coverImageUrl ?? defaultCover} alt={`غلاف ${book.title}`} width={120} height={170} className="h-24 w-16 rounded-md object-cover" />
+              <CoverImage src={book.coverImageUrl} alt={`غلاف ${book.title}`} width={120} height={170} className="h-24 w-16 rounded-md object-cover" />
               <div className="min-w-0">
                 <h3 className="line-clamp-2 text-sm font-bold text-slate-900">{book.title}</h3>
                 <p className="mt-1 text-xs text-slate-600">{book.author}</p>
@@ -405,7 +404,7 @@ export function BooksGrid({
       <div className="grid gap-4 sm:grid-cols-2 lg:grid-cols-3 2xl:grid-cols-4">
         {books.map((book) => (
           <article key={book.id} className="overflow-hidden rounded-2xl bg-white shadow-sm ring-1 ring-slate-200">
-            <Image src={book.coverImageUrl ?? defaultCover} alt={`غلاف كتاب ${book.title}`} width={600} height={900} className="h-52 w-full object-cover" />
+            <CoverImage src={book.coverImageUrl} alt={`غلاف كتاب ${book.title}`} width={600} height={900} className="h-52 w-full object-cover" />
             <div className="space-y-2.5 p-4">
               <div className="space-y-1">
                 <h3 className="line-clamp-2 text-base font-bold text-slate-900">{book.title}</h3>

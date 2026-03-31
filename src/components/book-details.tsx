@@ -1,11 +1,10 @@
-import Image from "next/image";
 import Link from "next/link";
 import type { BookOffer, OfferType } from "@prisma/client";
 import { formatArabicCurrency } from "@/lib/formatters/intl";
 import { OrderSummaryCard } from "@/components/order-summary-card";
 import { submitReviewAction, toggleWishlistAction } from "@/app/books/[slug]/actions";
+import { CoverImage } from "@/components/ui/cover-image";
 
-const defaultCover = "https://images.unsplash.com/photo-1512820790803-83ca734da794?auto=format&fit=crop&w=1200&q=80";
 
 const offerLabelByType: Record<OfferType, string> = {
   PURCHASE: "شراء رقمي",
@@ -82,8 +81,8 @@ export function BookDetailsSection({
     <section aria-labelledby="book-details-title" className="rounded-3xl bg-white p-6 shadow-sm ring-1 ring-slate-200 sm:p-8">
       <div className="grid gap-8 lg:grid-cols-[320px_1fr]">
         <div>
-          <Image
-            src={book.coverImageUrl ?? defaultCover}
+          <CoverImage
+            src={book.coverImageUrl}
             alt={`غلاف كتاب ${book.title}`}
             width={640}
             height={960}
@@ -383,8 +382,8 @@ export function RelatedBooksSection({ books }: RelatedBooksProps) {
         <div className="mt-6 grid gap-4 sm:grid-cols-2 lg:grid-cols-4">
           {books.map((book) => (
             <article key={book.id} className="overflow-hidden rounded-2xl border border-slate-200 bg-slate-50">
-              <Image
-                src={book.coverImageUrl ?? defaultCover}
+              <CoverImage
+                src={book.coverImageUrl}
                 alt={`غلاف كتاب ${book.title}`}
                 width={480}
                 height={720}
