@@ -75,8 +75,10 @@ export default async function RootLayout({
           الانتقال إلى المحتوى الرئيسي
         </a>
         <ServiceWorkerRegister />
-        <div className="mx-auto min-h-screen w-full max-w-[1400px] px-3 py-4 sm:px-5 sm:py-6 lg:px-8">
-          <div id="main-content">{children}</div>
+        <div className="store-page-shell min-h-screen">
+          <div className="store-container pb-6 pt-2 sm:pb-8 sm:pt-3 lg:pt-4">
+            <div id="main-content">{children}</div>
+          </div>
         </div>
 
         <script
