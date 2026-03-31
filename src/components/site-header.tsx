@@ -73,8 +73,8 @@ export async function SiteHeader() {
   const canAccessAdmin = user?.role === "ADMIN";
 
   return (
-    <header className="mb-6 overflow-hidden rounded-3xl bg-white shadow-sm ring-1 ring-slate-200">
-      <div className="px-4 py-4 sm:px-5">
+    <header className="mb-4 overflow-hidden rounded-3xl bg-white shadow-sm ring-1 ring-slate-200 sm:mb-5">
+      <div className="px-4 py-3.5 sm:px-5 sm:py-4">
         <div className="grid gap-3.5 lg:grid-cols-[auto_minmax(0,1fr)_auto] lg:items-center">
           <Link
             href="/"
