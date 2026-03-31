@@ -1,5 +1,6 @@
 import type { Metadata, Viewport } from "next";
 import { ServiceWorkerRegister } from "@/components/pwa/sw-register";
+import { getStoreDirection, getStoreLocale } from "@/lib/locale";
 import { getAppBaseUrl } from "@/lib/env";
 import { APP_DESCRIPTION, APP_NAME } from "@/lib/constants/app";
 import "./globals.css";
@@ -56,13 +57,16 @@ export const viewport: Viewport = {
   colorScheme: "light",
 };
 
-export default function RootLayout({
+export default async function RootLayout({
   children,
 }: Readonly<{
   children: React.ReactNode;
 }>) {
+  const locale = await getStoreLocale();
+  const dir = getStoreDirection(locale);
+
   return (
-    <html lang="ar" dir="rtl">
+    <html lang={locale} dir={dir}>
       <body className="font-sans bg-slate-50 text-slate-900">
         <a
           href="#main-content"
