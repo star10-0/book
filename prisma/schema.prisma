@@ -136,6 +136,7 @@ model User {
   paymentAttempts   PaymentAttempt[]
   accessGrants      AccessGrant[]
   readingProgresses ReadingProgress[]
+  readerAnnotations ReaderAnnotation[]
   wishlistItems     WishlistItem[]
   reviews           BookReview[]
   creatorProfile    CreatorProfile?
@@ -227,6 +228,7 @@ model Book {
   orderItems          OrderItem[]
   accessGrants        AccessGrant[]
   readingProgress     ReadingProgress[]
+  readerAnnotations   ReaderAnnotation[]
   wishlistItems       WishlistItem[]
   reviews             BookReview[]
   createdAt           DateTime            @default(now())
@@ -511,4 +513,26 @@ model ReadingProgress {
   @@unique([userId, bookId])
   @@index([userId, updatedAt])
   @@index([bookId])
+}
+
+enum ReaderAnnotationType {
+  DRAWING
+  NOTE
+  BOOKMARK
+}
+
+model ReaderAnnotation {
+  id        String               @id @default(cuid())
+  userId    String
+  bookId    String
+  type      ReaderAnnotationType
+  locator   String
+  payload   Json?
+  createdAt DateTime             @default(now())
+  updatedAt DateTime             @updatedAt
+  user      User                 @relation(fields: [userId], references: [id], onDelete: Cascade)
+  book      Book                 @relation(fields: [bookId], references: [id], onDelete: Cascade)
+
+  @@index([userId, bookId, type])
+  @@index([bookId, locator])
 }
