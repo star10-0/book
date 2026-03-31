@@ -26,7 +26,7 @@ export function canAccessProtectedAsset(input: {
   }
 
   if (input.requestedDisposition === "attachment") {
-    const canDownload = canDownloadByPolicy(input.policy) || input.hasActiveGrant;
+    const canDownload = canDownloadByPolicy(input.policy);
 
     if (!canDownload) {
       return { allowed: false as const, reason: "DOWNLOAD_NOT_ALLOWED" as const };

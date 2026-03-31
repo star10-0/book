@@ -53,9 +53,11 @@ const statusLabel: Record<UiStatus, string> = {
   failure: "تعذر تأكيد الدفع",
 };
 
-const promoAudienceHints = [
-  "قد يكون بعض الأكواد مخصصًا لمؤسسة معينة (حسابات الأعمال أو الجامعات) ولن يعمل مع حسابات أخرى.",
-  "قد يكون الكود مقيدًا بنوع العرض (شراء أو إيجار) أو بحد أدنى لقيمة الطلب.",
+const checkoutSteps = [
+  "1) اختر وسيلة الدفع",
+  "2) أنشئ محاولة الدفع",
+  "3) حوّل المبلغ وأدخل رقم العملية",
+  "4) تحقّق من الحالة",
 ];
 
 function mapAttemptStatusToUiStatus(status?: PaymentAttemptStatus): UiStatus {
@@ -383,21 +385,30 @@ export function OrderPaymentPanel({
   };
 
   const isFreeOrder = totalCents === 0;
+  const canCreateAttempt = isPayable && !selectedDestinationMissing;
+  const canSubmitReference = Boolean(attemptId) && attemptStatus === "SUBMITTED";
+  const canVerifyAttempt = Boolean(attemptId) && attemptStatus !== "PAID" && attemptStatus !== "FAILED";
 
   return (
     <section className="rounded-2xl border border-slate-200 bg-white p-5 shadow-sm">
       <div className="flex flex-wrap items-start justify-between gap-3">
         <div>
           <h2 className="text-lg font-bold text-slate-900">إتمام الدفع</h2>
-          <p className="mt-1 text-sm text-slate-600">
-            خطوات الدفع: اختر الوسيلة ← أنشئ المحاولة ← حوّل المبلغ ← أدخل رقم العملية ← تحقّق من الحالة.
-          </p>
+          <p className="mt-1 text-sm text-slate-600">مسار دفع واضح وبسيط. اتبع الخطوات التالية بالترتيب.</p>
         </div>
         <div className="rounded-xl border border-slate-200 bg-slate-50 px-3 py-2 text-xs text-slate-700">
           <p className="font-semibold text-slate-900">المبلغ المستحق</p>
           <p className="mt-1 font-bold text-indigo-700">{formatArabicCurrency(totalCents / 100, { currency })}</p>
         </div>
       </div>
+
+      <ol className="mt-4 grid gap-2 text-xs sm:grid-cols-2">
+        {checkoutSteps.map((step) => (
+          <li key={step} className="rounded-lg border border-slate-200 bg-slate-50 px-3 py-2 font-semibold text-slate-700">
+            {step}
+          </li>
+        ))}
+      </ol>
 
       <div className="mt-4 rounded-xl border border-slate-200 bg-slate-50 p-4 text-sm">
         <p className="font-semibold text-slate-900">رمز الخصم</p>
@@ -429,11 +440,6 @@ export function OrderPaymentPanel({
             <dd className="font-bold">{formatArabicCurrency(totalCents / 100, { currency })}</dd>
           </div>
         </dl>
-        <ul className="mt-2 list-disc space-y-1 pr-4 text-xs text-slate-600">
-          {promoAudienceHints.map((hint) => (
-            <li key={hint}>{hint}</li>
-          ))}
-        </ul>
       </div>
 
       {isFreeOrder ? (
@@ -612,7 +618,7 @@ export function OrderPaymentPanel({
 
               <div className="mt-4 space-y-3">
                 <label className="block text-sm font-semibold text-slate-800" htmlFor="transaction-reference">
-                  رقم العملية
+                  رقم العملية (بعد التحويل)
                 </label>
                 <input
                   id="transaction-reference"
@@ -620,6 +626,7 @@ export function OrderPaymentPanel({
                   value={transactionReference}
                   onChange={(event) => setTransactionReference(event.target.value)}
                   placeholder="مثال: TXN-2026-0001"
+                  disabled={!attemptId}
                   className="w-full rounded-xl border border-slate-300 px-3 py-2 text-sm text-slate-900 outline-none focus:border-indigo-500 focus:ring-2 focus:ring-indigo-100"
                 />
 
@@ -632,15 +639,17 @@ export function OrderPaymentPanel({
                   onChange={(event) => setProofNote(event.target.value)}
                   rows={3}
                   placeholder="أدخل أي تفاصيل إضافية عن التحويل"
+                  disabled={!attemptId}
                   className="w-full rounded-xl border border-slate-300 px-3 py-2 text-sm text-slate-900 outline-none focus:border-indigo-500 focus:ring-2 focus:ring-indigo-100"
                 />
+                {!attemptId ? <p className="text-xs text-slate-500">أنشئ محاولة الدفع أولًا لتفعيل إدخال رقم العملية.</p> : null}
               </div>
 
               <div className="mt-4 flex flex-wrap gap-2">
                 <button
                   type="button"
                   onClick={createPaymentAttempt}
-                  disabled={isPending || !isPayable || selectedDestinationMissing}
+                  disabled={isPending || !canCreateAttempt}
                   className="rounded-xl bg-indigo-600 px-4 py-2 text-sm font-semibold text-white disabled:cursor-not-allowed disabled:bg-slate-300"
                 >
                   إنشاء محاولة الدفع
@@ -648,7 +657,7 @@ export function OrderPaymentPanel({
                 <button
                   type="button"
                   onClick={submitProof}
-                  disabled={isPending || !attemptId || attemptStatus !== "SUBMITTED"}
+                  disabled={isPending || !canSubmitReference}
                   className="rounded-xl border border-indigo-200 bg-indigo-50 px-4 py-2 text-sm font-semibold text-indigo-700 disabled:cursor-not-allowed disabled:border-slate-200 disabled:bg-slate-100 disabled:text-slate-400"
                 >
                   إرسال رقم العملية
@@ -656,7 +665,7 @@ export function OrderPaymentPanel({
                 <button
                   type="button"
                   onClick={verifyPaymentStatus}
-                  disabled={isPending || !attemptId || attemptStatus === "PAID" || attemptStatus === "FAILED"}
+                  disabled={isPending || !canVerifyAttempt}
                   className="rounded-xl border border-emerald-200 bg-emerald-50 px-4 py-2 text-sm font-semibold text-emerald-700 disabled:cursor-not-allowed disabled:border-slate-200 disabled:bg-slate-100 disabled:text-slate-400"
                 >
                   تحقّق من حالة الدفع
@@ -691,8 +700,8 @@ export function OrderPaymentPanel({
             <Link href="/account/library" className="rounded-lg bg-emerald-600 px-3 py-1.5 text-xs font-semibold text-white hover:bg-emerald-700">
               الذهاب إلى المكتبة
             </Link>
-            <Link href="/account/library" className="rounded-lg border border-emerald-300 bg-white px-3 py-1.5 text-xs font-semibold text-emerald-700 hover:bg-emerald-50">
-              متابعة القراءة
+            <Link href={`/books`} className="rounded-lg border border-emerald-300 bg-white px-3 py-1.5 text-xs font-semibold text-emerald-700 hover:bg-emerald-50">
+              متابعة التسوق
             </Link>
             <Link href={`/orders/${orderId}/summary`} className="rounded-lg border border-emerald-300 bg-white px-3 py-1.5 text-xs font-semibold text-emerald-700 hover:bg-emerald-50">
               عرض الطلب
