@@ -8,6 +8,7 @@ import {
   FeaturedBooksSection,
   RecommendedBooksSection,
 } from "@/components/storefront";
+import { getCurrentUser } from "@/lib/auth-session";
 import { formatArabicCurrency } from "@/lib/formatters/intl";
 
 export const metadata: Metadata = {
@@ -33,7 +34,8 @@ function getPricingLabel(
 }
 
 export default async function HomePage() {
-  const [featuredBooks, categories, recommendedBooks, discoveryCategories] = await Promise.all([
+  const [user, featuredBooks, categories, recommendedBooks, discoveryCategories] = await Promise.all([
+    getCurrentUser(),
     prisma.book.findMany({
       where: { status: "PUBLISHED", format: "DIGITAL" },
       orderBy: { createdAt: "desc" },
@@ -41,6 +43,17 @@ export default async function HomePage() {
       include: {
         author: { select: { nameAr: true } },
         category: { select: { nameAr: true } },
+        offers: {
+          where: { isActive: true },
+          orderBy: { priceCents: "asc" },
+          select: {
+            id: true,
+            type: true,
+            priceCents: true,
+            currency: true,
+            rentalDays: true,
+          },
+        },
         reviews: { select: { rating: true } },
       },
     }),
@@ -64,6 +77,18 @@ export default async function HomePage() {
       orderBy: { createdAt: "desc" },
       include: {
         author: { select: { nameAr: true } },
+        category: { select: { nameAr: true } },
+        offers: {
+          where: { isActive: true },
+          orderBy: { priceCents: "asc" },
+          select: {
+            id: true,
+            type: true,
+            priceCents: true,
+            currency: true,
+            rentalDays: true,
+          },
+        },
         reviews: { select: { rating: true } },
       },
     }),
@@ -148,6 +173,12 @@ export default async function HomePage() {
             author: book.author.nameAr,
             category: book.category.nameAr,
             coverImageUrl: book.coverImageUrl,
+            offers: book.offers,
+            isLoggedIn: Boolean(user),
+            publisher:
+              book.metadata && typeof book.metadata === "object" && !Array.isArray(book.metadata) && typeof book.metadata.publisher === "string"
+                ? book.metadata.publisher
+                : null,
             averageRating:
               book.reviews.length > 0
                 ? book.reviews.reduce((sum, review) => sum + review.rating, 0) / book.reviews.length
@@ -171,6 +202,9 @@ export default async function HomePage() {
                 rank: index,
                 reviewsCount,
                 averageRating,
+                offers: book.offers,
+                category: book.category.nameAr,
+                metadata: book.metadata,
               };
             })
             .sort((a, b) => {
@@ -187,6 +221,13 @@ export default async function HomePage() {
               title: book.title,
               author: book.author,
               coverImageUrl: book.coverImageUrl,
+              offers: book.offers,
+              category: book.category,
+              isLoggedIn: Boolean(user),
+              publisher:
+                book.metadata && typeof book.metadata === "object" && !Array.isArray(book.metadata) && typeof book.metadata.publisher === "string"
+                  ? book.metadata.publisher
+                  : null,
               reason:
                 book.reviewsCount > 0
                   ? `تقييم ${book.averageRating.toFixed(1)} من ${book.reviewsCount} مراجعة`

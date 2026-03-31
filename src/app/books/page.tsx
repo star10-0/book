@@ -148,6 +148,18 @@ export default async function BooksPage({
       },
       include: {
         author: { select: { nameAr: true } },
+        category: { select: { nameAr: true } },
+        offers: {
+          where: { isActive: true },
+          orderBy: { priceCents: "asc" },
+          select: {
+            id: true,
+            type: true,
+            priceCents: true,
+            currency: true,
+            rentalDays: true,
+          },
+        },
         reviews: { select: { rating: true } },
       },
       take: 12,
@@ -257,6 +269,13 @@ export default async function BooksPage({
       title: book.titleAr,
       author: book.author.nameAr,
       coverImageUrl: book.coverImageUrl,
+      category: book.category.nameAr,
+      offers: book.offers,
+      publisher:
+        book.metadata && typeof book.metadata === "object" && !Array.isArray(book.metadata) && typeof book.metadata.publisher === "string"
+          ? book.metadata.publisher
+          : null,
+      isLoggedIn: Boolean(user),
       reason:
         book.reviewsCount > 0
           ? `تقييم ${book.averageRating.toFixed(1)} من ${book.reviewsCount} مراجعة`
@@ -270,6 +289,13 @@ export default async function BooksPage({
         title: book.titleAr,
         author: book.author.nameAr,
         coverImageUrl: book.coverImageUrl,
+        category: book.category.nameAr,
+        offers: book.offers,
+        publisher:
+          book.metadata && typeof book.metadata === "object" && !Array.isArray(book.metadata) && typeof book.metadata.publisher === "string"
+            ? book.metadata.publisher
+            : null,
+        isLoggedIn: Boolean(user),
         reason:
           book.categoryId === highlightedResult.categoryId
             ? "مشابه لهذا الكتاب ضمن نفس التصنيف"
@@ -319,6 +345,10 @@ export default async function BooksPage({
                 title: book.titleAr,
                 author: book.author.nameAr,
                 category: book.category.nameAr,
+                publisher:
+                  book.metadata && typeof book.metadata === "object" && !Array.isArray(book.metadata) && typeof book.metadata.publisher === "string"
+                    ? book.metadata.publisher
+                    : null,
                 coverImageUrl: book.coverImageUrl,
                 offers: book.offers,
                 averageRating: book.averageRating,

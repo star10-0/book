@@ -17,6 +17,9 @@ type FeaturedBookItem = {
   coverImageUrl: string | null;
   averageRating: number;
   reviewsCount: number;
+  offers: BookCardOffer[];
+  publisher?: string | null;
+  isLoggedIn?: boolean;
 };
 
 type RecommendedBookItem = {
@@ -26,6 +29,10 @@ type RecommendedBookItem = {
   author: string;
   coverImageUrl: string | null;
   reason: string;
+  offers: BookCardOffer[];
+  category?: string;
+  publisher?: string | null;
+  isLoggedIn?: boolean;
 };
 
 type BookCardOffer = {
@@ -42,12 +49,20 @@ type BookCardItem = {
   title: string;
   author: string;
   category: string;
+  publisher?: string | null;
   coverImageUrl: string | null;
   offers: BookCardOffer[];
   averageRating: number;
   reviewsCount: number;
   isWishlisted?: boolean;
   isLoggedIn?: boolean;
+};
+
+type PrimaryOffer = {
+  id: string;
+  label: string;
+  price: string;
+  priceCents: number;
 };
 
 type SearchHighlightBookItem = BookCardItem & {
@@ -177,27 +192,31 @@ export function FeaturedBooksSection({ books }: { books: FeaturedBookItem[] }) {
       ) : (
         <div className="mt-5 grid gap-4 sm:grid-cols-2 lg:grid-cols-3">
           {books.map((book, index) => (
-            <article key={book.id} className="overflow-hidden rounded-2xl border border-slate-200 bg-white shadow-sm transition hover:shadow-md">
+            <article key={book.id} className="flex h-full flex-col overflow-hidden rounded-2xl border border-slate-200 bg-white shadow-sm transition hover:-translate-y-0.5 hover:shadow-md">
               <CoverImage src={book.coverImageUrl} alt={`غلاف كتاب ${book.title}`} width={600} height={900} className="h-52 w-full object-cover" />
-              <div className="space-y-2.5 p-4">
+              <div className="flex h-full flex-col gap-2.5 p-4">
                 <div className="flex items-center justify-between gap-2 text-[11px]">
                   <span className="rounded-full bg-amber-100 px-2.5 py-1 font-semibold text-amber-800">الأكثر إبرازًا</span>
                   <span className="font-bold text-slate-500">#{index + 1}</span>
                 </div>
                 <h3 className="line-clamp-2 text-base font-bold text-slate-900">{book.title}</h3>
                 <p className="text-xs text-slate-600">{book.author}</p>
+                {book.publisher ? <p className="line-clamp-1 text-[11px] text-slate-500">الناشر: {book.publisher}</p> : null}
                 <div className="flex items-center justify-between gap-2 text-xs">
                   <span className="inline-flex rounded-full bg-indigo-50 px-2.5 py-1 font-semibold text-indigo-700">{book.category}</span>
                   <span className="font-semibold text-amber-600">
                     {book.averageRating > 0 ? `★ ${book.averageRating.toFixed(1)} (${book.reviewsCount})` : "بدون تقييمات"}
                   </span>
                 </div>
-                <Link
-                  href={`/books/${book.slug}`}
-                  className="inline-flex h-9 items-center justify-center rounded-md bg-slate-900 px-4 text-xs font-semibold text-white hover:bg-slate-800"
-                >
-                  عرض التفاصيل
-                </Link>
+                <div className="mt-auto space-y-2 pt-1">
+                  <OfferPricingSummary offers={book.offers} />
+                  <div className="flex flex-wrap gap-2">
+                    <AddToCartAction bookId={book.id} bookSlug={book.slug} offers={book.offers} isLoggedIn={book.isLoggedIn} />
+                    <Link href={`/books/${book.slug}`} className="store-btn-secondary h-9 px-3 text-xs">
+                      عرض التفاصيل
+                    </Link>
+                  </div>
+                </div>
               </div>
             </article>
           ))}
@@ -227,18 +246,26 @@ export function RecommendedBooksSection({ books }: { books: RecommendedBookItem[
 
       <div className="mt-4 grid gap-3 sm:grid-cols-2 lg:grid-cols-3">
         {books.map((book) => (
-          <article key={book.id} className="rounded-xl border border-slate-200 bg-slate-50 p-3.5">
+          <article key={book.id} className="flex h-full flex-col rounded-xl border border-slate-200 bg-slate-50 p-3.5">
             <div className="flex gap-3">
               <CoverImage src={book.coverImageUrl} alt={`غلاف ${book.title}`} width={120} height={170} className="h-24 w-16 rounded-md object-cover" />
               <div className="min-w-0">
                 <h3 className="line-clamp-2 text-sm font-bold text-slate-900">{book.title}</h3>
                 <p className="mt-1 text-xs text-slate-600">{book.author}</p>
+                {book.publisher ? <p className="mt-1 line-clamp-1 text-[11px] text-slate-500">{book.publisher}</p> : null}
+                {book.category ? <p className="mt-1 text-[11px] font-semibold text-indigo-700">{book.category}</p> : null}
                 <p className="mt-2 text-[11px] text-indigo-700">{book.reason}</p>
               </div>
             </div>
-            <Link href={`/books/${book.slug}`} className="store-btn-secondary mt-3 h-8 px-3 text-indigo-700 ring-1 ring-indigo-200 hover:bg-indigo-50">
-              اقرأ المزيد
-            </Link>
+            <div className="mt-auto space-y-2 pt-3">
+              <OfferPricingSummary offers={book.offers} />
+              <div className="flex flex-wrap gap-2">
+                <AddToCartAction bookId={book.id} bookSlug={book.slug} offers={book.offers} isLoggedIn={book.isLoggedIn} />
+                <Link href={`/books/${book.slug}`} className="store-btn-secondary h-9 px-3 text-xs text-indigo-700 ring-1 ring-indigo-200 hover:bg-indigo-50">
+                  اقرأ المزيد
+                </Link>
+              </div>
+            </div>
           </article>
         ))}
       </div>
@@ -398,6 +425,82 @@ function formatPrice(priceCents: number, currency: string) {
   return formatArabicCurrency(priceCents / 100, { currency });
 }
 
+function getPrimaryOffer(offers: BookCardOffer[]): PrimaryOffer | null {
+  if (offers.length === 0) {
+    return null;
+  }
+
+  const purchaseOffer = offers.find((offer) => offer.type === "PURCHASE");
+  const candidate = purchaseOffer ?? offers[0];
+
+  return {
+    id: candidate.id,
+    label:
+      candidate.type === "PURCHASE"
+        ? "شراء رقمي"
+        : candidate.rentalDays
+          ? `استئجار (${candidate.rentalDays} يوم)`
+          : "استئجار رقمي",
+    price: formatPrice(candidate.priceCents, candidate.currency),
+    priceCents: candidate.priceCents,
+  };
+}
+
+function buildAddToCartHref(bookSlug: string, bookId: string, offerId: string) {
+  const params = new URLSearchParams({
+    bookId,
+    offerId,
+    returnTo: `/books/${bookSlug}`,
+  });
+
+  return `/cart?${params.toString()}`;
+}
+
+function AddToCartAction({
+  bookId,
+  bookSlug,
+  offers,
+  isLoggedIn = false,
+}: {
+  bookId: string;
+  bookSlug: string;
+  offers: BookCardOffer[];
+  isLoggedIn?: boolean;
+}) {
+  const primaryOffer = getPrimaryOffer(offers);
+
+  if (!primaryOffer) {
+    return (
+      <button
+        type="button"
+        disabled
+        className="inline-flex h-9 items-center justify-center rounded-md bg-slate-200 px-3 text-xs font-semibold text-slate-500"
+      >
+        غير متاح للشراء حاليًا
+      </button>
+    );
+  }
+
+  const addToCartHref = buildAddToCartHref(bookSlug, bookId, primaryOffer.id);
+
+  if (!isLoggedIn) {
+    return (
+      <Link
+        href={`/login?callbackUrl=${encodeURIComponent(addToCartHref)}`}
+        className="store-btn-primary h-9 px-3 text-xs"
+      >
+        سجّل الدخول للإضافة إلى السلة
+      </Link>
+    );
+  }
+
+  return (
+    <Link href={addToCartHref} className="store-btn-primary h-9 px-3 text-xs">
+      أضف إلى السلة
+    </Link>
+  );
+}
+
 function ActiveOffersSummary({ offers }: { offers: BookCardOffer[] }) {
   const hasPurchase = offers.some((offer) => offer.type === "PURCHASE");
   const hasRental = offers.some((offer) => offer.type === "RENTAL");
@@ -497,7 +600,8 @@ export function SearchHighlightResult({
           </div>
 
           <div className="flex flex-wrap gap-2.5">
-            <Link href={`/books/${book.slug}`} className="store-btn-primary">
+            <AddToCartAction bookId={book.id} bookSlug={book.slug} offers={book.offers} isLoggedIn={book.isLoggedIn} />
+            <Link href={`/books/${book.slug}`} className="store-btn-secondary">
               عرض التفاصيل
             </Link>
             {!book.isLoggedIn && !book.isWishlisted ? (
@@ -553,12 +657,13 @@ export function BooksGrid({
 
       <div className="grid gap-4 sm:grid-cols-2 lg:grid-cols-3 2xl:grid-cols-4">
         {books.map((book) => (
-          <article key={book.id} className="overflow-hidden rounded-2xl bg-white shadow-sm ring-1 ring-slate-200">
+          <article key={book.id} className="group flex h-full flex-col overflow-hidden rounded-2xl bg-white shadow-sm ring-1 ring-slate-200 transition hover:-translate-y-0.5 hover:shadow-md focus-within:ring-indigo-300">
             <CoverImage src={book.coverImageUrl} alt={`غلاف كتاب ${book.title}`} width={600} height={900} className="h-52 w-full object-cover" />
-            <div className="space-y-2.5 p-4">
+            <div className="flex h-full flex-col gap-2.5 p-4">
               <div className="space-y-1">
                 <h3 className="line-clamp-2 text-base font-bold text-slate-900">{book.title}</h3>
                 <p className="line-clamp-1 text-xs text-slate-600">{book.author}</p>
+                {book.publisher ? <p className="line-clamp-1 text-[11px] text-slate-500">الناشر: {book.publisher}</p> : null}
               </div>
 
               <div className="flex items-center justify-between gap-2 text-[11px]">
@@ -578,11 +683,9 @@ export function BooksGrid({
                 </div>
               </div>
 
-              <div className="flex flex-wrap gap-2">
-                <Link
-                  href={`/books/${book.slug}`}
-                  className="store-btn-primary"
-                >
+              <div className="mt-auto flex flex-wrap gap-2 pt-1">
+                <AddToCartAction bookId={book.id} bookSlug={book.slug} offers={book.offers} isLoggedIn={book.isLoggedIn} />
+                <Link href={`/books/${book.slug}`} className="store-btn-secondary h-9 px-3 text-xs">
                   عرض التفاصيل
                 </Link>
                 {book.isWishlisted ? (
