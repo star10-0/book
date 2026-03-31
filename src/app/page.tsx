@@ -52,10 +52,26 @@ export default async function HomePage() {
   ]);
 
   return (
-    <main>
+    <main className="bg-gradient-to-b from-slate-100 via-slate-50 to-white">
       <SiteHeader />
-      <div className="space-y-8 sm:space-y-10">
+      <div className="space-y-5 pb-8 sm:space-y-6">
         <HeroSection />
+
+        <FeaturedBooksSection
+          books={featuredBooks.map((book) => ({
+            id: book.id,
+            slug: book.slug,
+            title: book.titleAr,
+            author: book.author.nameAr,
+            category: book.category.nameAr,
+            coverImageUrl: book.coverImageUrl,
+            averageRating:
+              book.reviews.length > 0
+                ? book.reviews.reduce((sum, review) => sum + review.rating, 0) / book.reviews.length
+                : 0,
+            reviewsCount: book.reviews.length,
+          }))}
+        />
 
         <RecommendedBooksSection
           books={recommendedBooks
@@ -91,24 +107,8 @@ export default async function HomePage() {
               reason:
                 book.reviewsCount > 0
                   ? `تقييم ${book.averageRating.toFixed(1)} من ${book.reviewsCount} مراجعة`
-                  : `ضمن أحدث الكتب المضافة`,
+                  : "ضمن أحدث الكتب المضافة",
             }))}
-        />
-
-        <FeaturedBooksSection
-          books={featuredBooks.map((book) => ({
-            id: book.id,
-            slug: book.slug,
-            title: book.titleAr,
-            author: book.author.nameAr,
-            category: book.category.nameAr,
-            coverImageUrl: book.coverImageUrl,
-            averageRating:
-              book.reviews.length > 0
-                ? book.reviews.reduce((sum, review) => sum + review.rating, 0) / book.reviews.length
-                : 0,
-            reviewsCount: book.reviews.length,
-          }))}
         />
 
         <CategoriesPreviewSection
