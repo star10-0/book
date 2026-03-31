@@ -112,7 +112,7 @@ Select at least one provider via `PAYMENT_LIVE_PROVIDERS` and fully configure on
 - `SYRIATEL_CASH_API_KEY`
 - `SYRIATEL_CASH_DESTINATION_ACCOUNT`
 
-Optional override (defaults to `/find_tx`):
+Optional override for Syriatel transaction lookup endpoint:
 - `SYRIATEL_CASH_FIND_TX_PATH`
 
 
@@ -168,7 +168,7 @@ To quickly detect deployment drift versus local/main code:
    git log --oneline --decorate --max-count=20 HEAD..origin/main
    ```
 
-`/api/version` reports the commit SHA/branch when your platform exposes them (for example Vercel, Railway, Render), and also reports payment mode/provider selection to speed up checkout troubleshooting. It also reports `syriatelIntegration=manual_transfer_find_tx_v1` to confirm the new Syriatel contract is active.
+`/api/version` reports the commit SHA/branch when your platform exposes them (for example Vercel, Railway, Render), and also reports payment mode/provider selection to speed up checkout troubleshooting. It also includes a Syriatel integration marker for operational debugging.
 
 ---
 
@@ -261,7 +261,7 @@ Key UIs:
 
 Full setup details, alerts, and runbooks are documented in `monitoring/README.md` and `monitoring/runbooks/OPERATIONS.md`.
 
-### Redeploy to latest Syriatel implementation (manual-transfer + `find_tx`)
+### Redeploy to latest Syriatel implementation (manual transfer + transaction verification)
 
 Use this when production appears to run older Syriatel code or reports missing legacy Syriatel env keys.
 
@@ -275,7 +275,7 @@ Use this when production appears to run older Syriatel code or reports missing l
    git rev-parse --short HEAD
    ```
 
-2. Update `.env.production` for current Syriatel flow:
+2. Update `.env.production` for the current Syriatel flow:
    - Keep only:
      - `SYRIATEL_CASH_API_BASE_URL`
      - `SYRIATEL_CASH_API_KEY`
@@ -304,7 +304,7 @@ Use this when production appears to run older Syriatel code or reports missing l
 5. Smoke-check checkout Syriatel flow:
    - Open checkout page.
    - Select `Syriatel Cash`.
-   - Confirm instructions mention manual transfer + entering transaction number + verify via `find_tx`.
+   - Confirm instructions mention manual transfer + entering transaction number + verify step.
    - Create payment and confirm no `PAYMENT_PROVIDER_ENV_MISSING` error for legacy Syriatel keys.
 
 ---

@@ -46,15 +46,20 @@ export default async function CheckoutPage({ params }: CheckoutPageProps) {
   return (
     <main>
       <SiteHeader />
-      <div className="mb-4 flex flex-wrap items-center justify-between gap-2">
-        <h1 className="text-2xl font-bold text-slate-900">إتمام الطلب</h1>
-        <div className="flex flex-wrap gap-4 text-sm font-semibold">
-          <Link href={`/orders/${order.id}/summary`} className="text-indigo-700 hover:text-indigo-600">
-            ملخص الطلب
-          </Link>
-          <Link href="/account/orders" className="text-indigo-700 hover:text-indigo-600">
-            العودة إلى طلباتي
-          </Link>
+      <div className="mb-4 rounded-2xl border border-slate-200 bg-white p-4 shadow-sm sm:p-5">
+        <div className="flex flex-wrap items-center justify-between gap-2">
+          <div>
+            <h1 className="text-2xl font-bold text-slate-900">الدفع وإكمال الطلب</h1>
+            <p className="mt-1 text-sm text-slate-600">اتبع الخطوات بالترتيب لتأكيد الدفع وتفعيل الوصول فورًا.</p>
+          </div>
+          <div className="flex flex-wrap gap-4 text-sm font-semibold">
+            <Link href={`/orders/${order.id}/summary`} className="text-indigo-700 hover:text-indigo-600">
+              ملخص الطلب
+            </Link>
+            <Link href="/account/orders" className="text-indigo-700 hover:text-indigo-600">
+              العودة إلى طلباتي
+            </Link>
+          </div>
         </div>
       </div>
 

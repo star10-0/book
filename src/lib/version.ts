@@ -29,7 +29,7 @@ export function getOperationalDiagnostics() {
     payment: {
       mode: process.env.PAYMENT_GATEWAY_MODE?.trim() ?? "mock",
       liveProviders: process.env.PAYMENT_LIVE_PROVIDERS?.trim() ?? null,
-      syriatelIntegration: "manual_transfer_find_tx_v1",
+      syriatelIntegration: "manual_transfer_tx_verification_v1",
     },
   };
 }
