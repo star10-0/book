@@ -14,13 +14,13 @@ const supportLinks = [
 
 export function SiteFooter() {
   return (
-    <footer className="mt-10 rounded-3xl bg-slate-950 px-6 py-8 text-slate-100 shadow-lg sm:px-8 sm:py-10">
+    <footer className="mt-8 rounded-3xl bg-gradient-to-l from-slate-950 via-slate-900 to-indigo-950 px-6 py-8 text-slate-100 shadow-lg sm:px-8 sm:py-10">
       <div className="grid gap-8 md:grid-cols-[1.3fr_1fr_1fr]">
         <div className="space-y-3">
-          <p className="text-sm font-semibold text-indigo-300">Book Store</p>
-          <h2 className="text-2xl font-bold">متجرك العربي للكتب الرقمية</h2>
+          <p className="text-sm font-semibold text-indigo-300">Amjad</p>
+          <h2 className="text-2xl font-bold">واجهة تسوق عربية للكتب الرقمية</h2>
           <p className="max-w-md text-sm leading-7 text-slate-300">
-            شراء واستئجار كتب رقمية مع تجربة دفع واضحة، ووصول سريع إلى مكتبتك الشخصية في أي وقت.
+            اكتشف عناوين جديدة، قارن بين خيارات الشراء والاستئجار، وانتقل مباشرة إلى مكتبتك الشخصية بعد الدفع.
           </p>
         </div>
 
@@ -52,8 +52,8 @@ export function SiteFooter() {
       </div>
 
       <div className="mt-8 border-t border-slate-800 pt-5 text-xs text-slate-400 sm:flex sm:items-center sm:justify-between">
-        <p>© {new Date().getFullYear()} Book. جميع الحقوق محفوظة.</p>
-        <p className="mt-2 sm:mt-0">تجربة عربية أولًا — RTL افتراضي، تصفح سريع، وشراء بثقة.</p>
+        <p>© {new Date().getFullYear()} Amjad. جميع الحقوق محفوظة.</p>
+        <p className="mt-2 sm:mt-0">تجربة متجر عربي أولًا — RTL افتراضي، تسوق أسرع، وشراء بثقة.</p>
       </div>
     </footer>
   );
