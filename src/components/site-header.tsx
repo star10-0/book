@@ -21,81 +21,138 @@ const accountLinks = [
 export async function SiteHeader() {
   const user = await getCurrentUser();
 
-  return (
-    <header className="mb-8 rounded-2xl bg-white/95 p-4 shadow-sm ring-1 ring-slate-200 backdrop-blur sm:p-5">
-      <div className="flex flex-wrap items-center justify-between gap-3 border-b border-slate-200 pb-4">
-        <Link href="/" className="rounded-lg px-2 py-1 focus-visible:outline-none focus-visible:ring-2 focus-visible:ring-indigo-400">
-          <p className="text-lg font-extrabold tracking-tight text-slate-900">Book</p>
-          <p className="text-xs text-slate-500">مكتبة رقمية عربية</p>
-        </Link>
+  const accountNavigation = user
+    ? [
+        ...accountLinks,
+        ...(user.role === "CREATOR" || user.role === "ADMIN"
+          ? [
+              { href: "/studio", label: "لوحة الكاتب" },
+              { href: "/studio/books/new", label: "أضف كتابًا" },
+              { href: "/studio/profile", label: "ملف الكاتب" },
+            ]
+          : [{ href: "/studio", label: "لوحة الكاتب" }]),
+        ...(user.role === "ADMIN" ? [{ href: "/admin", label: "الإدارة" }] : []),
+      ]
+    : [];
 
-        {user ? (
-          <div className="flex w-full flex-wrap items-center justify-between gap-2 sm:w-auto sm:justify-start sm:gap-3">
-            <p className="text-sm font-medium text-slate-700">{user.name ?? user.email}</p>
-            <form action={signOutAction}>
-              <button
-                type="submit"
-                className="min-h-10 rounded-lg border border-slate-300 px-3 py-2 text-sm font-semibold text-slate-700 hover:bg-slate-100 focus-visible:outline-none focus-visible:ring-2 focus-visible:ring-slate-400"
-              >
-                تسجيل الخروج
-              </button>
-            </form>
+  return (
+    <header className="mb-8 overflow-hidden rounded-2xl bg-white shadow-sm ring-1 ring-slate-200">
+      <div className="border-b border-slate-200 bg-slate-950 px-4 py-2 text-xs text-slate-100 sm:px-5">
+        <div className="flex flex-wrap items-center justify-between gap-2">
+          <p className="font-semibold text-indigo-200">متجر رقمي عربي أولًا</p>
+          <div className="flex flex-wrap items-center gap-3 text-slate-300">
+            <span>شراء واستئجار كتب رقمية</span>
+            <span aria-hidden>•</span>
+            <span>دفع مرن ومكتبة فورية</span>
           </div>
-        ) : (
-          <div className="flex w-full flex-wrap items-center justify-between gap-2 sm:w-auto sm:justify-start">
-            <Link
-              href="/login"
-              className="min-h-10 rounded-lg border border-slate-300 px-3 py-2 text-sm font-semibold text-slate-700 hover:bg-slate-100 focus-visible:outline-none focus-visible:ring-2 focus-visible:ring-slate-400"
-            >
-              تسجيل الدخول
-            </Link>
-            <Link
-              href="/register"
-              className="min-h-10 rounded-lg bg-indigo-600 px-3 py-2 text-sm font-semibold text-white hover:bg-indigo-500 focus-visible:outline-none focus-visible:ring-2 focus-visible:ring-indigo-300"
-            >
-              إنشاء حساب
-            </Link>
-          </div>
-        )}
+        </div>
       </div>
 
-      <nav aria-label="التنقل الرئيسي" className="mt-4 overflow-x-auto pb-1">
-        <ul className="flex min-w-max flex-wrap items-center gap-2">
+      <div className="px-4 py-4 sm:px-5">
+        <div className="grid gap-4 lg:grid-cols-[220px_minmax(0,1fr)_auto] lg:items-center">
+          <Link
+            href="/"
+            className="rounded-lg px-1 py-1 focus-visible:outline-none focus-visible:ring-2 focus-visible:ring-indigo-400"
+          >
+            <p className="text-2xl font-extrabold tracking-tight text-slate-900">Book</p>
+            <p className="text-xs text-slate-500">مكتبة رقمية عربية</p>
+          </Link>
+
+          <form action="/books" method="get" className="w-full">
+            <div className="flex overflow-hidden rounded-2xl border border-slate-300 bg-white shadow-sm focus-within:border-indigo-500 focus-within:ring-2 focus-within:ring-indigo-100">
+              <div className="hidden items-center border-l border-slate-200 bg-slate-50 px-3 text-xs font-semibold text-slate-600 sm:flex">
+                الكتب
+              </div>
+              <input
+                type="search"
+                name="q"
+                placeholder="ابحث عن كتاب أو كاتب أو عنوان..."
+                className="min-h-12 w-full border-0 px-4 text-sm text-slate-900 outline-none placeholder:text-slate-400"
+                aria-label="البحث في الكتب"
+              />
+              <button
+                type="submit"
+                className="min-h-12 rounded-none bg-indigo-600 px-5 text-sm font-bold text-white hover:bg-indigo-500 focus-visible:outline-none focus-visible:ring-2 focus-visible:ring-indigo-300"
+              >
+                بحث
+              </button>
+            </div>
+          </form>
+
+          {user ? (
+            <div className="flex flex-wrap items-center gap-2 lg:justify-end">
+              <div className="rounded-xl border border-slate-200 bg-slate-50 px-3 py-2 text-sm text-slate-700">
+                <p className="text-xs text-slate-500">مرحبًا</p>
+                <p className="font-semibold text-slate-900">{user.name ?? user.email}</p>
+              </div>
+              <form action={signOutAction}>
+                <button
+                  type="submit"
+                  className="min-h-10 rounded-lg border border-slate-300 px-3 py-2 text-sm font-semibold text-slate-700 hover:bg-slate-100 focus-visible:outline-none focus-visible:ring-2 focus-visible:ring-slate-400"
+                >
+                  تسجيل الخروج
+                </button>
+              </form>
+            </div>
+          ) : (
+            <div className="flex flex-wrap items-center gap-2 lg:justify-end">
+              <Link
+                href="/login"
+                className="min-h-10 rounded-lg border border-slate-300 px-3 py-2 text-sm font-semibold text-slate-700 hover:bg-slate-100 focus-visible:outline-none focus-visible:ring-2 focus-visible:ring-slate-400"
+              >
+                تسجيل الدخول
+              </Link>
+              <Link
+                href="/register"
+                className="min-h-10 rounded-lg bg-indigo-600 px-3 py-2 text-sm font-semibold text-white hover:bg-indigo-500 focus-visible:outline-none focus-visible:ring-2 focus-visible:ring-indigo-300"
+              >
+                إنشاء حساب
+              </Link>
+            </div>
+          )}
+        </div>
+
+        <div className="mt-4 flex flex-wrap gap-2">
+          <Link href="/books" className="rounded-full bg-indigo-50 px-3 py-1.5 text-xs font-semibold text-indigo-700 hover:bg-indigo-100">
+            أحدث الكتب
+          </Link>
+          <Link href="/books?offer=buy" className="rounded-full bg-slate-100 px-3 py-1.5 text-xs font-semibold text-slate-700 hover:bg-slate-200">
+            شراء
+          </Link>
+          <Link href="/books?offer=rent" className="rounded-full bg-slate-100 px-3 py-1.5 text-xs font-semibold text-slate-700 hover:bg-slate-200">
+            استئجار
+          </Link>
+          <Link href="/account/library" className="rounded-full bg-slate-100 px-3 py-1.5 text-xs font-semibold text-slate-700 hover:bg-slate-200">
+            مكتبتي
+          </Link>
+        </div>
+      </div>
+
+      <nav aria-label="التنقل الرئيسي" className="border-t border-slate-200 bg-slate-50 px-4 py-3 sm:px-5">
+        <ul className="flex min-w-max flex-wrap items-center gap-2 overflow-x-auto pb-1">
           {primaryLinks.map((link) => (
             <li key={link.href}>
               <Link
                 href={link.href}
-                className="inline-flex min-h-10 items-center rounded-md px-3 py-1.5 text-sm font-medium text-slate-700 hover:bg-slate-100 focus-visible:outline-none focus-visible:ring-2 focus-visible:ring-indigo-400"
+                className="inline-flex min-h-10 items-center rounded-md px-3 py-1.5 text-sm font-medium text-slate-700 hover:bg-white hover:text-slate-900 focus-visible:outline-none focus-visible:ring-2 focus-visible:ring-indigo-400"
               >
                 {link.label}
               </Link>
             </li>
           ))}
 
-          {user ? <li aria-hidden className="mx-1 h-4 w-px bg-slate-300" /> : null}
+          {accountNavigation.length > 0 ? <li aria-hidden className="mx-1 h-4 w-px bg-slate-300" /> : null}
 
-          {user
-            ? [
-                ...accountLinks,
-                ...(user.role === "CREATOR" || user.role === "ADMIN"
-                  ? [
-                      { href: "/studio", label: "لوحة الكاتب" },
-                      { href: "/studio/books/new", label: "أضف كتابًا" },
-                      { href: "/studio/profile", label: "ملف الكاتب" },
-                    ]
-                  : [{ href: "/studio", label: "لوحة الكاتب" }]),
-                ...(user.role === "ADMIN" ? [{ href: "/admin", label: "الإدارة" }] : []),
-              ].map((link) => (
-                <li key={link.href}>
-                  <Link
-                    href={link.href}
-                    className="inline-flex min-h-10 items-center rounded-md px-3 py-1.5 text-sm font-medium text-slate-700 hover:bg-slate-100 focus-visible:outline-none focus-visible:ring-2 focus-visible:ring-indigo-400"
-                  >
-                    {link.label}
-                  </Link>
-                </li>
-              ))
-            : null}
+          {accountNavigation.map((link) => (
+            <li key={link.href}>
+              <Link
+                href={link.href}
+                className="inline-flex min-h-10 items-center rounded-md px-3 py-1.5 text-sm font-medium text-slate-700 hover:bg-white hover:text-slate-900 focus-visible:outline-none focus-visible:ring-2 focus-visible:ring-indigo-400"
+              >
+                {link.label}
+              </Link>
+            </li>
+          ))}
         </ul>
       </nav>
     </header>
