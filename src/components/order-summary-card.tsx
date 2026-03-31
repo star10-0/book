@@ -10,6 +10,8 @@ type CheckoutOffer = Pick<BookOffer, "id" | "type" | "priceCents" | "currency" |
 type OrderSummaryCardProps = {
   bookId: string;
   bookTitle: string;
+  bookSlug: string;
+  isLoggedIn: boolean;
   offers: CheckoutOffer[];
 };
 
@@ -18,7 +20,7 @@ const offerLabelByType: Record<OfferType, string> = {
   RENTAL: "استئجار رقمي",
 };
 
-export function OrderSummaryCard({ bookId, bookTitle, offers }: OrderSummaryCardProps) {
+export function OrderSummaryCard({ bookId, bookTitle, bookSlug, isLoggedIn, offers }: OrderSummaryCardProps) {
   const [selectedOfferId, setSelectedOfferId] = useState<string>(offers[0]?.id ?? "");
 
   const selectedOffer = useMemo(() => offers.find((offer) => offer.id === selectedOfferId) ?? null, [offers, selectedOfferId]);
@@ -34,6 +36,7 @@ export function OrderSummaryCard({ bookId, bookTitle, offers }: OrderSummaryCard
   }
 
   const checkoutHref = selectedOffer ? `/checkout?bookId=${bookId}&offerId=${selectedOffer.id}` : "#";
+  const loginHref = `/login?callbackUrl=${encodeURIComponent(`/books/${bookSlug}`)}`;
   const ctaLabel =
     selectedOffer?.type === "PURCHASE" ? "شراء الكتاب الآن" : selectedOffer?.type === "RENTAL" ? "استئجار الكتاب الآن" : "متابعة إلى صفحة الإتمام";
 
@@ -78,13 +81,25 @@ export function OrderSummaryCard({ bookId, bookTitle, offers }: OrderSummaryCard
         </div>
       </dl>
 
-      <Link
-        href={checkoutHref}
-        aria-disabled={!selectedOffer}
-        className="inline-flex w-full items-center justify-center rounded-xl bg-indigo-600 px-4 py-3 text-sm font-semibold text-white transition hover:bg-indigo-500 focus-visible:outline-none focus-visible:ring-2 focus-visible:ring-indigo-500 focus-visible:ring-offset-2 aria-disabled:pointer-events-none aria-disabled:bg-slate-300"
-      >
-        {ctaLabel}
-      </Link>
+      {isLoggedIn ? (
+        <Link
+          href={checkoutHref}
+          aria-disabled={!selectedOffer}
+          className="inline-flex w-full items-center justify-center rounded-xl bg-indigo-600 px-4 py-3 text-sm font-semibold text-white transition hover:bg-indigo-500 focus-visible:outline-none focus-visible:ring-2 focus-visible:ring-indigo-500 focus-visible:ring-offset-2 aria-disabled:pointer-events-none aria-disabled:bg-slate-300"
+        >
+          {ctaLabel}
+        </Link>
+      ) : (
+        <div className="space-y-2">
+          <Link
+            href={loginHref}
+            className="inline-flex w-full items-center justify-center rounded-xl bg-indigo-600 px-4 py-3 text-sm font-semibold text-white transition hover:bg-indigo-500 focus-visible:outline-none focus-visible:ring-2 focus-visible:ring-indigo-500 focus-visible:ring-offset-2"
+          >
+            سجّل الدخول لإتمام الشراء
+          </Link>
+          <p className="text-xs text-slate-600">يمكنك تصفّح التفاصيل بحرية، وتسجيل الدخول فقط عند المتابعة لإتمام الطلب.</p>
+        </div>
+      )}
     </section>
   );
 }

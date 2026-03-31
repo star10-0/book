@@ -258,6 +258,7 @@ export default async function BooksPage({
             averageRating: book.averageRating,
             reviewsCount: book.reviewsCount,
             isWishlisted: wishlistIds.has(book.id),
+            isLoggedIn: Boolean(user),
           }))}
           hasActiveFilters={Boolean(search) || category !== "all" || offerType !== "all"}
         />

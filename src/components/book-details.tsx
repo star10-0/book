@@ -155,7 +155,13 @@ export function BookDetailsSection({
             )}
           </section>
 
-          <OrderSummaryCard bookId={book.id} bookTitle={book.title} offers={offers} />
+          <OrderSummaryCard
+            bookId={book.id}
+            bookSlug={book.slug}
+            bookTitle={book.title}
+            isLoggedIn={isLoggedIn}
+            offers={offers}
+          />
 
           <div className="rounded-xl border border-slate-200 bg-slate-50 p-4 text-sm text-slate-700">
             {userReview
@@ -181,12 +187,14 @@ function WishlistSection({
 }) {
   if (!isLoggedIn) {
     return (
-      <div className="rounded-xl border border-dashed border-slate-300 p-4 text-sm text-slate-600">
-        لحفظ هذا الكتاب في المفضلة،
-        <Link href={`/login?callbackUrl=${encodeURIComponent(`/books/${slug}`)}`} className="mr-1 font-semibold text-indigo-700 hover:text-indigo-800">
-          سجّل الدخول
+      <div className="rounded-xl border border-dashed border-slate-300 bg-slate-50 p-4 text-sm text-slate-700">
+        <p>يمكنك متابعة التصفح بحرية.</p>
+        <Link
+          href={`/login?callbackUrl=${encodeURIComponent(`/books/${slug}`)}`}
+          className="mt-2 inline-flex rounded-lg bg-indigo-600 px-3 py-2 text-xs font-semibold text-white hover:bg-indigo-500 focus-visible:outline-none focus-visible:ring-2 focus-visible:ring-indigo-300"
+        >
+          سجّل الدخول لإضافة الكتاب إلى المفضلة
         </Link>
-        أولًا.
       </div>
     );
   }
