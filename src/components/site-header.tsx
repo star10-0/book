@@ -36,37 +36,37 @@ export async function SiteHeader() {
     : [];
 
   return (
-    <header className="mb-8 overflow-hidden rounded-2xl bg-white shadow-sm ring-1 ring-slate-200">
+    <header className="mb-8 overflow-hidden rounded-3xl bg-white shadow-sm ring-1 ring-slate-200">
       <div className="border-b border-slate-200 bg-slate-950 px-4 py-2 text-xs text-slate-100 sm:px-5">
         <div className="flex flex-wrap items-center justify-between gap-2">
-          <p className="font-semibold text-indigo-200">متجر رقمي عربي أولًا</p>
+          <p className="font-semibold text-indigo-200">متجر كتب رقمية عربي</p>
           <div className="flex flex-wrap items-center gap-3 text-slate-300">
             <span>شراء واستئجار كتب رقمية</span>
             <span aria-hidden>•</span>
-            <span>دفع مرن ومكتبة فورية</span>
+            <span>وصول فوري إلى مكتبتك</span>
           </div>
         </div>
       </div>
 
       <div className="px-4 py-4 sm:px-5">
-        <div className="grid gap-4 lg:grid-cols-[220px_minmax(0,1fr)_auto] lg:items-center">
+        <div className="grid gap-4 xl:grid-cols-[240px_minmax(0,1fr)_auto] xl:items-center">
           <Link
             href="/"
-            className="rounded-lg px-1 py-1 focus-visible:outline-none focus-visible:ring-2 focus-visible:ring-indigo-400"
+            className="rounded-xl px-2 py-1 focus-visible:outline-none focus-visible:ring-2 focus-visible:ring-indigo-400"
           >
-            <p className="text-2xl font-extrabold tracking-tight text-slate-900">Book</p>
-            <p className="text-xs text-slate-500">مكتبة رقمية عربية</p>
+            <p className="text-3xl font-extrabold tracking-tight text-slate-900">Book</p>
+            <p className="text-xs font-medium text-slate-500">متجر الكتاب الرقمي العربي</p>
           </Link>
 
           <form action="/books" method="get" className="w-full">
             <div className="flex overflow-hidden rounded-2xl border border-slate-300 bg-white shadow-sm focus-within:border-indigo-500 focus-within:ring-2 focus-within:ring-indigo-100">
-              <div className="hidden items-center border-l border-slate-200 bg-slate-50 px-3 text-xs font-semibold text-slate-600 sm:flex">
-                الكتب
+              <div className="hidden items-center border-l border-slate-200 bg-slate-50 px-3 text-xs font-semibold text-slate-600 md:flex">
+                البحث في المتجر
               </div>
               <input
                 type="search"
                 name="q"
-                placeholder="ابحث عن كتاب أو كاتب أو عنوان..."
+                placeholder="ابحث عن كتاب، كاتب، أو تصنيف..."
                 className="min-h-12 w-full border-0 px-4 text-sm text-slate-900 outline-none placeholder:text-slate-400"
                 aria-label="البحث في الكتب"
               />
@@ -80,11 +80,17 @@ export async function SiteHeader() {
           </form>
 
           {user ? (
-            <div className="flex flex-wrap items-center gap-2 lg:justify-end">
+            <div className="flex flex-wrap items-center gap-2 xl:justify-end">
               <div className="rounded-xl border border-slate-200 bg-slate-50 px-3 py-2 text-sm text-slate-700">
                 <p className="text-xs text-slate-500">مرحبًا</p>
                 <p className="font-semibold text-slate-900">{user.name ?? user.email}</p>
               </div>
+              <Link
+                href="/account"
+                className="min-h-10 rounded-lg bg-indigo-600 px-3 py-2 text-sm font-semibold text-white hover:bg-indigo-500 focus-visible:outline-none focus-visible:ring-2 focus-visible:ring-indigo-300"
+              >
+                حسابي
+              </Link>
               <form action={signOutAction}>
                 <button
                   type="submit"
@@ -95,7 +101,7 @@ export async function SiteHeader() {
               </form>
             </div>
           ) : (
-            <div className="flex flex-wrap items-center gap-2 lg:justify-end">
+            <div className="flex flex-wrap items-center gap-2 xl:justify-end">
               <Link
                 href="/login"
                 className="min-h-10 rounded-lg border border-slate-300 px-3 py-2 text-sm font-semibold text-slate-700 hover:bg-slate-100 focus-visible:outline-none focus-visible:ring-2 focus-visible:ring-slate-400"
@@ -124,6 +130,9 @@ export async function SiteHeader() {
           </Link>
           <Link href="/account/library" className="rounded-full bg-slate-100 px-3 py-1.5 text-xs font-semibold text-slate-700 hover:bg-slate-200">
             مكتبتي
+          </Link>
+          <Link href="/account/orders" className="rounded-full bg-slate-100 px-3 py-1.5 text-xs font-semibold text-slate-700 hover:bg-slate-200">
+            تتبّع الطلبات
           </Link>
         </div>
       </div>

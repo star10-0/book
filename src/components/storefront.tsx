@@ -64,11 +64,10 @@ const defaultCover = "https://placehold.co/600x900/png/e2e8f0/334155?text=Book";
 export function HeroSection() {
   return (
     <section className="rounded-3xl bg-gradient-to-l from-indigo-700 to-indigo-500 p-6 text-white shadow-lg sm:p-10 lg:p-12" aria-labelledby="hero-title">
-      <p className="text-sm font-semibold text-indigo-100">منصة عربية أولًا</p>
-      <h1 id="hero-title" className="mt-3 text-3xl font-bold leading-tight sm:text-4xl lg:text-5xl">اكتشف كتبك الرقمية المفضلة</h1>
+      <p className="text-sm font-semibold text-indigo-100">متجر كتب رقمية عربي</p>
+      <h1 id="hero-title" className="mt-3 text-3xl font-bold leading-tight sm:text-4xl lg:text-5xl">اكتشف مكتبتك القادمة بنقرة واحدة</h1>
       <p className="mt-4 max-w-2xl text-base leading-8 text-indigo-100 sm:text-lg">
-        اشترِ أو استأجر الكتب العربية بسهولة، واقرأ أينما كنت عبر تجربة حديثة تدعم الهاتف واللوحي
-        وسطح المكتب.
+        اختر بين الشراء أو الاستئجار، وابدأ القراءة فورًا عبر تجربة عربية سلسة على الهاتف واللوحي وسطح المكتب.
       </p>
       <div className="mt-8 flex flex-wrap gap-3">
         <Link
@@ -78,10 +77,10 @@ export function HeroSection() {
           تصفّح الكتب
         </Link>
         <Link
-          href="/admin"
+          href="/studio"
           className="rounded-xl border border-indigo-200/70 px-5 py-3 text-sm font-bold text-white hover:bg-indigo-600 focus-visible:outline-none focus-visible:ring-2 focus-visible:ring-white"
         >
-          انضم كبائع
+          ابدأ النشر كبائع
         </Link>
       </div>
     </section>

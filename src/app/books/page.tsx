@@ -15,7 +15,7 @@ type BooksSearchParams = {
 
 export const metadata: Metadata = {
   title: "الكتب",
-  description: "تصفح الكتب الرقمية المتاحة للشراء أو الاستئجار مع فلاتر بحث سهلة وسريعة.",
+  description: "تصفح متجر الكتب الرقمية مع بحث وفلاتر ذكية للشراء أو الاستئجار بسهولة.",
 };
 
 function normalizeOfferType(value?: string): "all" | "buy" | "rent" {
@@ -222,9 +222,9 @@ export default async function BooksPage({
     <main>
       <SiteHeader />
       <section className="mb-6 rounded-2xl bg-white p-6 shadow-sm ring-1 ring-slate-200 sm:p-8">
-        <h1 className="text-3xl font-bold text-slate-900">مكتبة الكتب</h1>
+        <h1 className="text-3xl font-bold text-slate-900">متجر الكتب الرقمية</h1>
         <p className="mt-2 text-sm leading-8 text-slate-600 sm:text-base">
-          ابحث بالعنوان أو اسم الكاتب، واستخدم الفلاتر الذكية للشراء أو الاستئجار مع ترتيب يناسبك.
+          ابحث بالعنوان أو اسم الكاتب، ثم صفِّ النتائج حسب التصنيف ونوع العرض والسعر والتقييم.
         </p>
       </section>
 
