@@ -2,7 +2,7 @@ import type { Metadata } from "next";
 import type { Prisma } from "@prisma/client";
 import { SiteHeader } from "@/components/site-header";
 import { SiteFooter } from "@/components/site-footer";
-import { BooksFilters, BooksGrid, RecommendedBooksSection } from "@/components/storefront";
+import { BooksFilters, BooksGrid, RecommendedBooksSection, SearchHighlightResult } from "@/components/storefront";
 import { getCurrentUser } from "@/lib/auth-session";
 import { prisma } from "@/lib/prisma";
 
@@ -187,6 +187,52 @@ export default async function BooksPage({
     return 0;
   });
 
+  const normalizedSearch = search.toLocaleLowerCase("ar");
+  const searchScoredBooks = sortedBooks.map((book) => {
+    if (!search) {
+      return { book, score: 0 };
+    }
+
+    const title = book.titleAr.toLocaleLowerCase("ar");
+    const author = book.author.nameAr.toLocaleLowerCase("ar");
+    const categoryName = book.category.nameAr.toLocaleLowerCase("ar");
+
+    let score = 0;
+    if (title === normalizedSearch) {
+      score += 100;
+    } else if (title.startsWith(normalizedSearch)) {
+      score += 80;
+    } else if (title.includes(normalizedSearch)) {
+      score += 60;
+    }
+
+    if (author.includes(normalizedSearch)) {
+      score += 30;
+    }
+
+    if (categoryName.includes(normalizedSearch)) {
+      score += 10;
+    }
+
+    return { book, score };
+  });
+
+  const highlightedResult = search
+    ? [...searchScoredBooks]
+        .sort((a, b) => b.score - a.score)
+        .map((item) => item.book)
+        .find(Boolean) ?? null
+    : null;
+
+  const relatedFromResults =
+    highlightedResult !== null
+      ? sortedBooks.filter(
+          (book) =>
+            book.id !== highlightedResult.id &&
+            (book.categoryId === highlightedResult.categoryId || book.authorId === highlightedResult.authorId),
+        )
+      : [];
+
   const recommended = [...topRatedBooks]
     .map((book) => {
       const reviewsCount = book.reviews.length;
@@ -218,6 +264,27 @@ export default async function BooksPage({
           : `اختيار حديث ضمن المنصة #${index + 1}`,
     }));
 
+  const searchRecommendations = highlightedResult
+    ? relatedFromResults.slice(0, 3).map((book, index) => ({
+        id: book.id,
+        slug: book.slug,
+        title: book.titleAr,
+        author: book.author.nameAr,
+        coverImageUrl: book.coverImageUrl,
+        reason:
+          book.categoryId === highlightedResult.categoryId
+            ? "مشابه لهذا الكتاب ضمن نفس التصنيف"
+            : `لنفس الكاتب • اختيار #${index + 1}`,
+      }))
+    : [];
+
+  const gridBooks = highlightedResult ? sortedBooks.filter((book) => book.id !== highlightedResult.id) : sortedBooks;
+  const highlightedMetadata =
+    highlightedResult?.metadata && typeof highlightedResult.metadata === "object" && !Array.isArray(highlightedResult.metadata)
+      ? (highlightedResult.metadata as Record<string, unknown>)
+      : null;
+  const highlightedPublisher = typeof highlightedMetadata?.publisher === "string" ? highlightedMetadata.publisher : null;
+
   return (
     <main>
       <SiteHeader />
@@ -235,33 +302,60 @@ export default async function BooksPage({
       </section>
 
       <div className="space-y-6">
-        <BooksFilters
-          categories={categories}
-          search={search}
-          category={category}
-          offerType={offerType}
-          sort={sort}
-          resultsCount={sortedBooks.length}
-        />
+        {highlightedResult ? (
+          <SearchHighlightResult
+            book={{
+              id: highlightedResult.id,
+              slug: highlightedResult.slug,
+              title: highlightedResult.titleAr,
+              author: highlightedResult.author.nameAr,
+              category: highlightedResult.category.nameAr,
+              coverImageUrl: highlightedResult.coverImageUrl,
+              offers: highlightedResult.offers,
+              averageRating: highlightedResult.averageRating,
+              reviewsCount: highlightedResult.reviewsCount,
+              isWishlisted: wishlistIds.has(highlightedResult.id),
+              isLoggedIn: Boolean(user),
+              description: highlightedResult.descriptionAr,
+              publisher: highlightedPublisher,
+            }}
+            relatedCount={searchRecommendations.length}
+          />
+        ) : null}
 
-        <RecommendedBooksSection books={recommended} />
+        <div className="grid gap-6 xl:grid-cols-[minmax(0,1fr)_320px] xl:items-start">
+          <div className="space-y-6">
+            <RecommendedBooksSection books={highlightedResult ? searchRecommendations : recommended} />
 
-        <BooksGrid
-          books={sortedBooks.map((book) => ({
-            id: book.id,
-            slug: book.slug,
-            title: book.titleAr,
-            author: book.author.nameAr,
-            category: book.category.nameAr,
-            coverImageUrl: book.coverImageUrl,
-            offers: book.offers,
-            averageRating: book.averageRating,
-            reviewsCount: book.reviewsCount,
-            isWishlisted: wishlistIds.has(book.id),
-            isLoggedIn: Boolean(user),
-          }))}
-          hasActiveFilters={Boolean(search) || category !== "all" || offerType !== "all"}
-        />
+            <BooksGrid
+              books={gridBooks.map((book) => ({
+                id: book.id,
+                slug: book.slug,
+                title: book.titleAr,
+                author: book.author.nameAr,
+                category: book.category.nameAr,
+                coverImageUrl: book.coverImageUrl,
+                offers: book.offers,
+                averageRating: book.averageRating,
+                reviewsCount: book.reviewsCount,
+                isWishlisted: wishlistIds.has(book.id),
+                isLoggedIn: Boolean(user),
+              }))}
+              hasActiveFilters={Boolean(search) || category !== "all" || offerType !== "all"}
+            />
+          </div>
+
+          <div className="xl:sticky xl:top-24">
+            <BooksFilters
+              categories={categories}
+              search={search}
+              category={category}
+              offerType={offerType}
+              sort={sort}
+              resultsCount={sortedBooks.length}
+            />
+          </div>
+        </div>
       </div>
       <SiteFooter />
     </main>

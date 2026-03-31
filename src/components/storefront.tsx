@@ -50,6 +50,11 @@ type BookCardItem = {
   isLoggedIn?: boolean;
 };
 
+type SearchHighlightBookItem = BookCardItem & {
+  description?: string | null;
+  publisher?: string | null;
+};
+
 type BooksFilterCategory = {
   slug: string;
   nameAr: string;
@@ -408,6 +413,10 @@ function ActiveOffersSummary({ offers }: { offers: BookCardOffer[] }) {
   return "استئجار";
 }
 
+function getActiveOffersSummary(offers: BookCardOffer[]) {
+  return ActiveOffersSummary({ offers });
+}
+
 function OfferPricingSummary({ offers }: { offers: BookCardOffer[] }) {
   const purchaseOffer = offers.find((offer) => offer.type === "PURCHASE");
   const rentalOffer = offers.find((offer) => offer.type === "RENTAL");
@@ -441,6 +450,73 @@ function RatingLabel({ averageRating, reviewsCount }: { averageRating: number; r
   return <span className="font-semibold text-amber-600">{`★ ${averageRating.toFixed(1)} (${reviewsCount})`}</span>;
 }
 
+export function SearchHighlightResult({
+  book,
+  relatedCount,
+}: {
+  book: SearchHighlightBookItem;
+  relatedCount: number;
+}) {
+  return (
+    <section className="overflow-hidden rounded-3xl border border-indigo-200 bg-gradient-to-l from-white via-indigo-50/70 to-violet-50/70 shadow-sm">
+      <div className="grid gap-5 p-4 sm:p-6 lg:grid-cols-[220px_minmax(0,1fr)]">
+        <div className="mx-auto w-full max-w-[220px]">
+          <CoverImage src={book.coverImageUrl} alt={`غلاف كتاب ${book.title}`} width={500} height={750} className="h-full max-h-[320px] w-full rounded-2xl object-cover ring-1 ring-indigo-100" />
+        </div>
+        <div className="space-y-3">
+          <div className="flex flex-wrap items-center gap-2 text-[11px]">
+            <span className="rounded-full bg-indigo-600 px-2.5 py-1 font-bold text-white">أفضل نتيجة</span>
+            <span className="rounded-full bg-white px-2.5 py-1 font-semibold text-slate-700 ring-1 ring-slate-200">{book.category}</span>
+            <span className="rounded-full bg-white px-2.5 py-1 font-semibold text-slate-700 ring-1 ring-slate-200">{getActiveOffersSummary(book.offers)}</span>
+          </div>
+
+          <div>
+            <h2 className="text-2xl font-black text-slate-900 sm:text-3xl">{book.title}</h2>
+            <p className="mt-1 text-sm text-slate-600">
+              {book.author}
+              {book.publisher ? ` · ${book.publisher}` : ""}
+            </p>
+          </div>
+
+          <div className="flex flex-wrap items-center gap-2 text-xs">
+            <span className="rounded-full bg-amber-100 px-2.5 py-1 font-semibold text-amber-700">
+              {book.averageRating > 0 ? `★ ${book.averageRating.toFixed(1)} (${book.reviewsCount} مراجعة)` : "بدون تقييم بعد"}
+            </span>
+            <span className="rounded-full bg-white px-2.5 py-1 font-semibold text-slate-700 ring-1 ring-slate-200">
+              {relatedCount > 0 ? `${relatedCount} كتب مشابهة متاحة` : "استكشف تفاصيل الكتاب"}
+            </span>
+          </div>
+
+          {book.description ? <p className="line-clamp-3 text-sm leading-7 text-slate-700">{book.description}</p> : null}
+
+          <div className="max-w-md rounded-xl border border-indigo-100 bg-white/95 p-3">
+            <p className="text-[11px] font-semibold text-slate-500">الخيارات والأسعار</p>
+            <div className="mt-2">
+              <OfferPricingSummary offers={book.offers} />
+            </div>
+          </div>
+
+          <div className="flex flex-wrap gap-2.5">
+            <Link href={`/books/${book.slug}`} className="store-btn-primary">
+              عرض التفاصيل
+            </Link>
+            {!book.isLoggedIn && !book.isWishlisted ? (
+              <Link href={`/login?callbackUrl=${encodeURIComponent(`/books/${book.slug}`)}`} className="store-btn-secondary">
+                سجّل الدخول لإضافة الكتاب إلى المفضلة
+              </Link>
+            ) : null}
+            {book.isWishlisted ? (
+              <span className="inline-flex h-9 items-center rounded-md border border-amber-300 bg-amber-50 px-3 text-xs font-semibold text-amber-700">
+                ضمن المفضلة
+              </span>
+            ) : null}
+          </div>
+        </div>
+      </div>
+    </section>
+  );
+}
+
 export function BooksGrid({
   books,
   hasActiveFilters = false,
@@ -471,7 +547,7 @@ export function BooksGrid({
   return (
     <section className="space-y-4">
       <div className="flex flex-wrap items-center justify-between gap-2.5">
-        <h2 className="text-lg font-bold text-slate-900 sm:text-xl">كل الكتب المتاحة</h2>
+        <h2 className="text-lg font-bold text-slate-900 sm:text-xl">{hasActiveFilters ? "نتائج أخرى قد تهمك" : "كل الكتب المتاحة"}</h2>
         <p className="text-xs font-semibold text-slate-500">{books.length} كتاب</p>
       </div>
 
@@ -493,7 +569,7 @@ export function BooksGrid({
               <div className="rounded-lg border border-slate-200 bg-slate-50 px-2.5 py-2 text-[11px]">
                 <div className="flex items-center justify-between gap-2">
                   <span className="font-semibold text-slate-700">
-                    <ActiveOffersSummary offers={book.offers} />
+                    {getActiveOffersSummary(book.offers)}
                   </span>
                   <span className="font-semibold text-slate-500">خيارات السعر</span>
                 </div>
