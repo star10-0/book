@@ -12,9 +12,19 @@ type SiteDrawerNavProps = {
   primaryLinks: NavLink[];
   accountLinks: NavLink[];
   userSignedIn: boolean;
+  canAccessStudio: boolean;
+  canAccessAdmin: boolean;
+  logoutAction?: () => Promise<void>;
 };
 
-export function SiteDrawerNav({ primaryLinks, accountLinks, userSignedIn }: SiteDrawerNavProps) {
+export function SiteDrawerNav({
+  primaryLinks,
+  accountLinks,
+  userSignedIn,
+  canAccessStudio,
+  canAccessAdmin,
+  logoutAction,
+}: SiteDrawerNavProps) {
   const [isOpen, setIsOpen] = useState(false);
   const titleId = useId();
 
@@ -46,9 +56,10 @@ export function SiteDrawerNav({ primaryLinks, accountLinks, userSignedIn }: Site
         aria-haspopup="dialog"
         aria-expanded={isOpen}
         aria-controls="storefront-drawer"
-        className="store-btn-secondary"
+        className="inline-flex h-9 w-9 items-center justify-center rounded-md border border-slate-300 bg-white text-slate-700 transition hover:bg-slate-50 focus-visible:outline-none focus-visible:ring-2 focus-visible:ring-indigo-300"
+        aria-label="فتح القائمة"
       >
-        القائمة
+        ☰
       </button>
 
       {isOpen ? (
@@ -137,7 +148,25 @@ export function SiteDrawerNav({ primaryLinks, accountLinks, userSignedIn }: Site
                       onClick={() => setIsOpen(false)}
                       className="block rounded-md px-3 py-2 text-slate-700 hover:bg-slate-100"
                     >
-                      الترقية لوضع الكاتب
+                      {userSignedIn ? "حساب الكاتب والأعمال" : "الترقية لوضع الكاتب"}
+                    </Link>
+                  </li>
+                  <li>
+                    <Link
+                      href={userSignedIn ? "/account/profile" : "/login?callbackUrl=%2Faccount%2Fprofile"}
+                      onClick={() => setIsOpen(false)}
+                      className="block rounded-md px-3 py-2 text-slate-700 hover:bg-slate-100"
+                    >
+                      الملف الشخصي
+                    </Link>
+                  </li>
+                  <li>
+                    <Link
+                      href={userSignedIn ? "/account/orders" : "/login?callbackUrl=%2Faccount%2Forders"}
+                      onClick={() => setIsOpen(false)}
+                      className="block rounded-md px-3 py-2 text-slate-700 hover:bg-slate-100"
+                    >
+                      الطلبات
                     </Link>
                   </li>
                   {accountLinks.map((link) => (
@@ -151,6 +180,51 @@ export function SiteDrawerNav({ primaryLinks, accountLinks, userSignedIn }: Site
                       </Link>
                     </li>
                   ))}
+                  {canAccessStudio ? (
+                    <>
+                      <li>
+                        <Link
+                          href="/studio/books"
+                          onClick={() => setIsOpen(false)}
+                          className="block rounded-md px-3 py-2 text-slate-700 hover:bg-slate-100"
+                        >
+                          كتبي في الاستوديو
+                        </Link>
+                      </li>
+                      <li>
+                        <Link
+                          href="/studio/profile"
+                          onClick={() => setIsOpen(false)}
+                          className="block rounded-md px-3 py-2 text-slate-700 hover:bg-slate-100"
+                        >
+                          ملف الكاتب
+                        </Link>
+                      </li>
+                    </>
+                  ) : null}
+                  {canAccessAdmin ? (
+                    <li>
+                      <Link
+                        href="/admin"
+                        onClick={() => setIsOpen(false)}
+                        className="block rounded-md px-3 py-2 text-slate-700 hover:bg-slate-100"
+                      >
+                        الإدارة
+                      </Link>
+                    </li>
+                  ) : null}
+                  {userSignedIn && logoutAction ? (
+                    <li className="pt-2">
+                      <form action={logoutAction}>
+                        <button
+                          type="submit"
+                          className="block w-full rounded-md bg-rose-50 px-3 py-2 text-right font-medium text-rose-700 hover:bg-rose-100"
+                        >
+                          تسجيل الخروج
+                        </button>
+                      </form>
+                    </li>
+                  ) : null}
                 </ul>
               </section>
             </div>

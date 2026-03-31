@@ -6,6 +6,7 @@ import {
   CategoriesPreviewSection,
   FeaturedBooksSection,
   HeroSection,
+  PromoHighlightsSection,
   RecommendedBooksSection,
 } from "@/components/storefront";
 
@@ -56,6 +57,25 @@ export default async function HomePage() {
       <SiteHeader />
       <div className="space-y-5 pb-8 sm:space-y-6">
         <HeroSection />
+        <PromoHighlightsSection
+          categories={categories.map((category) => ({
+            name: category.nameAr,
+            description: category.description ?? "مجموعة متنوعة من الكتب المختارة بعناية.",
+          }))}
+          books={featuredBooks.map((book) => ({
+            id: book.id,
+            slug: book.slug,
+            title: book.titleAr,
+            author: book.author.nameAr,
+            category: book.category.nameAr,
+            coverImageUrl: book.coverImageUrl,
+            averageRating:
+              book.reviews.length > 0
+                ? book.reviews.reduce((sum, review) => sum + review.rating, 0) / book.reviews.length
+                : 0,
+            reviewsCount: book.reviews.length,
+          }))}
+        />
 
         <FeaturedBooksSection
           books={featuredBooks.map((book) => ({
