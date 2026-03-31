@@ -47,6 +47,7 @@ type BookCardItem = {
   averageRating: number;
   reviewsCount: number;
   isWishlisted?: boolean;
+  isLoggedIn?: boolean;
 };
 
 type BooksFilterCategory = {
@@ -245,9 +246,7 @@ export function BooksFilters({ categories, search, category, offerType, sort, re
           <p className="text-[11px] font-semibold text-slate-500">البحث والاكتشاف</p>
           <h2 className="text-lg font-bold text-slate-900 sm:text-xl">ابحث عن كتابك القادم</h2>
         </div>
-          <p className="store-chip bg-indigo-50 font-bold text-indigo-700">
-            {resultsCount} نتيجة متاحة
-          </p>
+        <p className="store-chip bg-indigo-50 font-bold text-indigo-700">{resultsCount} نتيجة متاحة</p>
       </div>
 
       <form className="space-y-4" method="get">
@@ -364,6 +363,31 @@ function ActiveOffersSummary({ offers }: { offers: BookCardOffer[] }) {
   return "استئجار";
 }
 
+function OfferPricingSummary({ offers }: { offers: BookCardOffer[] }) {
+  const purchaseOffer = offers.find((offer) => offer.type === "PURCHASE");
+  const rentalOffer = offers.find((offer) => offer.type === "RENTAL");
+
+  return (
+    <ul className="space-y-1.5 text-[11px] text-slate-600">
+      {purchaseOffer ? (
+        <li className="flex items-center justify-between gap-2">
+          <span className="font-medium text-slate-700">شراء رقمي</span>
+          <span className="font-bold text-slate-900">{formatPrice(purchaseOffer.priceCents, purchaseOffer.currency)}</span>
+        </li>
+      ) : null}
+      {rentalOffer ? (
+        <li className="flex items-center justify-between gap-2">
+          <span className="font-medium text-slate-700">
+            استئجار رقمي
+            {rentalOffer.rentalDays ? ` (${rentalOffer.rentalDays} يوم)` : ""}
+          </span>
+          <span className="font-bold text-indigo-700">{formatPrice(rentalOffer.priceCents, rentalOffer.currency)}</span>
+        </li>
+      ) : null}
+    </ul>
+  );
+}
+
 function RatingLabel({ averageRating, reviewsCount }: { averageRating: number; reviewsCount: number }) {
   if (averageRating <= 0) {
     return <span className="font-semibold text-slate-500">بدون تقييم</span>;
@@ -390,6 +414,11 @@ export function BooksGrid({
             ? "جرّب تعديل كلمات البحث أو الفلاتر للحصول على نتائج أكثر."
             : "سيتم إضافة كتب جديدة قريبًا. تفقد الصفحة لاحقًا."}
         </p>
+        {hasActiveFilters ? (
+          <Link href="/books" className="store-btn-secondary mx-auto mt-4 w-fit">
+            مسح الفلاتر والعودة لكل الكتب
+          </Link>
+        ) : null}
       </section>
     );
   }
@@ -421,9 +450,11 @@ export function BooksGrid({
                   <span className="font-semibold text-slate-700">
                     <ActiveOffersSummary offers={book.offers} />
                   </span>
-                  <span className="font-bold text-slate-900">{formatPrice(Math.min(...book.offers.map((offer) => offer.priceCents)), book.offers[0].currency)}</span>
+                  <span className="font-semibold text-slate-500">خيارات السعر</span>
                 </div>
-                <p className="mt-1 text-slate-500">يبدأ من أقل سعر متاح</p>
+                <div className="mt-2">
+                  <OfferPricingSummary offers={book.offers} />
+                </div>
               </div>
 
               <div className="flex flex-wrap gap-2">
@@ -437,6 +468,13 @@ export function BooksGrid({
                   <span className="inline-flex h-9 items-center rounded-md border border-amber-300 bg-amber-50 px-3 text-[11px] font-semibold text-amber-700">
                     ضمن المفضلة
                   </span>
+                ) : !book.isLoggedIn ? (
+                  <Link
+                    href={`/login?callbackUrl=${encodeURIComponent(`/books/${book.slug}`)}`}
+                    className="store-btn-secondary h-9 px-3 text-[11px]"
+                  >
+                    سجّل الدخول لإضافة الكتاب إلى المفضلة
+                  </Link>
                 ) : null}
               </div>
             </div>

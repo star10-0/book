@@ -115,20 +115,29 @@ export function SiteDrawerNav({ primaryLinks, accountLinks, userSignedIn }: Site
                 <ul className="space-y-1">
                   <li>
                     <Link
-                      href={userSignedIn ? "/account/profile" : "/login"}
+                      href={userSignedIn ? "/account" : "/login?callbackUrl=%2Faccount"}
                       onClick={() => setIsOpen(false)}
                       className="block rounded-md px-3 py-2 text-slate-700 hover:bg-slate-100"
                     >
-                      {userSignedIn ? "الملف الشخصي" : "تسجيل الدخول"}
+                      {userSignedIn ? "الحساب الشخصي" : "سجّل الدخول للمتابعة"}
                     </Link>
                   </li>
                   <li>
                     <Link
-                      href="/studio"
+                      href={userSignedIn ? "/account/library" : "/login?callbackUrl=%2Faccount%2Flibrary"}
                       onClick={() => setIsOpen(false)}
                       className="block rounded-md px-3 py-2 text-slate-700 hover:bg-slate-100"
                     >
-                      التحويل إلى وضع الكاتب
+                      مكتبتي
+                    </Link>
+                  </li>
+                  <li>
+                    <Link
+                      href={userSignedIn ? "/studio" : "/login?callbackUrl=%2Fstudio"}
+                      onClick={() => setIsOpen(false)}
+                      className="block rounded-md px-3 py-2 text-slate-700 hover:bg-slate-100"
+                    >
+                      الترقية لوضع الكاتب
                     </Link>
                   </li>
                   {accountLinks.map((link) => (
