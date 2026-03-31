@@ -13,8 +13,6 @@ const primaryLinks = [
 
 const accountLinks = [
   { href: "/account", label: "الحساب" },
-  { href: "/account/profile", label: "الملف الشخصي" },
-  { href: "/account/orders", label: "طلباتي" },
   { href: "/account/library", label: "مكتبتي" },
   { href: "/account/rentals", label: "إعاراتي" },
 ];
@@ -25,34 +23,34 @@ export async function SiteHeader() {
   const accountNavigation = user
     ? [
         ...accountLinks,
-        ...(user.role === "CREATOR" || user.role === "ADMIN"
-          ? [
-              { href: "/studio", label: "لوحة الكاتب" },
-              { href: "/studio/books/new", label: "أضف كتابًا" },
-              { href: "/studio/profile", label: "ملف الكاتب" },
-            ]
-          : [{ href: "/studio", label: "لوحة الكاتب" }]),
-        ...(user.role === "ADMIN" ? [{ href: "/admin", label: "الإدارة" }] : []),
+        { href: "/studio", label: "لوحة الكاتب" },
       ]
     : [];
+  const canAccessStudio = user?.role === "CREATOR" || user?.role === "ADMIN";
+  const canAccessAdmin = user?.role === "ADMIN";
 
   return (
     <header className="mb-6 overflow-hidden rounded-3xl bg-white shadow-sm ring-1 ring-slate-200">
-      <div className="bg-slate-900 px-4 py-2 text-xs text-slate-200 sm:px-5">
-        <div className="flex items-center justify-between gap-3">
-          <p className="font-medium">Amjad | مكتبة رقمية عربية</p>
-          <p className="hidden text-slate-300 sm:block">التصفح والبحث متاحان للجميع • تسجيل الدخول عند الإجراءات المحمية فقط</p>
+      <div className="bg-slate-950 px-4 py-1.5 text-[11px] text-slate-200 sm:px-5">
+        <div className="flex items-center justify-between gap-2">
+          <div className="flex items-center gap-1.5">
+            <Link href="/checkout" className="rounded bg-slate-800 px-2 py-1 font-semibold text-slate-100 hover:bg-slate-700">
+              السلة
+            </Link>
+            <p className="font-medium text-slate-300">متجر رقمي عربي</p>
+          </div>
+          <p className="hidden text-slate-400 sm:block">شراء واستئجار الكتب الرقمية • واجهة عربية RTL</p>
         </div>
       </div>
 
       <div className="px-4 py-4 sm:px-5">
-        <div className="grid gap-3.5 lg:grid-cols-[170px_minmax(0,1fr)_auto] lg:items-center">
+        <div className="grid gap-3.5 lg:grid-cols-[auto_minmax(0,1fr)_auto] lg:items-center">
           <Link
             href="/"
             className="rounded-lg px-1 py-1 focus-visible:outline-none focus-visible:ring-2 focus-visible:ring-indigo-400"
           >
-            <p className="text-3xl font-extrabold leading-none tracking-tight text-slate-900">Amjad</p>
-            <p className="mt-1 text-xs text-slate-500">مكتبة عربية رقمية</p>
+            <p className="text-3xl font-black leading-none tracking-tight text-slate-900 sm:text-4xl">أمجد</p>
+            <p className="mt-1 text-xs font-semibold uppercase tracking-[0.18em] text-indigo-600">Amjad</p>
           </Link>
 
           <form action="/books" method="get" className="w-full">
@@ -74,39 +72,39 @@ export async function SiteHeader() {
           </form>
 
           <div className="flex items-center gap-2 lg:justify-end">
-            <SiteDrawerNav primaryLinks={primaryLinks} accountLinks={accountNavigation} userSignedIn={Boolean(user)} />
+            <SiteDrawerNav
+              primaryLinks={primaryLinks}
+              accountLinks={accountNavigation}
+              userSignedIn={Boolean(user)}
+              canAccessStudio={canAccessStudio}
+              canAccessAdmin={canAccessAdmin}
+              logoutAction={signOutAction}
+            />
 
-            <div className="flex h-9 items-center overflow-hidden rounded-md border border-slate-300 text-[11px]" aria-label="تبديل اللغة">
-              <Link href="?lang=ar" className="inline-flex h-full items-center bg-slate-100 px-2.5 font-semibold text-slate-700 hover:bg-slate-200">
-                AR
-              </Link>
-              <Link href="?lang=en" className="inline-flex h-full items-center px-2.5 font-semibold text-slate-700 hover:bg-slate-100">
-                EN
-              </Link>
-            </div>
+            <details className="group relative">
+              <summary className="inline-flex h-9 cursor-pointer list-none items-center rounded-md border border-slate-300 bg-white px-2.5 text-[11px] font-semibold text-slate-700 hover:bg-slate-50">
+                اللغة
+              </summary>
+              <div className="absolute end-0 top-10 z-20 w-28 rounded-md border border-slate-200 bg-white p-1 shadow-lg">
+                <Link href="?lang=ar" className="block rounded px-2 py-1.5 text-xs hover:bg-slate-100">
+                  العربية
+                </Link>
+                <Link href="?lang=en" className="mt-1 block rounded px-2 py-1.5 text-xs hover:bg-slate-100">
+                  English
+                </Link>
+              </div>
+            </details>
+
+            <Link href="/checkout" className="store-btn-secondary h-9 px-3">
+              السلة
+            </Link>
 
             {user ? (
-              <>
-                <Link
-                  href="/account"
-                  className="store-btn-primary"
-                >
-                  حسابي
-                </Link>
-                <form action={signOutAction}>
-                  <button
-                    type="submit"
-                    className="store-btn-secondary"
-                  >
-                    خروج
-                  </button>
-                </form>
-              </>
+              <Link href="/account" className="store-btn-primary">
+                حسابي
+              </Link>
             ) : (
-              <Link
-                href="/login"
-                className="store-btn-secondary"
-              >
+              <Link href="/login" className="store-btn-secondary">
                 تسجيل الدخول
               </Link>
             )}
