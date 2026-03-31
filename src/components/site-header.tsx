@@ -1,48 +1,79 @@
 import Link from "next/link";
 import { signOutAction } from "@/app/auth/actions";
-import { getCurrentUser } from "@/lib/auth-session";
 import { SiteDrawerNav } from "@/components/site-drawer-nav";
+import { LanguageSwitcher } from "@/components/language-switcher";
+import { getCurrentUser } from "@/lib/auth-session";
+import { getStoreLocale } from "@/lib/locale";
 
-const primaryLinks = [
-  { href: "/", label: "الرئيسية" },
-  { href: "/books", label: "الكتب" },
-  { href: "/about", label: "عن المنصة" },
-  { href: "/help", label: "المساعدة" },
-  { href: "/contact", label: "تواصل معنا" },
-];
-
-const accountLinks = [
-  { href: "/account", label: "الحساب" },
-  { href: "/account/library", label: "مكتبتي" },
-  { href: "/account/rentals", label: "إعاراتي" },
-];
+const translations = {
+  ar: {
+    brandSub: "Amjad",
+    home: "الرئيسية",
+    books: "الكتب",
+    about: "عن المنصة",
+    help: "المساعدة",
+    contact: "تواصل معنا",
+    account: "الحساب",
+    library: "مكتبتي",
+    rentals: "إعاراتي",
+    studio: "لوحة الكاتب",
+    searchPlaceholder: "ابحث عن كتاب، كاتب، أو تصنيف...",
+    searchAria: "البحث في الكتب",
+    searchCta: "بحث",
+    allBooks: "كل الكتب",
+    digitalBuy: "شراء رقمي",
+    digitalRent: "استئجار رقمي",
+    cart: "السلة",
+    myAccount: "حسابي",
+    signIn: "تسجيل الدخول",
+  },
+  en: {
+    brandSub: "Amjad",
+    home: "Home",
+    books: "Books",
+    about: "About",
+    help: "Help",
+    contact: "Contact",
+    account: "Account",
+    library: "My Library",
+    rentals: "My Rentals",
+    studio: "Creator Studio",
+    searchPlaceholder: "Search by title, author, or category...",
+    searchAria: "Search books",
+    searchCta: "Search",
+    allBooks: "All Books",
+    digitalBuy: "Buy Digital",
+    digitalRent: "Rent Digital",
+    cart: "Cart",
+    myAccount: "My Account",
+    signIn: "Sign In",
+  },
+} as const;
 
 export async function SiteHeader() {
-  const user = await getCurrentUser();
+  const [user, locale] = await Promise.all([getCurrentUser(), getStoreLocale()]);
+  const t = translations[locale];
 
-  const accountNavigation = user
-    ? [
-        ...accountLinks,
-        { href: "/studio", label: "لوحة الكاتب" },
-      ]
-    : [];
+  const primaryLinks = [
+    { href: "/", label: t.home },
+    { href: "/books", label: t.books },
+    { href: "/about", label: t.about },
+    { href: "/help", label: t.help },
+    { href: "/contact", label: t.contact },
+  ];
+
+  const accountLinks = [
+    { href: "/account", label: t.account },
+    { href: "/account/library", label: t.library },
+    { href: "/account/rentals", label: t.rentals },
+  ];
+
+  const accountNavigation = user ? [...accountLinks, { href: "/studio", label: t.studio }] : [];
   const canAccessStudio = user?.role === "CREATOR" || user?.role === "ADMIN";
   const canAccessAdmin = user?.role === "ADMIN";
 
   return (
     <header className="mb-6 overflow-hidden rounded-3xl bg-white shadow-sm ring-1 ring-slate-200">
-      <div className="bg-slate-950 px-4 py-1.5 text-[11px] text-slate-200 sm:px-5">
-        <div className="flex items-center justify-between gap-2">
-          <div className="flex items-center gap-1.5">
-            <Link href="/checkout" className="rounded bg-slate-800 px-2 py-1 font-semibold text-slate-100 hover:bg-slate-700">
-              السلة
-            </Link>
-            <p className="font-medium text-slate-300">متجر رقمي عربي</p>
-          </div>
-          <p className="hidden text-slate-400 sm:block">شراء واستئجار الكتب الرقمية • واجهة عربية RTL</p>
-        </div>
-      </div>
-
       <div className="px-4 py-4 sm:px-5">
         <div className="grid gap-3.5 lg:grid-cols-[auto_minmax(0,1fr)_auto] lg:items-center">
           <Link
@@ -50,7 +81,7 @@ export async function SiteHeader() {
             className="rounded-lg px-1 py-1 focus-visible:outline-none focus-visible:ring-2 focus-visible:ring-indigo-400"
           >
             <p className="text-3xl font-black leading-none tracking-tight text-slate-900 sm:text-4xl">أمجد</p>
-            <p className="mt-1 text-xs font-semibold uppercase tracking-[0.18em] text-indigo-600">Amjad</p>
+            <p className="mt-1 text-xs font-semibold uppercase tracking-[0.18em] text-indigo-600">{t.brandSub}</p>
           </Link>
 
           <form action="/books" method="get" className="w-full">
@@ -58,21 +89,38 @@ export async function SiteHeader() {
               <input
                 type="search"
                 name="q"
-                placeholder="ابحث عن كتاب، كاتب، أو تصنيف..."
+                placeholder={t.searchPlaceholder}
                 className="h-10 w-full border-0 px-3 text-sm text-slate-900 outline-none placeholder:text-slate-400"
-                aria-label="البحث في الكتب"
+                aria-label={t.searchAria}
               />
               <button
                 type="submit"
                 className="h-10 bg-indigo-600 px-4 text-xs font-semibold text-white transition hover:bg-indigo-500 focus-visible:outline-none focus-visible:ring-2 focus-visible:ring-indigo-300"
               >
-                بحث
+                {t.searchCta}
               </button>
             </div>
           </form>
 
           <div className="flex items-center gap-2 lg:justify-end">
+            <LanguageSwitcher locale={locale} />
+
+            <Link href="/cart" className="store-btn-secondary h-9 px-3">
+              {t.cart}
+            </Link>
+
+            {user ? (
+              <Link href="/account" className="store-btn-primary">
+                {t.myAccount}
+              </Link>
+            ) : (
+              <Link href="/login" className="store-btn-secondary">
+                {t.signIn}
+              </Link>
+            )}
+
             <SiteDrawerNav
+              locale={locale}
               primaryLinks={primaryLinks}
               accountLinks={accountNavigation}
               userSignedIn={Boolean(user)}
@@ -80,44 +128,18 @@ export async function SiteHeader() {
               canAccessAdmin={canAccessAdmin}
               logoutAction={signOutAction}
             />
-
-            <details className="group relative">
-              <summary className="inline-flex h-9 cursor-pointer list-none items-center rounded-md border border-slate-300 bg-white px-2.5 text-[11px] font-semibold text-slate-700 hover:bg-slate-50">
-                اللغة
-              </summary>
-              <div className="absolute end-0 top-10 z-20 w-40 rounded-md border border-slate-200 bg-white p-1 shadow-lg">
-                <p className="block rounded bg-slate-100 px-2 py-1.5 text-xs font-semibold text-slate-700" aria-current="true">
-                  العربية
-                </p>
-                <p className="mt-1 block rounded px-2 py-1.5 text-xs text-slate-500">English (قريبًا)</p>
-              </div>
-            </details>
-
-            <Link href="/checkout" className="store-btn-secondary h-9 px-3">
-              السلة
-            </Link>
-
-            {user ? (
-              <Link href="/account" className="store-btn-primary">
-                حسابي
-              </Link>
-            ) : (
-              <Link href="/login" className="store-btn-secondary">
-                تسجيل الدخول
-              </Link>
-            )}
           </div>
         </div>
 
         <div className="mt-3 flex flex-wrap gap-2">
           <Link href="/books" className="store-chip bg-indigo-50 text-indigo-700 hover:bg-indigo-100">
-            كل الكتب
+            {t.allBooks}
           </Link>
           <Link href="/books?offer=buy" className="store-chip bg-slate-100 text-slate-700 hover:bg-slate-200">
-            شراء رقمي
+            {t.digitalBuy}
           </Link>
           <Link href="/books?offer=rent" className="store-chip bg-slate-100 text-slate-700 hover:bg-slate-200">
-            استئجار رقمي
+            {t.digitalRent}
           </Link>
         </div>
       </div>

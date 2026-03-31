@@ -5,7 +5,6 @@ import { SiteFooter } from "@/components/site-footer";
 import {
   CategoriesPreviewSection,
   FeaturedBooksSection,
-  HeroSection,
   PromoHighlightsSection,
   RecommendedBooksSection,
 } from "@/components/storefront";
@@ -56,11 +55,6 @@ export default async function HomePage() {
     <main className="bg-gradient-to-b from-slate-100 via-slate-50 to-white">
       <SiteHeader />
       <div className="space-y-5 pb-8 sm:space-y-6">
-        <section className="rounded-2xl border border-amber-200 bg-amber-50/70 px-4 py-3 text-sm text-amber-900 shadow-sm">
-          <p className="font-semibold">أهلًا بك في أمجد 👋</p>
-          <p className="mt-1">ابدأ بالبحث عن كتاب يناسبك، ثم اختر الشراء أو الاستئجار حسب أسلوب قراءتك.</p>
-        </section>
-        <HeroSection />
         <PromoHighlightsSection
           categories={categories.map((category) => ({
             name: category.nameAr,
