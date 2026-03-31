@@ -4,7 +4,7 @@ import { PaymentAttemptStatus, PaymentProvider } from "@prisma/client";
 import Image from "next/image";
 import Link from "next/link";
 import { useRouter } from "next/navigation";
-import { useEffect, useMemo, useState, useTransition } from "react";
+import { useEffect, useMemo, useRef, useState, useTransition } from "react";
 import { formatArabicCurrency } from "@/lib/formatters/intl";
 import { buildShamCashQrPayload } from "@/lib/payments/sham-cash-qr";
 
@@ -102,6 +102,11 @@ export function OrderPaymentPanel({
   const [messageTone, setMessageTone] = useState<"info" | "success" | "error">("info");
   const [copyFeedback, setCopyFeedback] = useState("");
   const [isPending, startTransition] = useTransition();
+  const attemptStatusRef = useRef<PaymentAttemptStatus | undefined>(initialAttemptStatus);
+
+  useEffect(() => {
+    attemptStatusRef.current = attemptStatus;
+  }, [attemptStatus]);
 
   const availablePaymentOptions = useMemo(() => {
     return paymentOptions.filter((option) => {
@@ -135,7 +140,7 @@ export function OrderPaymentPanel({
     setTransactionReference("");
     setProofNote("");
     setCopyFeedback("");
-    if (attemptStatus !== "PAID") {
+    if (attemptStatusRef.current !== "PAID") {
       setMessage("");
       setMessageTone("info");
     }
