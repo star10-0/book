@@ -156,7 +156,7 @@ export default async function ReaderPage({ params }: ReaderPageProps) {
         : null;
 
   return (
-    <main className="space-y-6" dir="rtl">
+    <main className="mx-auto w-full max-w-[1600px] space-y-6 px-2 sm:px-4" dir="rtl">
       <SiteHeader />
 
       {isExpiredRental ? (

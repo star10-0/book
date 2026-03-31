@@ -20,6 +20,23 @@ type ReaderControls = {
   previous: () => void;
 };
 
+type AnnotationType = "DRAWING" | "NOTE" | "BOOKMARK";
+type AnnotationMode = "navigate" | "draw" | "eraser";
+
+type ReaderAnnotation = {
+  id: string;
+  type: AnnotationType;
+  locator: string;
+  payload: unknown;
+  updatedAt: string;
+};
+
+type Stroke = {
+  color: string;
+  width: number;
+  points: [number, number][];
+};
+
 export function ReaderShell({ accessId, bookTitle, initialProgressPercent, initialLocator, source }: ReaderShellProps) {
   const [progressPercent, setProgressPercent] = useState(normalizeProgress(initialProgressPercent));
   const [locator, setLocator] = useState(initialLocator ?? "page:1");
@@ -27,10 +44,31 @@ export function ReaderShell({ accessId, bookTitle, initialProgressPercent, initi
   const [controls, setControls] = useState<ReaderControls | null>(null);
   const [isSaving, setIsSaving] = useState(false);
   const [error, setError] = useState<string | null>(null);
+  const [annotations, setAnnotations] = useState<ReaderAnnotation[]>([]);
+  const [annotationMode, setAnnotationMode] = useState<AnnotationMode>("navigate");
+  const [isNotesPanelOpen, setIsNotesPanelOpen] = useState(false);
+  const [isNoteComposerOpen, setIsNoteComposerOpen] = useState(false);
+  const [noteDraft, setNoteDraft] = useState("");
+  const [annotationMessage, setAnnotationMessage] = useState<string | null>(null);
   const lastSavedRef = useRef<string>(`${normalizeProgress(initialProgressPercent)}|${initialLocator ?? "page:1"}`);
 
   const readerEngine = useMemo(() => getReaderEngine(source), [source]);
   const progressText = useMemo(() => `${progressPercent.toFixed(1)}%`, [progressPercent]);
+
+  const notes = useMemo(() => annotations.filter((annotation) => annotation.type === "NOTE"), [annotations]);
+  const bookmarks = useMemo(() => annotations.filter((annotation) => annotation.type === "BOOKMARK"), [annotations]);
+  const currentDrawing = useMemo(() => {
+    const drawing = annotations.find((annotation) => annotation.type === "DRAWING" && annotation.locator === locator);
+    if (!drawing || !drawing.payload || typeof drawing.payload !== "object") {
+      return [] as Stroke[];
+    }
+
+    const strokes = Array.isArray((drawing.payload as { strokes?: unknown }).strokes)
+      ? ((drawing.payload as { strokes: unknown[] }).strokes as Stroke[])
+      : [];
+
+    return strokes;
+  }, [annotations, locator]);
 
   const persistProgress = useCallback(
     async (nextProgress: number, nextLocator: string) => {
@@ -69,6 +107,24 @@ export function ReaderShell({ accessId, bookTitle, initialProgressPercent, initi
     [accessId],
   );
 
+  const loadAnnotations = useCallback(async () => {
+    try {
+      const response = await fetch(`/api/reader-annotations/${accessId}`);
+      if (!response.ok) {
+        return;
+      }
+
+      const data = (await response.json()) as { annotations?: ReaderAnnotation[] };
+      setAnnotations(data.annotations ?? []);
+    } catch {
+      // no-op
+    }
+  }, [accessId]);
+
+  useEffect(() => {
+    void loadAnnotations();
+  }, [loadAnnotations]);
+
   useEffect(() => {
     const timeoutId = window.setTimeout(() => {
       void persistProgress(progressPercent, locator);
@@ -76,6 +132,33 @@ export function ReaderShell({ accessId, bookTitle, initialProgressPercent, initi
 
     return () => window.clearTimeout(timeoutId);
   }, [locator, persistProgress, progressPercent]);
+
+  const createAnnotation = useCallback(
+    async (type: AnnotationType, annotationLocator: string, payload: unknown) => {
+      setAnnotationMessage(null);
+      const response = await fetch(`/api/reader-annotations/${accessId}`, {
+        method: "POST",
+        headers: {
+          "Content-Type": "application/json",
+        },
+        body: JSON.stringify({
+          type,
+          locator: annotationLocator,
+          payload,
+        }),
+      });
+
+      if (!response.ok) {
+        setAnnotationMessage("تعذر حفظ التعليق.");
+        return;
+      }
+
+      const data = (await response.json()) as { annotation: ReaderAnnotation };
+      setAnnotations((current) => [data.annotation, ...current]);
+      setAnnotationMessage("تم حفظ التعليق.");
+    },
+    [accessId],
+  );
 
   const handleLocationChange = useCallback(
     (payload: { locator: string; progressPercent: number }) => {
@@ -88,8 +171,42 @@ export function ReaderShell({ accessId, bookTitle, initialProgressPercent, initi
     [],
   );
 
+  const persistDrawingForLocator = useCallback(
+    async (nextStrokes: Stroke[]) => {
+      await createAnnotation("DRAWING", locator, {
+        strokes: nextStrokes,
+      });
+    },
+    [createAnnotation, locator],
+  );
+
+  const handleAddStroke = useCallback(
+    (stroke: Stroke) => {
+      const nextStrokes = [...currentDrawing, stroke];
+      void persistDrawingForLocator(nextStrokes);
+    },
+    [currentDrawing, persistDrawingForLocator],
+  );
+
+  const handleEraseLastStroke = useCallback(() => {
+    if (!currentDrawing.length) {
+      return;
+    }
+
+    const nextStrokes = currentDrawing.slice(0, -1);
+    void persistDrawingForLocator(nextStrokes);
+  }, [currentDrawing, persistDrawingForLocator]);
+
+  const handleClearCurrentDrawing = useCallback(() => {
+    if (!currentDrawing.length) {
+      return;
+    }
+
+    void persistDrawingForLocator([]);
+  }, [currentDrawing.length, persistDrawingForLocator]);
+
   return (
-    <section className="space-y-5 rounded-2xl bg-white p-5 shadow-sm ring-1 ring-slate-200 dark:bg-slate-950 dark:ring-slate-800">
+    <section className="space-y-4 rounded-2xl bg-white p-4 shadow-sm ring-1 ring-slate-200 dark:bg-slate-950 dark:ring-slate-800 lg:p-6">
       <header className="space-y-1">
         <p className="text-xs font-medium text-indigo-600">قارئ الكتاب</p>
         <h1 className="text-2xl font-bold text-slate-900 dark:text-slate-100">{bookTitle}</h1>
@@ -110,18 +227,104 @@ export function ReaderShell({ accessId, bookTitle, initialProgressPercent, initi
         isSaving={isSaving}
         saveError={error}
         canNavigate={Boolean(controls)}
+        annotationMode={annotationMode}
+        notesCount={notes.length}
+        bookmarksCount={bookmarks.length}
         onNext={() => controls?.next()}
         onPrevious={() => controls?.previous()}
         onThemeChange={setTheme}
+        onAnnotationModeChange={setAnnotationMode}
+        onAddBookmark={() => void createAnnotation("BOOKMARK", locator, { label: "" })}
+        onOpenNotesPanel={() => setIsNotesPanelOpen((current) => !current)}
+        onOpenNoteComposer={() => setIsNoteComposerOpen((current) => !current)}
+        onClearCurrentLayer={handleClearCurrentDrawing}
       />
 
-      <ReaderViewport
-        source={source}
-        locator={locator}
-        theme={theme}
-        onLocationChange={handleLocationChange}
-        onControlsReady={setControls}
-      />
+      {isNoteComposerOpen ? (
+        <div className="rounded-xl border border-slate-200 bg-slate-50 p-3 dark:border-slate-700 dark:bg-slate-900">
+          <label htmlFor="reader-note" className="mb-2 block text-xs font-semibold text-slate-700 dark:text-slate-200">
+            ملاحظة مرتبطة بالموضع الحالي ({locator})
+          </label>
+          <textarea
+            id="reader-note"
+            value={noteDraft}
+            onChange={(event) => setNoteDraft(event.target.value)}
+            rows={3}
+            className="w-full rounded-lg border border-slate-300 bg-white px-3 py-2 text-sm outline-none focus:border-indigo-500 dark:border-slate-600 dark:bg-slate-950"
+          />
+          <div className="mt-2 flex flex-wrap gap-2">
+            <button
+              type="button"
+              onClick={() => {
+                if (!noteDraft.trim()) {
+                  return;
+                }
+
+                void createAnnotation("NOTE", locator, { text: noteDraft.trim() });
+                setNoteDraft("");
+              }}
+              className="rounded-lg bg-indigo-600 px-3 py-1.5 text-xs font-semibold text-white hover:bg-indigo-500"
+            >
+              حفظ الملاحظة
+            </button>
+            <button
+              type="button"
+              onClick={() => setIsNoteComposerOpen(false)}
+              className="rounded-lg border border-slate-300 px-3 py-1.5 text-xs font-semibold text-slate-700 dark:border-slate-600 dark:text-slate-200"
+            >
+              إغلاق
+            </button>
+          </div>
+        </div>
+      ) : null}
+
+      {annotationMessage ? <p className="text-xs text-indigo-600">{annotationMessage}</p> : null}
+
+      <div className="grid gap-4 xl:grid-cols-[minmax(0,1fr)_320px]">
+        <ReaderViewport
+          source={source}
+          locator={locator}
+          theme={theme}
+          drawingMode={annotationMode}
+          drawingStrokes={currentDrawing}
+          onLocationChange={handleLocationChange}
+          onControlsReady={setControls}
+          onAddStroke={handleAddStroke}
+          onEraseLastStroke={handleEraseLastStroke}
+        />
+
+        {isNotesPanelOpen ? (
+          <aside className="max-h-[82vh] overflow-auto rounded-xl border border-slate-200 bg-slate-50 p-3 dark:border-slate-700 dark:bg-slate-900">
+            <h2 className="mb-2 text-sm font-bold text-slate-800 dark:text-slate-100">المراجع والملاحظات المحفوظة</h2>
+            <div className="space-y-2">
+              {bookmarks.map((bookmark) => (
+                <button
+                  key={bookmark.id}
+                  type="button"
+                  onClick={() => setLocator(bookmark.locator)}
+                  className="w-full rounded-lg border border-amber-200 bg-amber-50 px-3 py-2 text-right text-xs text-amber-900 hover:bg-amber-100"
+                >
+                  علامة عند {bookmark.locator}
+                </button>
+              ))}
+              {notes.map((note) => (
+                <button
+                  key={note.id}
+                  type="button"
+                  onClick={() => setLocator(note.locator)}
+                  className="w-full rounded-lg border border-indigo-200 bg-white px-3 py-2 text-right text-xs text-slate-700 hover:bg-indigo-50 dark:border-slate-700 dark:bg-slate-950 dark:text-slate-200"
+                >
+                  <p className="font-semibold text-indigo-700 dark:text-indigo-300">{note.locator}</p>
+                  <p className="mt-1 max-h-16 overflow-hidden">{typeof (note.payload as { text?: unknown })?.text === "string" ? (note.payload as { text: string }).text : "ملاحظة"}</p>
+                </button>
+              ))}
+              {!notes.length && !bookmarks.length ? (
+                <p className="text-xs text-slate-500 dark:text-slate-400">لا توجد ملاحظات أو مراجع محفوظة بعد.</p>
+              ) : null}
+            </div>
+          </aside>
+        ) : null}
+      </div>
     </section>
   );
 }
