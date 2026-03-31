@@ -108,12 +108,9 @@ Select at least one provider via `PAYMENT_LIVE_PROVIDERS` and fully configure on
 - `SHAM_CASH_DESTINATION_ACCOUNT`
 
 **Syriatel Cash (if enabled/selected)**
-- `SYRIATEL_CASH_API_BASE_URL`
+- `SYRIATEL_CASH_API_BASE_URL` (API SYRIA base endpoint, for example `https://apisyria.com/api/v1`; verification uses this base endpoint directly with query params `resource=syriatel`, `action=find_tx`, `tx`, `gsm`)
 - `SYRIATEL_CASH_API_KEY`
-- `SYRIATEL_CASH_DESTINATION_ACCOUNT`
 
-Optional override for Syriatel transaction lookup endpoint:
-- `SYRIATEL_CASH_FIND_TX_PATH`
 
 
 Use `.env.production.example` as the source of truth.
@@ -261,7 +258,6 @@ Key UIs:
 
 Full setup details, alerts, and runbooks are documented in `monitoring/README.md` and `monitoring/runbooks/OPERATIONS.md`.
 
-### Redeploy to latest Syriatel implementation (manual transfer)
 
 Use this when production appears to run older Syriatel code or reports missing current Syriatel env keys.
 
@@ -280,11 +276,11 @@ Use this when production appears to run older Syriatel code or reports missing c
      - `SYRIATEL_CASH_API_BASE_URL`
      - `SYRIATEL_CASH_API_KEY`
      - `SYRIATEL_CASH_DESTINATION_ACCOUNT`
-     - optional `SYRIATEL_CASH_FIND_TX_PATH`
    - Remove deprecated keys if present:
      - `SYRIATEL_CASH_MERCHANT_ID`
      - `SYRIATEL_CASH_CREATE_PAYMENT_PATH`
      - `SYRIATEL_CASH_VERIFY_PAYMENT_PATH`
+     - `SYRIATEL_CASH_FIND_TX_PATH`
 
 3. Rebuild and redeploy app image:
 
@@ -304,8 +300,6 @@ Use this when production appears to run older Syriatel code or reports missing c
 5. Smoke-check checkout Syriatel flow:
    - Open checkout page.
    - Select `Syriatel Cash`.
-   - Confirm checkout instructions mention manual transfer, entering transaction number, and verification.
-   - Create payment and confirm no `PAYMENT_PROVIDER_ENV_MISSING` error for legacy Syriatel keys.
 
 ---
 

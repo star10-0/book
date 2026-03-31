@@ -7,10 +7,9 @@ const gateway = new SyriatelCashGateway();
 
 function setLiveEnv() {
   process.env.PAYMENT_GATEWAY_MODE = "live";
-  process.env.SYRIATEL_CASH_API_BASE_URL = "https://syriatel.example";
+  process.env.SYRIATEL_CASH_API_BASE_URL = "https://apisyria.com/api/v1";
   process.env.SYRIATEL_CASH_API_KEY = "secret-key";
   process.env.SYRIATEL_CASH_DESTINATION_ACCOUNT = "dest-acc-1";
-  delete process.env.SYRIATEL_CASH_FIND_TX_PATH;
 }
 
 test("SyriatelCashGateway create uses manual provider reference in live mode", async () => {
@@ -46,10 +45,19 @@ test("SyriatelCashGateway verify rejects destination-account mismatch from find_
   global.fetch = async () =>
     new Response(
       JSON.stringify({
-        status: "paid",
-        amountCents: 1000,
-        currency: "SYP",
-        destinationAccount: "wrong-destination",
+        success: true,
+        data: {
+          found: true,
+          transaction: {
+            transaction_no: "TX-123",
+            to: "wrong-destination",
+            amount: 1000,
+            currency: "SYP",
+          },
+          account: {
+            gsm: "wrong-destination",
+          },
+        },
       }),
       { status: 200 },
     );
@@ -77,10 +85,19 @@ test("SyriatelCashGateway verify rejects mismatched amount from find_tx", async 
   global.fetch = async () =>
     new Response(
       JSON.stringify({
-        status: "paid",
-        amountCents: 999,
-        currency: "SYP",
-        destinationAccount: "dest-acc-1",
+        success: true,
+        data: {
+          found: true,
+          transaction: {
+            transaction_no: "TX-123",
+            to: "dest-acc-1",
+            amount: 999,
+            currency: "SYP",
+          },
+          account: {
+            gsm: "dest-acc-1",
+          },
+        },
       }),
       { status: 200 },
     );
@@ -95,6 +112,62 @@ test("SyriatelCashGateway verify rejects mismatched amount from find_tx", async 
     }),
     (error: unknown) => error instanceof GatewayRequestError && error.phase === "verify",
   );
+
+  process.env = originalEnv;
+  global.fetch = originalFetch;
+});
+
+test("SyriatelCashGateway verify uses API SYRIA find_tx GET contract and returns paid result", async () => {
+  const originalFetch = global.fetch;
+  const originalEnv = { ...process.env };
+
+  setLiveEnv();
+  let requestUrl = "";
+  let requestMethod = "";
+  let requestApiKey = "";
+
+  global.fetch = async (input, init) => {
+    requestUrl = typeof input === "string" ? input : input.toString();
+    requestMethod = init?.method ?? "GET";
+    requestApiKey = new Headers(init?.headers).get("X-Api-Key") ?? "";
+
+    return new Response(
+      JSON.stringify({
+        success: true,
+        data: {
+          found: true,
+          transaction: {
+            transaction_no: "TX-123",
+            date: "2026-03-30T10:00:00Z",
+            from: "wallet-1",
+            to: "dest-acc-1",
+            amount: 1000,
+          },
+          account: {
+            gsm: "dest-acc-1",
+            cash_code: "cash-123",
+          },
+        },
+      }),
+      { status: 200 },
+    );
+  };
+
+  const result = await gateway.verifyPayment({
+    paymentId: "p-1",
+    providerReference: "ref-1",
+    transactionReference: "TX-123",
+    expectedAmountCents: 1000,
+    expectedCurrency: "SYP",
+  });
+
+  assert.equal(
+    requestUrl,
+    "https://apisyria.com/api/v1?resource=syriatel&action=find_tx&tx=TX-123&gsm=dest-acc-1",
+  );
+  assert.equal(requestMethod, "GET");
+  assert.equal(requestApiKey, "secret-key");
+  assert.equal(result.isPaid, true);
 
   process.env = originalEnv;
   global.fetch = originalFetch;
