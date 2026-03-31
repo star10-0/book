@@ -1,6 +1,5 @@
 import Link from "next/link";
 import { notFound } from "next/navigation";
-import { SiteHeader } from "@/components/site-header";
 import { requireUser } from "@/lib/auth-session";
 import { formatArabicCurrency, formatArabicDate } from "@/lib/formatters/intl";
 import { paymentAttemptStatusLabels } from "@/lib/payments/status-flow";
@@ -31,7 +30,6 @@ export default async function AccountPaymentAttemptDetailsPage({ params }: Accou
 
   return (
     <main>
-      <SiteHeader />
       <section className="space-y-5 rounded-2xl bg-white p-5 shadow-sm ring-1 ring-slate-200">
         <header className="space-y-2">
           <h1 className="text-2xl font-bold text-slate-900">تفاصيل محاولة الدفع</h1>

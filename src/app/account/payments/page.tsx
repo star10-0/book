@@ -1,5 +1,4 @@
 import Link from "next/link";
-import { SiteHeader } from "@/components/site-header";
 import { requireUser } from "@/lib/auth-session";
 import { formatArabicCurrency, formatArabicDate } from "@/lib/formatters/intl";
 import { paymentAttemptStatusLabels } from "@/lib/payments/status-flow";
@@ -22,7 +21,6 @@ export default async function AccountPaymentsPage() {
 
   return (
     <main>
-      <SiteHeader />
       <section className="space-y-5">
         <header className="flex flex-wrap items-center justify-between gap-3">
           <h1 className="text-2xl font-bold text-slate-900">عمليات الدفع</h1>

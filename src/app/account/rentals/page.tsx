@@ -1,6 +1,5 @@
 import Link from "next/link";
 import { AccessGrantType } from "@prisma/client";
-import { SiteHeader } from "@/components/site-header";
 import { requireUser } from "@/lib/auth-session";
 import { formatArabicDate } from "@/lib/formatters/intl";
 import { prisma } from "@/lib/prisma";
@@ -37,7 +36,6 @@ export default async function AccountRentalsPage() {
 
   return (
     <main>
-      <SiteHeader />
       <section className="space-y-5">
         <header className="space-y-2">
           <h1 className="text-2xl font-bold text-slate-900">إعاراتي</h1>

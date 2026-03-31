@@ -1,10 +1,8 @@
-import { SiteHeader } from "@/components/site-header";
 import { SiteFooter } from "@/components/site-footer";
 
 export default function BookDetailsLoading() {
   return (
     <main aria-busy="true" aria-live="polite">
-      <SiteHeader />
       <section className="rounded-3xl bg-white p-6 shadow-sm ring-1 ring-slate-200 sm:p-8">
         <div className="grid gap-8 lg:grid-cols-[320px_1fr]">
           <div className="h-[420px] animate-pulse rounded-2xl bg-slate-200" />

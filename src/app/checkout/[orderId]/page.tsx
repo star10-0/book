@@ -1,6 +1,5 @@
 import Link from "next/link";
 import { notFound } from "next/navigation";
-import { SiteHeader } from "@/components/site-header";
 import { OrderDetailsCard } from "@/components/order-details";
 import { OrderPaymentPanel } from "@/components/order-payment-panel";
 import { requireUser } from "@/lib/auth-session";
@@ -45,7 +44,6 @@ export default async function CheckoutPage({ params }: CheckoutPageProps) {
 
   return (
     <main>
-      <SiteHeader />
       <div className="mb-4 rounded-2xl border border-slate-200 bg-white p-4 shadow-sm sm:flex sm:flex-wrap sm:items-center sm:justify-between sm:gap-2">
         <div>
           <h1 className="text-2xl font-bold text-slate-900">إتمام الطلب</h1>

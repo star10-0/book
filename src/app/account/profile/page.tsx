@@ -1,5 +1,4 @@
 import Link from "next/link";
-import { SiteHeader } from "@/components/site-header";
 import { BecomeCreatorForm } from "@/components/studio/become-creator-form";
 import { requireUser } from "@/lib/auth-session";
 import { formatArabicDate } from "@/lib/formatters/intl";
@@ -29,7 +28,6 @@ export default async function AccountProfilePage() {
 
   return (
     <main>
-      <SiteHeader />
       <section className="space-y-6">
         <header className="space-y-2">
           <h1 className="text-2xl font-bold text-slate-900">الملف الشخصي</h1>

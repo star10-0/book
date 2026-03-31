@@ -2,7 +2,6 @@ import { FileKind } from "@prisma/client";
 import Link from "next/link";
 import { notFound } from "next/navigation";
 import { ReaderShell } from "@/components/reader-shell";
-import { SiteHeader } from "@/components/site-header";
 import { requireUser } from "@/lib/auth-session";
 import { formatArabicDate } from "@/lib/formatters/intl";
 import { ReaderDocumentSource } from "@/lib/reader/types";
@@ -157,7 +156,6 @@ export default async function ReaderPage({ params }: ReaderPageProps) {
 
   return (
     <main className="mx-auto w-full max-w-[1600px] space-y-6 px-2 sm:px-4" dir="rtl">
-      <SiteHeader />
 
       {isExpiredRental ? (
         <section className="space-y-4 rounded-2xl bg-rose-50 p-6 ring-1 ring-rose-200">

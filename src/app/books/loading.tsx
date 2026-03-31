@@ -1,10 +1,8 @@
-import { SiteHeader } from "@/components/site-header";
 import { SiteFooter } from "@/components/site-footer";
 
 export default function BooksLoading() {
   return (
     <main aria-busy="true" aria-live="polite">
-      <SiteHeader />
       <section className="mb-6 rounded-2xl bg-white p-6 shadow-sm ring-1 ring-slate-200 sm:p-8">
         <div className="h-10 w-56 animate-pulse rounded bg-slate-200" />
         <div className="mt-3 h-6 w-full animate-pulse rounded bg-slate-200 sm:w-3/4" />

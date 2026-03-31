@@ -1,7 +1,6 @@
 import { FileKind } from "@prisma/client";
 import { notFound } from "next/navigation";
 import { PublicReaderShell } from "@/components/public-reader-shell";
-import { SiteHeader } from "@/components/site-header";
 import { resolveBookContentAccess } from "@/lib/book-content-access";
 import { ReaderDocumentSource } from "@/lib/reader/types";
 import { prisma } from "@/lib/prisma";
@@ -91,7 +90,6 @@ export default async function PublicReadPage({ params }: PublicReadPageProps) {
 
   return (
     <main className="space-y-6" dir="rtl">
-      <SiteHeader />
       <div className="space-y-3">
         {contentAccess.canReadPreview ? (
           <p className="rounded-xl border border-amber-200 bg-amber-50 px-4 py-3 text-sm text-amber-800">

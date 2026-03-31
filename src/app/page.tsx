@@ -1,6 +1,5 @@
 import type { Metadata } from "next";
 import { prisma } from "@/lib/prisma";
-import { SiteHeader } from "@/components/site-header";
 import { SiteFooter } from "@/components/site-footer";
 import {
   CategoriesPreviewSection,
@@ -53,7 +52,6 @@ export default async function HomePage() {
 
   return (
     <main className="bg-gradient-to-b from-slate-100 via-slate-50 to-white">
-      <SiteHeader />
       <div className="space-y-5 pb-8 sm:space-y-6">
         <PromoHighlightsSection
           categories={categories.map((category) => ({

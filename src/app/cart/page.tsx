@@ -1,6 +1,5 @@
 import Link from "next/link";
 import { SiteFooter } from "@/components/site-footer";
-import { SiteHeader } from "@/components/site-header";
 import { getCurrentUser } from "@/lib/auth-session";
 import { getStoreLocale } from "@/lib/locale";
 
@@ -28,7 +27,6 @@ export default async function CartPage() {
 
   return (
     <main>
-      <SiteHeader />
 
       <section className="store-surface mx-auto max-w-2xl">
         <h1 className="text-2xl font-bold text-slate-900">{copy.title}</h1>
