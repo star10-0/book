@@ -12,24 +12,37 @@ const supportLinks = [
   { href: "/about", label: "عن المنصة" },
 ];
 
+const trustHighlights = ["دفع رقمي آمن", "وصول فوري للمكتبة", "دعم سريع باللغة العربية"];
+
 export function SiteFooter() {
   return (
-    <footer className="mt-8 rounded-3xl bg-gradient-to-l from-slate-950 via-slate-900 to-indigo-950 px-6 py-8 text-slate-100 shadow-lg sm:px-8 sm:py-10">
-      <div className="grid gap-8 md:grid-cols-[1.3fr_1fr_1fr]">
+    <footer className="mt-8 rounded-3xl border border-slate-200 bg-white px-5 py-6 text-slate-700 shadow-sm sm:px-6 sm:py-7">
+      <div className="grid gap-6 md:grid-cols-[1.4fr_1fr_1fr]">
         <div className="space-y-3">
-          <p className="text-sm font-semibold text-indigo-300">Amjad</p>
-          <h2 className="text-2xl font-bold">واجهة تسوق عربية للكتب الرقمية</h2>
-          <p className="max-w-md text-sm leading-7 text-slate-300">
-            اكتشف عناوين جديدة، قارن بين خيارات الشراء والاستئجار، وانتقل مباشرة إلى مكتبتك الشخصية بعد الدفع.
+          <p className="text-xs font-semibold uppercase tracking-wide text-indigo-600">Amjad</p>
+          <h2 className="text-lg font-bold text-slate-900">مكتبة رقمية عربية بوضوح وثقة</h2>
+          <p className="max-w-md text-sm leading-6 text-slate-600">
+            شراء أو استئجار الكتب الرقمية بخطوات واضحة، مع وصول مباشر إلى مكتبتك بعد إتمام الطلب.
           </p>
+
+          <div className="rounded-2xl border border-indigo-100 bg-indigo-50/70 p-3 text-sm">
+            <p className="font-semibold text-slate-900">الدعم المباشر</p>
+            <a
+              href="mailto:1234@gmail.com"
+              className="mt-1 inline-flex items-center text-indigo-700 hover:text-indigo-800 focus-visible:outline-none focus-visible:ring-2 focus-visible:ring-indigo-300"
+            >
+              1234@gmail.com
+            </a>
+            <p className="mt-1 text-xs text-slate-600">نستقبل استفسارات الطلبات، الوصول، والمدفوعات الرقمية.</p>
+          </div>
         </div>
 
-        <nav aria-label="روابط سريعة" className="space-y-3">
-          <h3 className="text-base font-semibold text-white">روابط سريعة</h3>
-          <ul className="space-y-2 text-sm text-slate-300">
+        <nav aria-label="روابط سريعة" className="space-y-2.5">
+          <h3 className="text-sm font-semibold text-slate-900">روابط سريعة</h3>
+          <ul className="space-y-1.5 text-sm text-slate-600">
             {quickLinks.map((link) => (
               <li key={link.href}>
-                <Link href={link.href} className="hover:text-white focus-visible:outline-none focus-visible:ring-2 focus-visible:ring-indigo-300">
+                <Link href={link.href} className="hover:text-slate-900 focus-visible:outline-none focus-visible:ring-2 focus-visible:ring-indigo-300">
                   {link.label}
                 </Link>
               </li>
@@ -37,23 +50,36 @@ export function SiteFooter() {
           </ul>
         </nav>
 
-        <nav aria-label="الدعم" className="space-y-3">
-          <h3 className="text-base font-semibold text-white">الدعم والمعلومات</h3>
-          <ul className="space-y-2 text-sm text-slate-300">
-            {supportLinks.map((link) => (
-              <li key={link.href}>
-                <Link href={link.href} className="hover:text-white focus-visible:outline-none focus-visible:ring-2 focus-visible:ring-indigo-300">
-                  {link.label}
-                </Link>
-              </li>
+        <div className="space-y-2.5">
+          <nav aria-label="الدعم" className="space-y-2.5">
+            <h3 className="text-sm font-semibold text-slate-900">الدعم والمعلومات</h3>
+            <ul className="space-y-1.5 text-sm text-slate-600">
+              {supportLinks.map((link) => (
+                <li key={link.href}>
+                  <Link
+                    href={link.href}
+                    className="hover:text-slate-900 focus-visible:outline-none focus-visible:ring-2 focus-visible:ring-indigo-300"
+                  >
+                    {link.label}
+                  </Link>
+                </li>
+              ))}
+            </ul>
+          </nav>
+
+          <div className="flex flex-wrap gap-1.5 pt-1">
+            {trustHighlights.map((item) => (
+              <span key={item} className="rounded-full border border-slate-200 bg-slate-50 px-2.5 py-1 text-xs text-slate-700">
+                {item}
+              </span>
             ))}
-          </ul>
-        </nav>
+          </div>
+        </div>
       </div>
 
-      <div className="mt-8 border-t border-slate-800 pt-5 text-xs text-slate-400 sm:flex sm:items-center sm:justify-between">
+      <div className="mt-6 border-t border-slate-200 pt-4 text-xs text-slate-500 sm:flex sm:items-center sm:justify-between">
         <p>© {new Date().getFullYear()} Amjad. جميع الحقوق محفوظة.</p>
-        <p className="mt-2 sm:mt-0">تجربة متجر عربي أولًا — RTL افتراضي، تسوق أسرع، وشراء بثقة.</p>
+        <p className="mt-1 sm:mt-0">تجربة عربية أولًا — RTL افتراضي، عرض واضح، ودعم موثوق.</p>
       </div>
     </footer>
   );
