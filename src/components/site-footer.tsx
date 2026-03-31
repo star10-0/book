@@ -16,10 +16,10 @@ const trustHighlights = ["دفع رقمي آمن", "وصول فوري للمكت
 
 export function SiteFooter() {
   return (
-    <footer className="mt-8 rounded-3xl border border-slate-200 bg-white px-5 py-6 text-slate-700 shadow-sm sm:px-6 sm:py-7">
+    <footer className="mt-6 rounded-3xl border border-slate-200 bg-white px-5 py-6 text-slate-700 shadow-sm sm:px-6 sm:py-7">
       <div className="grid gap-6 md:grid-cols-[1.4fr_1fr_1fr]">
         <div className="space-y-3">
-          <p className="text-xs font-semibold uppercase tracking-wide text-indigo-600">Amjad</p>
+          <p className="text-xs font-semibold tracking-wide text-indigo-600">Amjad | المتجر الرقمي</p>
           <h2 className="text-lg font-bold text-slate-900">مكتبة رقمية عربية بوضوح وثقة</h2>
           <p className="max-w-md text-sm leading-6 text-slate-600">
             شراء أو استئجار الكتب الرقمية بخطوات واضحة، مع وصول مباشر إلى مكتبتك بعد إتمام الطلب.
@@ -67,9 +67,9 @@ export function SiteFooter() {
             </ul>
           </nav>
 
-          <div className="flex flex-wrap gap-1.5 pt-1">
+          <div className="flex flex-wrap gap-2 pt-1">
             {trustHighlights.map((item) => (
-              <span key={item} className="rounded-full border border-slate-200 bg-slate-50 px-2.5 py-1 text-xs text-slate-700">
+              <span key={item} className="store-chip h-7 border border-slate-200 bg-slate-50 px-2.5 text-slate-700">
                 {item}
               </span>
             ))}

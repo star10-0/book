@@ -46,7 +46,7 @@ export function SiteDrawerNav({ primaryLinks, accountLinks, userSignedIn }: Site
         aria-haspopup="dialog"
         aria-expanded={isOpen}
         aria-controls="storefront-drawer"
-        className="inline-flex h-8 items-center rounded-md border border-slate-300 px-3 text-xs font-semibold text-slate-700 hover:bg-slate-100 focus-visible:outline-none focus-visible:ring-2 focus-visible:ring-indigo-400"
+        className="store-btn-secondary"
       >
         القائمة
       </button>

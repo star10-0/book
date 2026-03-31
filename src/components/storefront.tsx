@@ -66,7 +66,7 @@ export function HeroSection() {
 
       <div className="relative grid gap-6 lg:grid-cols-[minmax(0,1fr)_260px] lg:items-end">
         <div>
-          <p className="text-[11px] font-semibold tracking-wide text-indigo-100">Amjad Storefront</p>
+          <p className="text-[11px] font-semibold tracking-wide text-indigo-100">واجهة Amjad</p>
           <h1 id="hero-title" className="mt-2 text-3xl font-black leading-tight sm:text-4xl lg:text-5xl">
             واجهتك الأسرع لاكتشاف وشراء الكتب العربية الرقمية
           </h1>
@@ -76,13 +76,13 @@ export function HeroSection() {
           <div className="mt-6 flex flex-wrap items-center gap-2.5">
             <Link
               href="/books"
-              className="inline-flex h-9 items-center rounded-md bg-amber-300 px-4 text-xs font-bold text-slate-900 transition hover:bg-amber-200 focus-visible:outline-none focus-visible:ring-2 focus-visible:ring-white"
+              className="inline-flex h-9 items-center justify-center rounded-md bg-amber-300 px-4 text-xs font-bold text-slate-900 transition hover:bg-amber-200 focus-visible:outline-none focus-visible:ring-2 focus-visible:ring-white"
             >
               ابدأ التسوق
             </Link>
             <Link
               href="/books?offer=rent"
-              className="inline-flex h-9 items-center rounded-md border border-indigo-200/60 bg-white/10 px-4 text-xs font-semibold text-white transition hover:bg-white/20 focus-visible:outline-none focus-visible:ring-2 focus-visible:ring-white"
+              className="inline-flex h-9 items-center justify-center rounded-md border border-indigo-200/60 bg-white/10 px-4 text-xs font-semibold text-white transition hover:bg-white/20 focus-visible:outline-none focus-visible:ring-2 focus-visible:ring-white"
             >
               عروض الاستئجار
             </Link>
@@ -108,13 +108,13 @@ export function HeroSection() {
 
 export function FeaturedBooksSection({ books }: { books: FeaturedBookItem[] }) {
   return (
-    <section className="rounded-3xl bg-white p-5 shadow-sm ring-1 ring-slate-200 sm:p-6" aria-labelledby="featured-title">
+    <section className="store-surface" aria-labelledby="featured-title">
       <div className="flex items-center justify-between gap-3">
         <div>
           <p className="text-[11px] font-semibold text-slate-500">واجهة العرض</p>
           <h2 id="featured-title" className="text-xl font-bold text-slate-900 sm:text-2xl">كتب مميزة اليوم</h2>
         </div>
-        <Link href="/books" className="inline-flex h-8 items-center rounded-md border border-slate-300 px-3 text-xs font-semibold text-slate-700 hover:bg-slate-50">
+        <Link href="/books" className="store-btn-secondary h-9 px-4">
           عرض الكل
         </Link>
       </div>
@@ -143,7 +143,7 @@ export function FeaturedBooksSection({ books }: { books: FeaturedBookItem[] }) {
                 </div>
                 <Link
                   href={`/books/${book.slug}`}
-                  className="inline-flex h-8 items-center rounded-md bg-slate-900 px-3 text-xs font-semibold text-white hover:bg-slate-800"
+                  className="inline-flex h-9 items-center justify-center rounded-md bg-slate-900 px-4 text-xs font-semibold text-white hover:bg-slate-800"
                 >
                   عرض التفاصيل
                 </Link>
@@ -162,13 +162,13 @@ export function RecommendedBooksSection({ books }: { books: RecommendedBookItem[
   }
 
   return (
-    <section className="rounded-3xl bg-white p-5 shadow-sm ring-1 ring-slate-200 sm:p-6" aria-labelledby="recommended-title">
+    <section className="store-surface" aria-labelledby="recommended-title">
       <div className="flex items-center justify-between gap-3">
         <div>
           <p className="text-[11px] font-semibold text-slate-500">ترشيحات التسوق</p>
           <h2 id="recommended-title" className="text-xl font-bold text-slate-900 sm:text-2xl">مقترح لك</h2>
         </div>
-        <Link href="/books" className="inline-flex h-8 items-center rounded-md border border-slate-300 px-3 text-xs font-semibold text-slate-700 hover:bg-slate-50">
+        <Link href="/books" className="store-btn-secondary h-9 px-4">
           تسوق الآن
         </Link>
       </div>
@@ -185,7 +185,7 @@ export function RecommendedBooksSection({ books }: { books: RecommendedBookItem[
                 <p className="mt-2 text-[11px] text-indigo-700">{book.reason}</p>
               </div>
             </div>
-            <Link href={`/books/${book.slug}`} className="mt-3 inline-flex h-7 items-center rounded-md bg-white px-2.5 text-xs font-semibold text-indigo-700 ring-1 ring-indigo-200 hover:bg-indigo-50">
+            <Link href={`/books/${book.slug}`} className="store-btn-secondary mt-3 h-8 px-3 text-indigo-700 ring-1 ring-indigo-200 hover:bg-indigo-50">
               اقرأ المزيد
             </Link>
           </article>
@@ -197,7 +197,7 @@ export function RecommendedBooksSection({ books }: { books: RecommendedBookItem[
 
 export function CategoriesPreviewSection({ categories }: { categories: CategoryPreviewItem[] }) {
   return (
-    <section className="rounded-3xl bg-white p-5 shadow-sm ring-1 ring-slate-200 sm:p-6" aria-labelledby="categories-title">
+    <section className="store-surface" aria-labelledby="categories-title">
       <div className="flex items-center justify-between gap-3">
         <div>
           <p className="text-[11px] font-semibold text-slate-500">الأقسام</p>
@@ -215,7 +215,7 @@ export function CategoriesPreviewSection({ categories }: { categories: CategoryP
             <article key={category.name} className="rounded-xl border border-slate-200 bg-gradient-to-b from-white to-slate-50 p-4">
               <h3 className="text-sm font-bold text-slate-900">{category.name}</h3>
               <p className="mt-1.5 text-xs leading-6 text-slate-600">{category.description}</p>
-              <Link href="/books" className="mt-3 inline-flex h-7 items-center rounded-md border border-slate-300 px-2.5 text-[11px] font-semibold text-slate-700 hover:bg-white">
+              <Link href="/books" className="store-btn-secondary mt-3 h-8 px-3 text-[11px]">
                 عرض الكتب
               </Link>
             </article>
@@ -245,9 +245,9 @@ export function BooksFilters({ categories, search, category, offerType, sort, re
           <p className="text-[11px] font-semibold text-slate-500">البحث والاكتشاف</p>
           <h2 className="text-lg font-bold text-slate-900 sm:text-xl">ابحث عن كتابك القادم</h2>
         </div>
-        <p className="inline-flex h-8 items-center rounded-full bg-indigo-50 px-3 text-xs font-bold text-indigo-700">
-          {resultsCount} نتيجة متاحة
-        </p>
+          <p className="store-chip bg-indigo-50 font-bold text-indigo-700">
+            {resultsCount} نتيجة متاحة
+          </p>
       </div>
 
       <form className="space-y-4" method="get">
@@ -310,17 +310,17 @@ export function BooksFilters({ categories, search, category, offerType, sort, re
 
         <div className="flex flex-wrap items-center gap-2">
           {search ? (
-            <span className="inline-flex h-7 items-center rounded-full bg-slate-100 px-2.5 text-[11px] font-semibold text-slate-700">
+            <span className="store-chip h-7 bg-slate-100 px-2.5 text-[11px] text-slate-700">
               البحث: {search}
             </span>
           ) : null}
           {selectedCategoryLabel ? (
-            <span className="inline-flex h-7 items-center rounded-full bg-slate-100 px-2.5 text-[11px] font-semibold text-slate-700">
+            <span className="store-chip h-7 bg-slate-100 px-2.5 text-[11px] text-slate-700">
               التصنيف: {selectedCategoryLabel}
             </span>
           ) : null}
           {offerType !== "all" ? (
-            <span className="inline-flex h-7 items-center rounded-full bg-slate-100 px-2.5 text-[11px] font-semibold text-slate-700">
+            <span className="store-chip h-7 bg-slate-100 px-2.5 text-[11px] text-slate-700">
               العرض: {offerType === "buy" ? "شراء" : "استئجار"}
             </span>
           ) : null}
@@ -329,13 +329,13 @@ export function BooksFilters({ categories, search, category, offerType, sort, re
         <div className="flex flex-wrap items-center gap-2.5">
           <button
             type="submit"
-            className="inline-flex h-8 items-center rounded-md bg-indigo-600 px-3 text-xs font-semibold text-white hover:bg-indigo-700 focus-visible:outline-none focus-visible:ring-2 focus-visible:ring-indigo-300"
+            className="store-btn-primary"
           >
             تطبيق
           </button>
           <Link
             href="/books"
-            className="inline-flex h-8 items-center rounded-md border border-slate-300 px-3 text-xs font-semibold text-slate-700 hover:bg-slate-50 focus-visible:outline-none focus-visible:ring-2 focus-visible:ring-indigo-300"
+            className="store-btn-secondary"
           >
             إعادة التعيين
           </Link>
@@ -429,12 +429,12 @@ export function BooksGrid({
               <div className="flex flex-wrap gap-2">
                 <Link
                   href={`/books/${book.slug}`}
-                  className="inline-flex h-8 items-center rounded-md bg-indigo-600 px-3 text-xs font-semibold text-white hover:bg-indigo-700"
+                  className="store-btn-primary"
                 >
                   عرض التفاصيل
                 </Link>
                 {book.isWishlisted ? (
-                  <span className="inline-flex h-8 items-center rounded-md border border-amber-300 bg-amber-50 px-3 text-[11px] font-semibold text-amber-700">
+                  <span className="inline-flex h-9 items-center rounded-md border border-amber-300 bg-amber-50 px-3 text-[11px] font-semibold text-amber-700">
                     ضمن المفضلة
                   </span>
                 ) : null}
