@@ -1,5 +1,4 @@
 import type { Metadata } from "next";
-import Link from "next/link";
 import { prisma } from "@/lib/prisma";
 import { HOME_BILLBOARD_FALLBACKS } from "@/lib/home-billboards";
 import { SiteFooter } from "@/components/site-footer";
@@ -166,18 +165,6 @@ export default async function HomePage() {
             }))
             .filter((category) => category.books.length > 0)}
         />
-
-        <section className="grid gap-3 rounded-2xl border border-slate-200 bg-white/80 p-4 shadow-sm sm:grid-cols-3 sm:p-5" aria-label="مسارات التصفح الرئيسية">
-          <Link href="/books" className="rounded-xl border border-slate-200 bg-white p-3 transition hover:border-indigo-200 hover:bg-indigo-50/40">
-            <p className="text-xs font-bold text-slate-900">ابدأ من المكتبة الكاملة</p>
-          </Link>
-          <Link href="/books?offer=buy" className="rounded-xl border border-slate-200 bg-white p-3 transition hover:border-indigo-200 hover:bg-indigo-50/40">
-            <p className="text-xs font-bold text-slate-900">الشراء الرقمي</p>
-          </Link>
-          <Link href="/books?offer=rent" className="rounded-xl border border-slate-200 bg-white p-3 transition hover:border-indigo-200 hover:bg-indigo-50/40">
-            <p className="text-xs font-bold text-slate-900">الاستئجار الرقمي</p>
-          </Link>
-        </section>
 
         <CategoriesPreviewSection
           categories={categories.map((category) => ({
