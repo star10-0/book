@@ -24,6 +24,13 @@ export function OrderSummaryCard({ bookId, bookTitle, bookSlug, isLoggedIn, offe
   const [selectedOfferId, setSelectedOfferId] = useState<string>(offers[0]?.id ?? "");
 
   const selectedOffer = useMemo(() => offers.find((offer) => offer.id === selectedOfferId) ?? null, [offers, selectedOfferId]);
+  const selectedOfferDescription = selectedOffer
+    ? selectedOffer.type === "PURCHASE"
+      ? "امتلاك دائم ضمن مكتبتك الرقمية"
+      : selectedOffer.rentalDays
+        ? `وصول كامل لمدة ${selectedOffer.rentalDays} يومًا`
+        : "وصول كامل خلال فترة الإيجار"
+    : "اختر عرضًا للمتابعة";
 
   if (offers.length === 0) {
     return (
@@ -41,8 +48,11 @@ export function OrderSummaryCard({ bookId, bookTitle, bookSlug, isLoggedIn, offe
     selectedOffer?.type === "PURCHASE" ? "شراء الكتاب الآن" : selectedOffer?.type === "RENTAL" ? "استئجار الكتاب الآن" : "متابعة إلى صفحة الإتمام";
 
   return (
-    <section aria-label="ملخص الطلب" className="space-y-4 rounded-2xl bg-slate-50 p-4 ring-1 ring-slate-200">
-      <h2 className="text-lg font-bold text-slate-900">ملخص الطلب</h2>
+    <section aria-label="ملخص الطلب" className="space-y-4 rounded-2xl bg-slate-50 p-4 ring-1 ring-slate-200 sm:p-5">
+      <div className="space-y-1">
+        <h2 className="text-lg font-bold text-slate-900">ملخص الطلب</h2>
+        <p className="text-xs text-slate-600">اختر العرض الأنسب لك ثم انتقل مباشرة إلى إتمام الطلب.</p>
+      </div>
 
       <div className="space-y-2">
         <label htmlFor="offer" className="block text-sm font-semibold text-slate-800">
@@ -73,6 +83,10 @@ export function OrderSummaryCard({ bookId, bookTitle, bookSlug, isLoggedIn, offe
           <dt className="text-slate-600">نوع العرض</dt>
           <dd className="font-semibold text-slate-900">{selectedOffer ? offerLabelByType[selectedOffer.type] : "-"}</dd>
         </div>
+        <div className="flex items-start justify-between gap-3">
+          <dt className="text-slate-600">الوصول</dt>
+          <dd className="max-w-[65%] text-left font-semibold text-slate-900">{selectedOfferDescription}</dd>
+        </div>
         <div className="flex items-center justify-between gap-3">
           <dt className="text-slate-600">الإجمالي</dt>
           <dd className="font-bold text-indigo-700">
@@ -85,7 +99,7 @@ export function OrderSummaryCard({ bookId, bookTitle, bookSlug, isLoggedIn, offe
         <Link
           href={checkoutHref}
           aria-disabled={!selectedOffer}
-          className="inline-flex w-full items-center justify-center rounded-xl bg-indigo-600 px-4 py-3 text-sm font-semibold text-white transition hover:bg-indigo-500 focus-visible:outline-none focus-visible:ring-2 focus-visible:ring-indigo-500 focus-visible:ring-offset-2 aria-disabled:pointer-events-none aria-disabled:bg-slate-300"
+          className="inline-flex w-full items-center justify-center rounded-xl bg-indigo-600 px-4 py-3 text-sm font-semibold text-white shadow-sm transition hover:bg-indigo-500 focus-visible:outline-none focus-visible:ring-2 focus-visible:ring-indigo-500 focus-visible:ring-offset-2 aria-disabled:pointer-events-none aria-disabled:bg-slate-300"
         >
           {ctaLabel}
         </Link>
