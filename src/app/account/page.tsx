@@ -43,7 +43,6 @@ export default async function AccountPage() {
       <section className="space-y-6">
         <header className="space-y-2 rounded-2xl bg-white p-5 shadow-sm ring-1 ring-slate-200">
           <h1 className="text-2xl font-bold text-slate-900">مرحبًا {user.name ?? "بك"}</h1>
-          <p className="text-sm text-slate-600">هذه نظرة سريعة على حسابك ومحتواك في المكتبة الرقمية.</p>
         </header>
 
         <section className="grid gap-4 sm:grid-cols-2 xl:grid-cols-4" aria-label="ملخص الحساب">
