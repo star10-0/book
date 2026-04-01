@@ -24,9 +24,6 @@ export function HomeDiscoveryHero({ billboard, categories }: HomeDiscoveryHeroPr
             <h1 id="home-discovery-title" className="text-2xl font-black leading-tight sm:text-3xl lg:text-4xl">
               اكتشف الكتب حسب التصنيف، العروض، وتفضيلات القراءة في واجهة واحدة
             </h1>
-            <p className="max-w-2xl text-sm leading-7 text-indigo-100/95 sm:text-base">
-              قسم اكتشاف مُصمم للسوق العربي: لوحات ترويجية واضحة، تصفح سريع حسب التصنيف، وترشيحات كثيفة تساعدك على الوصول للكتاب المناسب بسرعة.
-            </p>
             <div className="flex flex-wrap gap-2.5 pt-1">
               <Link href="/books" className="inline-flex h-9 items-center justify-center rounded-md bg-amber-300 px-4 text-xs font-bold text-slate-900 hover:bg-amber-200">
                 ابدأ التسوق
@@ -43,15 +40,6 @@ export function HomeDiscoveryHero({ billboard, categories }: HomeDiscoveryHeroPr
           <aside className="rounded-2xl border border-white/20 bg-white/10 p-4 text-white shadow-sm backdrop-blur-sm">
             <span className="inline-flex rounded-full bg-white/20 px-2.5 py-1 text-[11px] font-bold">{billboard.badge}</span>
             <h2 className="mt-3 text-lg font-black leading-snug">{billboard.title}</h2>
-            <p className="mt-2 text-sm leading-6 text-indigo-100">{billboard.description}</p>
-            <ul className="mt-3 space-y-1.5 text-xs text-indigo-100">
-              {billboard.supportingPoints.map((point) => (
-                <li key={point} className="flex items-center gap-2">
-                  <span className="h-1.5 w-1.5 rounded-full bg-amber-300" aria-hidden />
-                  {point}
-                </li>
-              ))}
-            </ul>
             <Link href={billboard.ctaHref} className="mt-4 inline-flex h-8 items-center justify-center rounded-md bg-white px-3 text-xs font-bold text-indigo-900 hover:bg-indigo-50">
               {billboard.ctaLabel}
             </Link>
@@ -60,7 +48,6 @@ export function HomeDiscoveryHero({ billboard, categories }: HomeDiscoveryHeroPr
 
         <div className="rounded-2xl border border-white/20 bg-black/15 px-4 py-3 text-white/90">
           <div className="flex flex-wrap items-center justify-between gap-3">
-            <p className="text-xs font-semibold">انتقل مباشرة إلى ما تريد:</p>
             <div className="flex flex-wrap gap-2">
               {categories.slice(0, 4).map((category) => (
                 <Link
