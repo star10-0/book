@@ -24,17 +24,6 @@ export function HomeDiscoveryHero({ billboard, categories }: HomeDiscoveryHeroPr
             <h1 id="home-discovery-title" className="text-2xl font-black leading-tight sm:text-3xl lg:text-4xl">
               اكتشف الكتب حسب التصنيف، العروض، وتفضيلات القراءة في واجهة واحدة
             </h1>
-            <div className="flex flex-wrap gap-2.5 pt-1">
-              <Link href="/books" className="inline-flex h-9 items-center justify-center rounded-md bg-amber-300 px-4 text-xs font-bold text-slate-900 hover:bg-amber-200">
-                ابدأ التسوق
-              </Link>
-              <Link href="/books?offer=rent" className="inline-flex h-9 items-center justify-center rounded-md border border-indigo-200/70 bg-white/10 px-4 text-xs font-semibold text-white hover:bg-white/20">
-                تصفح الاستئجار
-              </Link>
-              <Link href="/books?sort=rating" className="inline-flex h-9 items-center justify-center rounded-md border border-indigo-200/70 bg-white/10 px-4 text-xs font-semibold text-white hover:bg-white/20">
-                الأعلى تقييمًا
-              </Link>
-            </div>
           </div>
 
           <aside className="rounded-2xl border border-white/20 bg-white/10 p-4 text-white shadow-sm backdrop-blur-sm">
