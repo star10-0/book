@@ -143,7 +143,7 @@ export function RecommendedBooksSection({ books }: { books: RecommendedBookItem[
   }
 
   return (
-    <section className="store-surface" aria-labelledby="recommended-title">
+    <section className="store-surface border border-slate-200/80" aria-labelledby="recommended-title">
       <div className="flex items-center justify-between gap-3">
         <div>
           <p className="text-[11px] font-semibold text-slate-500">ترشيحات التسوق</p>
@@ -153,7 +153,7 @@ export function RecommendedBooksSection({ books }: { books: RecommendedBookItem[
           تسوق الآن
         </Link>
       </div>
-      <p className="mt-2 text-xs text-slate-600 sm:text-sm">كتب مختارة حسب تقييمات القرّاء وتنوّع التصنيفات.</p>
+      <p className="mt-2 text-xs text-slate-600 sm:text-sm">كتب مختارة حسب تقييمات القرّاء وتنوّع التصنيفات، لتبدأ التصفّح من خيارات موثوقة.</p>
 
       <div className="mt-4 grid gap-3 sm:grid-cols-2 lg:grid-cols-3">
         {books.map((book) => (
@@ -234,6 +234,7 @@ type BooksFiltersProps = {
 
 export function BooksFilters({ categories, search, category, offerType, sort, resultsCount = 0 }: BooksFiltersProps) {
   const selectedCategoryLabel = categories.find((item) => item.slug === category)?.nameAr;
+  const hasActiveFilters = Boolean(search) || category !== "all" || offerType !== "all";
 
   return (
     <section className="rounded-2xl bg-white p-4 shadow-sm ring-1 ring-slate-200 sm:p-5 lg:p-6">
@@ -241,6 +242,7 @@ export function BooksFilters({ categories, search, category, offerType, sort, re
         <div>
           <p className="text-[11px] font-semibold text-slate-500">البحث والاكتشاف</p>
           <h2 className="text-lg font-bold text-slate-900 sm:text-xl">ابحث عن كتابك القادم</h2>
+          <p className="mt-1 text-xs text-slate-600">خصّص النتائج بسرعة عبر الجمع بين البحث، التصنيف، نوع العرض، والترتيب.</p>
         </div>
         <p className="store-chip bg-indigo-50 font-bold text-indigo-700">{resultsCount} نتيجة متاحة</p>
       </div>
@@ -303,22 +305,30 @@ export function BooksFilters({ categories, search, category, offerType, sort, re
           </label>
         </div>
 
-        <div className="flex flex-wrap items-center gap-2">
-          {search ? (
-            <span className="store-chip h-7 bg-slate-100 px-2.5 text-[11px] text-slate-700">
-              البحث: {search}
-            </span>
-          ) : null}
-          {selectedCategoryLabel ? (
-            <span className="store-chip h-7 bg-slate-100 px-2.5 text-[11px] text-slate-700">
-              التصنيف: {selectedCategoryLabel}
-            </span>
-          ) : null}
-          {offerType !== "all" ? (
-            <span className="store-chip h-7 bg-slate-100 px-2.5 text-[11px] text-slate-700">
-              العرض: {offerType === "buy" ? "شراء" : "استئجار"}
-            </span>
-          ) : null}
+        <div className="space-y-2">
+          <p className="text-xs font-semibold text-slate-600">الفلاتر النشطة</p>
+          <div className="flex flex-wrap items-center gap-2">
+            {hasActiveFilters ? null : (
+              <span className="store-chip h-7 bg-slate-100 px-2.5 text-[11px] text-slate-700">
+                لا توجد فلاتر مفعّلة
+              </span>
+            )}
+            {search ? (
+              <span className="store-chip h-7 bg-slate-100 px-2.5 text-[11px] text-slate-700">
+                البحث: {search}
+              </span>
+            ) : null}
+            {selectedCategoryLabel ? (
+              <span className="store-chip h-7 bg-slate-100 px-2.5 text-[11px] text-slate-700">
+                التصنيف: {selectedCategoryLabel}
+              </span>
+            ) : null}
+            {offerType !== "all" ? (
+              <span className="store-chip h-7 bg-slate-100 px-2.5 text-[11px] text-slate-700">
+                العرض: {offerType === "buy" ? "شراء" : "استئجار"}
+              </span>
+            ) : null}
+          </div>
         </div>
 
         <div className="flex flex-wrap items-center gap-2.5 pt-1">
@@ -578,9 +588,14 @@ export function BooksGrid({
 
   return (
     <section className="space-y-4">
-      <div className="flex flex-wrap items-center justify-between gap-2.5">
-        <h2 className="text-lg font-bold text-slate-900 sm:text-xl">{hasActiveFilters ? "نتائج أخرى قد تهمك" : "كل الكتب المتاحة"}</h2>
-        <p className="text-xs font-semibold text-slate-500">{books.length} كتاب</p>
+      <div className="rounded-2xl border border-slate-200 bg-white p-4 shadow-sm sm:p-5">
+        <div className="flex flex-wrap items-center justify-between gap-2.5">
+          <h2 className="text-lg font-bold text-slate-900 sm:text-xl">{hasActiveFilters ? "نتائج أخرى قد تهمك" : "كل الكتب المتاحة"}</h2>
+          <p className="text-xs font-semibold text-slate-500">{books.length} كتاب</p>
+        </div>
+        <p className="mt-1 text-xs text-slate-600 sm:text-sm">
+          {hasActiveFilters ? "هذه النتائج تكمل اختياراتك الحالية، ويمكنك تعديل الفلاتر من اللوحة الجانبية." : "تصفّح أحدث الكتب الرقمية المتاحة للشراء أو الاستئجار."}
+        </p>
       </div>
 
       <div className="grid gap-3.5 sm:grid-cols-2 lg:grid-cols-3 2xl:grid-cols-4">

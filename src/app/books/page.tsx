@@ -313,6 +313,17 @@ export default async function BooksPage({
   return (
     <main>
       <div className="space-y-5 sm:space-y-6">
+        <section className="rounded-2xl border border-slate-200/90 bg-white p-4 shadow-sm sm:p-5">
+          <div className="flex flex-wrap items-center justify-between gap-3">
+            <div className="space-y-1">
+              <p className="text-[11px] font-semibold text-slate-500">متجر الكتب الرقمية</p>
+              <h1 className="text-xl font-black text-slate-900 sm:text-2xl">اكتشف كتابك القادم بسهولة</h1>
+              <p className="text-xs text-slate-600 sm:text-sm">تصفّح حسب العنوان والتصنيف ونوع العرض مع ترتيب يناسب طريقة قراءتك.</p>
+            </div>
+            <span className="store-chip bg-indigo-50 text-indigo-700">{sortedBooks.length} نتيجة</span>
+          </div>
+        </section>
+
         {highlightedResult ? (
           <SearchHighlightResult
             book={{
@@ -335,8 +346,10 @@ export default async function BooksPage({
         ) : null}
 
         <div className="grid gap-6 xl:grid-cols-[minmax(0,1fr)_320px] xl:items-start 2xl:grid-cols-[minmax(0,1fr)_340px]">
-          <div className="space-y-6">
-            <RecommendedBooksSection books={highlightedResult ? searchRecommendations : recommended} />
+          <div className="order-2 space-y-6 xl:order-1">
+            <section className="space-y-6 rounded-2xl border border-slate-200/80 bg-gradient-to-b from-white to-slate-50/60 p-4 sm:p-5">
+              <RecommendedBooksSection books={highlightedResult ? searchRecommendations : recommended} />
+            </section>
 
             <BooksGrid
               books={gridBooks.map((book) => ({
@@ -360,7 +373,7 @@ export default async function BooksPage({
             />
           </div>
 
-          <div className="xl:sticky xl:top-24">
+          <div className="order-1 xl:order-2 xl:sticky xl:top-24">
             <BooksFilters
               categories={categories}
               search={search}
