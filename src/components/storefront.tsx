@@ -98,25 +98,32 @@ export function FeaturedBooksSection({ books }: { books: FeaturedBookItem[] }) {
           {books.map((book, index) => (
             <article key={book.id} className="flex h-full flex-col overflow-hidden rounded-2xl border border-slate-200 bg-white shadow-sm transition hover:-translate-y-0.5 hover:shadow-md">
               <CoverImage src={book.coverImageUrl} alt={`غلاف كتاب ${book.title}`} width={600} height={900} className="h-52 w-full object-cover" />
-              <div className="flex h-full flex-col gap-2.5 p-4">
+              <div className="flex h-full flex-col gap-3 p-4">
                 <div className="flex items-center justify-between gap-2 text-[11px]">
                   <span className="rounded-full bg-amber-100 px-2.5 py-1 font-semibold text-amber-800">الأكثر إبرازًا</span>
                   <span className="font-bold text-slate-500">#{index + 1}</span>
                 </div>
-                <h3 className="line-clamp-2 text-base font-bold text-slate-900">{book.title}</h3>
-                <p className="text-xs text-slate-600">{book.author}</p>
-                {book.publisher ? <p className="line-clamp-1 text-[11px] text-slate-500">الناشر: {book.publisher}</p> : null}
+                <div className="space-y-1.5">
+                  <h3 className="line-clamp-2 min-h-12 text-base font-bold text-slate-900">{book.title}</h3>
+                  <p className="line-clamp-1 text-xs text-slate-600">{book.author}</p>
+                  {book.publisher ? <p className="line-clamp-1 text-[11px] text-slate-500">الناشر: {book.publisher}</p> : null}
+                </div>
                 <div className="flex items-center justify-between gap-2 text-xs">
                   <span className="inline-flex rounded-full bg-indigo-50 px-2.5 py-1 font-semibold text-indigo-700">{book.category}</span>
                   <span className="font-semibold text-amber-600">
                     {book.averageRating > 0 ? `★ ${book.averageRating.toFixed(1)} (${book.reviewsCount})` : "بدون تقييمات"}
                   </span>
                 </div>
+                <div className="rounded-lg border border-slate-200 bg-slate-50 px-3 py-2.5">
+                  <p className="text-[11px] font-semibold text-slate-500">ملخص العرض</p>
+                  <div className="mt-1.5">
+                    <OfferPricingSummary offers={book.offers} />
+                  </div>
+                </div>
                 <div className="mt-auto space-y-2 pt-1">
-                  <OfferPricingSummary offers={book.offers} />
-                  <div className="flex flex-wrap gap-2">
+                  <div className="flex flex-col gap-2 sm:flex-row sm:items-center">
                     <AddToCartAction bookId={book.id} bookSlug={book.slug} offers={book.offers} isLoggedIn={book.isLoggedIn} />
-                    <Link href={`/books/${book.slug}`} className="store-btn-secondary h-9 px-3 text-xs">
+                    <Link href={`/books/${book.slug}`} className="store-btn-secondary h-10 w-full px-3 text-xs sm:w-auto">
                       عرض التفاصيل
                     </Link>
                   </div>
@@ -153,19 +160,24 @@ export function RecommendedBooksSection({ books }: { books: RecommendedBookItem[
           <article key={book.id} className="flex h-full flex-col rounded-xl border border-slate-200 bg-slate-50 p-3.5">
             <div className="flex gap-3">
               <CoverImage src={book.coverImageUrl} alt={`غلاف ${book.title}`} width={120} height={170} className="h-24 w-16 rounded-md object-cover" />
-              <div className="min-w-0">
-                <h3 className="line-clamp-2 text-sm font-bold text-slate-900">{book.title}</h3>
+              <div className="min-w-0 flex-1">
+                <h3 className="line-clamp-2 min-h-10 text-sm font-bold text-slate-900">{book.title}</h3>
                 <p className="mt-1 text-xs text-slate-600">{book.author}</p>
                 {book.publisher ? <p className="mt-1 line-clamp-1 text-[11px] text-slate-500">{book.publisher}</p> : null}
                 {book.category ? <p className="mt-1 text-[11px] font-semibold text-indigo-700">{book.category}</p> : null}
                 <p className="mt-2 text-[11px] text-indigo-700">{book.reason}</p>
               </div>
             </div>
-            <div className="mt-auto space-y-2 pt-3">
-              <OfferPricingSummary offers={book.offers} />
-              <div className="flex flex-wrap gap-2">
+            <div className="mt-auto space-y-2.5 pt-3">
+              <div className="rounded-lg border border-slate-200 bg-white px-2.5 py-2">
+                <p className="text-[11px] font-semibold text-slate-500">ملخص العرض</p>
+                <div className="mt-1.5">
+                  <OfferPricingSummary offers={book.offers} />
+                </div>
+              </div>
+              <div className="flex flex-col gap-2 sm:flex-row sm:items-center">
                 <AddToCartAction bookId={book.id} bookSlug={book.slug} offers={book.offers} isLoggedIn={book.isLoggedIn} />
-                <Link href={`/books/${book.slug}`} className="store-btn-secondary h-9 px-3 text-xs text-indigo-700 ring-1 ring-indigo-200 hover:bg-indigo-50">
+                <Link href={`/books/${book.slug}`} className="store-btn-secondary h-10 w-full px-3 text-xs text-indigo-700 ring-1 ring-indigo-200 hover:bg-indigo-50 sm:w-auto">
                   اقرأ المزيد
                 </Link>
               </div>
@@ -381,7 +393,7 @@ function AddToCartAction({
       <button
         type="button"
         disabled
-        className="inline-flex h-9 items-center justify-center rounded-md bg-slate-200 px-3 text-xs font-semibold text-slate-500"
+        className="inline-flex h-10 w-full items-center justify-center rounded-md bg-slate-200 px-3 text-xs font-semibold text-slate-500 sm:w-auto"
       >
         غير متاح للشراء حاليًا
       </button>
@@ -394,7 +406,7 @@ function AddToCartAction({
     return (
       <Link
         href={`/login?callbackUrl=${encodeURIComponent(addToCartHref)}`}
-        className="store-btn-primary h-9 min-w-[9rem] px-3 text-[11px] sm:text-xs"
+        className="store-btn-primary h-10 w-full px-3 text-[11px] sm:w-auto sm:min-w-[10rem] sm:text-xs"
       >
         سجّل الدخول للإضافة إلى السلة
       </Link>
@@ -402,7 +414,7 @@ function AddToCartAction({
   }
 
   return (
-    <Link href={addToCartHref} className="store-btn-primary h-9 min-w-[7.5rem] px-3 text-xs">
+    <Link href={addToCartHref} className="store-btn-primary h-10 w-full px-3 text-xs sm:w-auto sm:min-w-[8.5rem]">
       أضف إلى السلة
     </Link>
   );
@@ -430,25 +442,34 @@ function getActiveOffersSummary(offers: BookCardOffer[]) {
 function OfferPricingSummary({ offers }: { offers: BookCardOffer[] }) {
   const purchaseOffer = offers.find((offer) => offer.type === "PURCHASE");
   const rentalOffer = offers.find((offer) => offer.type === "RENTAL");
+  const startingPrice =
+    offers.length > 0 ? formatPrice(Math.min(...offers.map((offer) => offer.priceCents)), offers[0].currency) : null;
 
   return (
-    <ul className="space-y-1.5 text-[11px] text-slate-600">
-      {purchaseOffer ? (
-        <li className="flex items-center justify-between gap-2">
-          <span className="font-medium text-slate-700">شراء رقمي</span>
-          <span className="font-bold text-slate-900">{formatPrice(purchaseOffer.priceCents, purchaseOffer.currency)}</span>
-        </li>
+    <div className="space-y-2">
+      {startingPrice ? (
+        <p className="text-xs font-bold text-slate-900">
+          يبدأ من <span className="text-indigo-700">{startingPrice}</span>
+        </p>
       ) : null}
-      {rentalOffer ? (
-        <li className="flex items-center justify-between gap-2">
-          <span className="font-medium text-slate-700">
-            استئجار رقمي
-            {rentalOffer.rentalDays ? ` (${rentalOffer.rentalDays} يوم)` : ""}
-          </span>
-          <span className="font-bold text-indigo-700">{formatPrice(rentalOffer.priceCents, rentalOffer.currency)}</span>
-        </li>
-      ) : null}
-    </ul>
+      <ul className="space-y-1.5 text-[11px] text-slate-600">
+        {purchaseOffer ? (
+          <li className="flex items-center justify-between gap-2">
+            <span className="font-medium text-slate-700">شراء رقمي</span>
+            <span className="font-bold text-slate-900">{formatPrice(purchaseOffer.priceCents, purchaseOffer.currency)}</span>
+          </li>
+        ) : null}
+        {rentalOffer ? (
+          <li className="flex items-center justify-between gap-2">
+            <span className="font-medium text-slate-700">
+              استئجار رقمي
+              {rentalOffer.rentalDays ? ` (${rentalOffer.rentalDays} يوم)` : ""}
+            </span>
+            <span className="font-bold text-indigo-700">{formatPrice(rentalOffer.priceCents, rentalOffer.currency)}</span>
+          </li>
+        ) : null}
+      </ul>
+    </div>
   );
 }
 
@@ -566,9 +587,9 @@ export function BooksGrid({
         {books.map((book) => (
           <article key={book.id} className="group flex h-full flex-col overflow-hidden rounded-2xl bg-white shadow-sm ring-1 ring-slate-200 transition hover:-translate-y-0.5 hover:shadow-md focus-within:ring-indigo-300">
             <CoverImage src={book.coverImageUrl} alt={`غلاف كتاب ${book.title}`} width={600} height={900} className="h-52 w-full object-cover" />
-            <div className="flex h-full flex-col gap-2.5 p-4">
+            <div className="flex h-full flex-col gap-3 p-4">
               <div className="space-y-1">
-                <h3 className="line-clamp-2 text-base font-bold text-slate-900">{book.title}</h3>
+                <h3 className="line-clamp-2 min-h-12 text-base font-bold text-slate-900">{book.title}</h3>
                 <p className="line-clamp-1 text-xs text-slate-600">{book.author}</p>
                 {book.publisher ? <p className="line-clamp-1 text-[11px] text-slate-500">الناشر: {book.publisher}</p> : null}
               </div>
@@ -578,7 +599,7 @@ export function BooksGrid({
                 <RatingLabel averageRating={book.averageRating} reviewsCount={book.reviewsCount} />
               </div>
 
-              <div className="rounded-lg border border-slate-200 bg-slate-50 px-2.5 py-2 text-[11px]">
+              <div className="rounded-lg border border-slate-200 bg-slate-50 px-3 py-2.5 text-[11px]">
                 <div className="flex items-center justify-between gap-2">
                   <span className="font-semibold text-slate-700">
                     {getActiveOffersSummary(book.offers)}
@@ -590,19 +611,19 @@ export function BooksGrid({
                 </div>
               </div>
 
-              <div className="mt-auto flex flex-wrap gap-2 pt-1">
+              <div className="mt-auto flex flex-col gap-2 pt-1 sm:flex-row sm:items-center">
                 <AddToCartAction bookId={book.id} bookSlug={book.slug} offers={book.offers} isLoggedIn={book.isLoggedIn} />
-                <Link href={`/books/${book.slug}`} className="store-btn-secondary h-9 px-3 text-xs">
+                <Link href={`/books/${book.slug}`} className="store-btn-secondary h-10 w-full px-3 text-xs sm:w-auto">
                   عرض التفاصيل
                 </Link>
                 {book.isWishlisted ? (
-                  <span className="inline-flex h-9 items-center rounded-md border border-amber-300 bg-amber-50 px-3 text-[11px] font-semibold text-amber-700">
+                  <span className="inline-flex h-10 w-full items-center justify-center rounded-md border border-amber-300 bg-amber-50 px-3 text-[11px] font-semibold text-amber-700 sm:w-auto">
                     ضمن المفضلة
                   </span>
                 ) : !book.isLoggedIn ? (
                   <Link
                     href={`/login?callbackUrl=${encodeURIComponent(`/books/${book.slug}`)}`}
-                    className="store-btn-secondary h-9 px-3 text-[11px]"
+                    className="store-btn-secondary h-10 w-full px-3 text-[11px] sm:w-auto"
                   >
                     سجّل الدخول لإضافة الكتاب إلى المفضلة
                   </Link>
