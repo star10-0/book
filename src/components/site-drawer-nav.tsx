@@ -168,7 +168,7 @@ export function SiteDrawerNav({
   }, [isOpen]);
 
   return (
-    <div ref={containerRef} className="relative">
+    <div ref={containerRef} className="relative inline-flex flex-col items-end">
       <button
         type="button"
         onClick={() => setIsOpen((prev) => !prev)}
@@ -186,7 +186,7 @@ export function SiteDrawerNav({
           id={menuId}
           role="menu"
           aria-labelledby={titleId}
-          className="absolute start-0 top-[calc(100%+0.4rem)] z-50 w-[min(23rem,calc(100vw-2rem))] overflow-hidden rounded-2xl border border-slate-200 bg-white shadow-xl"
+          className="absolute end-0 top-[calc(100%+0.4rem)] z-50 w-[min(20rem,calc(100vw-1rem))] overflow-hidden rounded-2xl border border-slate-200 bg-white shadow-xl"
         >
           <div className="border-b border-slate-200 px-4 py-3">
             <p id={titleId} className="text-sm font-bold text-slate-900">
