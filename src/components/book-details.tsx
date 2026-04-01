@@ -203,7 +203,12 @@ export function BookDetailsSection({
             offers={offers}
           />
           <div className="rounded-xl border border-slate-200 bg-slate-50 p-4 text-xs leading-6 text-slate-600">
-            بعد الشراء أو الاستئجار، ستجد الكتاب داخل مكتبتك الرقمية مباشرة.
+            <p className="font-semibold text-slate-800">شراء واضح، ووصول مباشر</p>
+            <ul className="mt-1.5 space-y-1">
+              <li>• {offers.length} عرض متاح لهذا الكتاب.</li>
+              <li>• بعد الشراء أو الاستئجار، ستجد الكتاب داخل مكتبتك الرقمية مباشرة.</li>
+              <li>• {averageRating > 0 ? `تقييم القرّاء الحالي ${averageRating.toFixed(1)} من 5 (${reviewsCount} مراجعة).` : "يمكنك أن تكون من أوائل من يضيف تقييمًا لهذا الكتاب."}</li>
+            </ul>
           </div>
         </aside>
       </div>
