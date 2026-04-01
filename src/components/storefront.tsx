@@ -4,6 +4,7 @@ import { formatArabicCurrency } from "@/lib/formatters/intl";
 import { CoverImage } from "@/components/ui/cover-image";
 
 type CategoryPreviewItem = {
+  slug: string;
   name: string;
   description: string;
 };
@@ -181,9 +182,12 @@ export function CategoriesPreviewSection({ categories }: { categories: CategoryP
     <section className="store-surface" aria-labelledby="categories-title">
       <div className="flex items-center justify-between gap-3">
         <div>
-          <p className="text-[11px] font-semibold text-slate-500">الأقسام</p>
-          <h2 id="categories-title" className="text-xl font-bold text-slate-900 sm:text-2xl">تسوّق حسب التصنيف</h2>
+          <p className="text-[11px] font-semibold text-slate-500">بوابات التصفح</p>
+          <h2 id="categories-title" className="text-xl font-bold text-slate-900 sm:text-2xl">ابدأ من التصنيف المناسب لك</h2>
         </div>
+        <Link href="/books" className="store-btn-secondary h-9 px-4">
+          كل التصنيفات
+        </Link>
       </div>
 
       {categories.length === 0 ? (
@@ -196,7 +200,7 @@ export function CategoriesPreviewSection({ categories }: { categories: CategoryP
             <article key={category.name} className="rounded-xl border border-slate-200 bg-gradient-to-b from-white to-slate-50 p-4">
               <h3 className="text-sm font-bold text-slate-900">{category.name}</h3>
               <p className="mt-1.5 text-xs leading-6 text-slate-600">{category.description}</p>
-              <Link href="/books" className="store-btn-secondary mt-3 h-8 px-3 text-[11px]">
+              <Link href={`/books?category=${category.slug}`} className="store-btn-secondary mt-3 h-8 px-3 text-[11px]">
                 عرض الكتب
               </Link>
             </article>
