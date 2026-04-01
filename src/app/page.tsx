@@ -4,7 +4,6 @@ import { HOME_BILLBOARD_FALLBACKS } from "@/lib/home-billboards";
 import { SiteFooter } from "@/components/site-footer";
 import { HomeDiscoveryHero } from "@/components/home/home-discovery-hero";
 import {
-  CategoriesPreviewSection,
   FeaturedBooksSection,
   RecommendedBooksSection,
 } from "@/components/storefront";
@@ -34,7 +33,7 @@ function getPricingLabel(
 }
 
 export default async function HomePage() {
-  const [user, featuredBooks, categories, recommendedBooks, discoveryCategories] = await Promise.all([
+  const [user, featuredBooks, recommendedBooks, discoveryCategories] = await Promise.all([
     getCurrentUser(),
     prisma.book.findMany({
       where: { status: "PUBLISHED", format: "DIGITAL" },
@@ -55,15 +54,6 @@ export default async function HomePage() {
           },
         },
         reviews: { select: { rating: true } },
-      },
-    }),
-    prisma.category.findMany({
-      orderBy: { books: { _count: "desc" } },
-      take: 4,
-      select: {
-        slug: true,
-        nameAr: true,
-        description: true,
       },
     }),
     prisma.book.findMany({
@@ -164,14 +154,6 @@ export default async function HomePage() {
               })),
             }))
             .filter((category) => category.books.length > 0)}
-        />
-
-        <CategoriesPreviewSection
-          categories={categories.map((category) => ({
-            slug: category.slug,
-            name: category.nameAr,
-            description: category.description ?? "مجموعة متنوعة من الكتب المختارة بعناية.",
-          }))}
         />
 
         <FeaturedBooksSection
