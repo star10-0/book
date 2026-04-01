@@ -84,7 +84,7 @@ export function BookDetailsSection({
 
   return (
     <section aria-labelledby="book-details-title" className="rounded-3xl bg-white p-5 shadow-sm ring-1 ring-slate-200 sm:p-8">
-      <div className="grid gap-6 lg:grid-cols-[260px_minmax(0,1fr)_320px] lg:gap-8">
+      <div className="grid gap-6 lg:grid-cols-[240px_minmax(0,1fr)_340px] lg:gap-8 xl:gap-10">
         <div className="space-y-4">
           <CoverImage
             src={book.coverImageUrl}
@@ -98,13 +98,15 @@ export function BookDetailsSection({
         </div>
 
         <div className="space-y-6">
-          <header className="space-y-4">
-            <span className="inline-flex rounded-full bg-indigo-50 px-3 py-1 text-xs font-semibold text-indigo-700 ring-1 ring-indigo-200">
-              {book.category}
-            </span>
-            <h1 id="book-details-title" className="text-3xl font-bold text-slate-900 sm:text-4xl">
-              {book.title}
-            </h1>
+          <header className="space-y-5 rounded-2xl border border-slate-200/80 bg-gradient-to-b from-slate-50 to-white p-4 sm:p-5">
+            <div className="space-y-3">
+              <span className="inline-flex rounded-full bg-indigo-50 px-3 py-1 text-xs font-semibold text-indigo-700 ring-1 ring-indigo-200">
+                {book.category}
+              </span>
+              <h1 id="book-details-title" className="text-3xl font-bold leading-tight text-slate-900 sm:text-4xl">
+                {book.title}
+              </h1>
+            </div>
             <div className="space-y-1 text-sm text-slate-700 sm:text-base">
               <p>
                 تأليف: <span className="font-semibold text-slate-900">{book.author}</span>
@@ -150,7 +152,7 @@ export function BookDetailsSection({
             </Link>
           </section>
 
-          <section aria-labelledby="book-description" className="space-y-2">
+          <section aria-labelledby="book-description" className="space-y-2 rounded-2xl border border-slate-200/80 bg-white p-4 sm:p-5">
             <h2 id="book-description" className="text-lg font-bold text-slate-900">
               نبذة عن الكتاب
             </h2>
@@ -169,7 +171,7 @@ export function BookDetailsSection({
             offers={offers}
           />
 
-          <section aria-labelledby="book-content-access" className="space-y-3">
+          <section aria-labelledby="book-content-access" className="space-y-3 rounded-2xl border border-slate-200/80 bg-white p-4 sm:p-5">
             <h2 id="book-content-access" className="text-lg font-bold text-slate-900">
               الوصول إلى المحتوى
             </h2>
@@ -191,7 +193,7 @@ export function BookDetailsSection({
           </div>
         </div>
 
-        <aside className="space-y-4 lg:sticky lg:top-24 lg:self-start">
+        <aside className="space-y-4 rounded-2xl border border-slate-200/80 bg-white p-3 sm:p-4 lg:sticky lg:top-24 lg:self-start">
           <BookOffers offers={offers} />
           <OrderSummaryCard
             bookId={book.id}
@@ -329,9 +331,12 @@ function BookMetadata({
 function BookOffers({ offers }: { offers: Pick<BookOffer, "id" | "type" | "priceCents" | "currency" | "rentalDays">[] }) {
   return (
     <section aria-labelledby="book-offers" className="space-y-3 rounded-2xl border border-slate-200 bg-white p-4">
-      <h2 id="book-offers" className="text-base font-bold text-slate-900">
-        العروض المتاحة
-      </h2>
+      <div className="space-y-1">
+        <h2 id="book-offers" className="text-base font-bold text-slate-900">
+          العروض المتاحة
+        </h2>
+        <p className="text-xs text-slate-500">اختر العرض الأنسب، ثم أكمل الطلب من بطاقة الملخص أدناه.</p>
+      </div>
 
       {offers.length === 0 ? (
         <div className="rounded-xl border border-dashed border-slate-300 px-4 py-3 text-sm text-slate-600">
