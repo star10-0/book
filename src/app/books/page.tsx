@@ -316,7 +316,6 @@ export default async function BooksPage({
         <section className="rounded-2xl border border-slate-200/90 bg-white p-4 shadow-sm sm:p-5">
           <div className="flex flex-wrap items-center justify-between gap-3">
             <div className="space-y-1">
-              <p className="text-[11px] font-semibold text-slate-500">متجر الكتب الرقمية</p>
               <h1 className="text-xl font-black text-slate-900 sm:text-2xl">اكتشف كتابك القادم بسهولة</h1>
             </div>
             <span className="store-chip bg-indigo-50 text-indigo-700">{sortedBooks.length} نتيجة</span>

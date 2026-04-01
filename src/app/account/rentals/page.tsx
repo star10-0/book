@@ -39,7 +39,6 @@ export default async function AccountRentalsPage() {
       <section className="space-y-5">
         <header className="space-y-2">
           <h1 className="text-2xl font-bold text-slate-900">إعاراتي</h1>
-          <p className="text-sm text-slate-600">متابعة جميع إعارات الكتب الرقمية مع تاريخ الانتهاء.</p>
         </header>
 
         {rentals.length === 0 ? (
