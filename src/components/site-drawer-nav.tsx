@@ -31,7 +31,7 @@ export function SiteDrawerNav({
   const [isOpen, setIsOpen] = useState(false);
   const titleId = useId();
   const menuId = useId();
-  const containerRef = useRef<HTMLDivElement | null>(null);
+  const closeButtonRef = useRef<HTMLButtonElement | null>(null);
 
   const t =
     locale === "en"
@@ -152,27 +152,23 @@ export function SiteDrawerNav({
       }
     };
 
-    const onPointerDown = (event: MouseEvent) => {
-      if (!containerRef.current?.contains(event.target as Node)) {
-        setIsOpen(false);
-      }
-    };
-
     window.addEventListener("keydown", onEscape);
-    window.addEventListener("mousedown", onPointerDown);
+    const originalOverflow = document.body.style.overflow;
+    document.body.style.overflow = "hidden";
+    closeButtonRef.current?.focus();
 
     return () => {
       window.removeEventListener("keydown", onEscape);
-      window.removeEventListener("mousedown", onPointerDown);
+      document.body.style.overflow = originalOverflow;
     };
   }, [isOpen]);
 
   return (
-    <div ref={containerRef} className="relative inline-flex flex-col items-end">
+    <div className="inline-flex flex-col items-end">
       <button
         type="button"
         onClick={() => setIsOpen((prev) => !prev)}
-        aria-haspopup="menu"
+        aria-haspopup="dialog"
         aria-expanded={isOpen}
         aria-controls={menuId}
         className="inline-flex h-8 w-8 items-center justify-center rounded-md border border-slate-300 bg-white text-sm text-slate-700 transition hover:bg-slate-50 focus-visible:outline-none focus-visible:ring-2 focus-visible:ring-indigo-300"
@@ -181,20 +177,41 @@ export function SiteDrawerNav({
         ☰
       </button>
 
-      {isOpen ? (
+      <div
+        className={`fixed inset-0 z-[60] transition-opacity duration-200 ${isOpen ? "pointer-events-auto opacity-100" : "pointer-events-none opacity-0"}`}
+        aria-hidden={!isOpen}
+      >
+        <button
+          type="button"
+          onClick={() => setIsOpen(false)}
+          className="absolute inset-0 bg-slate-900/40"
+          aria-label={t.closeMenu}
+          tabIndex={isOpen ? 0 : -1}
+        />
         <div
           id={menuId}
-          role="menu"
+          role="dialog"
+          aria-modal="true"
           aria-labelledby={titleId}
-          className="absolute end-0 top-[calc(100%+0.4rem)] z-50 w-[min(20rem,calc(100vw-1rem))] overflow-hidden rounded-2xl border border-slate-200 bg-white shadow-xl"
+          className={`absolute inset-y-0 right-0 w-[min(22rem,90vw)] overflow-hidden border-l border-slate-200 bg-white shadow-2xl transition-transform duration-300 ease-out ${isOpen ? "translate-x-0" : "translate-x-full"}`}
         >
-          <div className="border-b border-slate-200 px-4 py-3">
+          <div className="flex items-center justify-between border-b border-slate-200 px-4 py-3">
             <p id={titleId} className="text-sm font-bold text-slate-900">
               {t.browseStore}
             </p>
+            <button
+              ref={closeButtonRef}
+              type="button"
+              onClick={() => setIsOpen(false)}
+              className="inline-flex h-8 w-8 items-center justify-center rounded-md border border-slate-200 text-slate-600 transition hover:bg-slate-100 focus-visible:outline-none focus-visible:ring-2 focus-visible:ring-indigo-300"
+              aria-label={t.closeMenu}
+              tabIndex={isOpen ? 0 : -1}
+            >
+              ✕
+            </button>
           </div>
 
-          <div className="max-h-[70vh] space-y-5 overflow-y-auto p-4 text-sm">
+          <div className="h-[calc(100vh-3.5rem)] space-y-5 overflow-y-auto p-4 text-sm">
             <section aria-label={t.shopping} className="space-y-3">
               <p className="text-xs font-semibold text-slate-500">{t.shopping}</p>
               <div className="grid gap-2">
@@ -297,7 +314,7 @@ export function SiteDrawerNav({
             </section>
           </div>
         </div>
-      ) : null}
+      </div>
     </div>
   );
 }
