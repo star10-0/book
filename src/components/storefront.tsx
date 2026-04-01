@@ -98,9 +98,9 @@ export function FeaturedBooksSection({ books }: { books: FeaturedBookItem[] }) {
           {books.map((book, index) => (
             <article key={book.id} className="flex h-full flex-col overflow-hidden rounded-2xl border border-slate-200 bg-white shadow-sm transition hover:-translate-y-0.5 hover:shadow-md">
               <CoverImage src={book.coverImageUrl} alt={`غلاف كتاب ${book.title}`} width={600} height={900} className="h-52 w-full object-cover" />
-              <div className="flex h-full flex-col gap-3 p-4">
+              <div className="flex h-full flex-col gap-3.5 p-4">
                 <div className="flex items-center justify-between gap-2 text-[11px]">
-                  <span className="rounded-full bg-amber-100 px-2.5 py-1 font-semibold text-amber-800">الأكثر إبرازًا</span>
+                  <span className="rounded-full bg-amber-100 px-2.5 py-1 font-semibold text-amber-800">الأكثر تميزًا</span>
                   <span className="font-bold text-slate-500">#{index + 1}</span>
                 </div>
                 <div className="space-y-1.5">
@@ -120,10 +120,10 @@ export function FeaturedBooksSection({ books }: { books: FeaturedBookItem[] }) {
                     <OfferPricingSummary offers={book.offers} />
                   </div>
                 </div>
-                <div className="mt-auto space-y-2 pt-1">
-                  <div className="flex flex-col gap-2 sm:flex-row sm:items-center">
+                <div className="mt-auto pt-1">
+                  <div className="grid gap-2 sm:grid-cols-2">
                     <AddToCartAction bookId={book.id} bookSlug={book.slug} offers={book.offers} isLoggedIn={book.isLoggedIn} />
-                    <Link href={`/books/${book.slug}`} className="store-btn-secondary h-10 w-full px-3 text-xs sm:w-auto">
+                    <Link href={`/books/${book.slug}`} className="store-btn-secondary h-10 w-full px-3 text-xs">
                       عرض التفاصيل
                     </Link>
                   </div>
@@ -157,7 +157,7 @@ export function RecommendedBooksSection({ books }: { books: RecommendedBookItem[
 
       <div className="mt-4 grid gap-3 sm:grid-cols-2 lg:grid-cols-3">
         {books.map((book) => (
-          <article key={book.id} className="flex h-full flex-col rounded-xl border border-slate-200 bg-slate-50 p-3.5">
+          <article key={book.id} className="flex h-full flex-col rounded-xl border border-slate-200 bg-slate-50 p-4">
             <div className="flex gap-3">
               <CoverImage src={book.coverImageUrl} alt={`غلاف ${book.title}`} width={120} height={170} className="h-24 w-16 rounded-md object-cover" />
               <div className="min-w-0 flex-1">
@@ -175,9 +175,9 @@ export function RecommendedBooksSection({ books }: { books: RecommendedBookItem[
                   <OfferPricingSummary offers={book.offers} />
                 </div>
               </div>
-              <div className="flex flex-col gap-2 sm:flex-row sm:items-center">
+              <div className="grid gap-2 sm:grid-cols-2">
                 <AddToCartAction bookId={book.id} bookSlug={book.slug} offers={book.offers} isLoggedIn={book.isLoggedIn} />
-                <Link href={`/books/${book.slug}`} className="store-btn-secondary h-10 w-full px-3 text-xs text-indigo-700 ring-1 ring-indigo-200 hover:bg-indigo-50 sm:w-auto">
+                <Link href={`/books/${book.slug}`} className="store-btn-secondary h-10 w-full px-3 text-xs">
                   اقرأ المزيد
                 </Link>
               </div>
@@ -448,19 +448,19 @@ function OfferPricingSummary({ offers }: { offers: BookCardOffer[] }) {
   return (
     <div className="space-y-2">
       {startingPrice ? (
-        <p className="text-xs font-bold text-slate-900">
+        <p className="text-xs font-bold leading-6 text-slate-900">
           يبدأ من <span className="text-indigo-700">{startingPrice}</span>
         </p>
       ) : null}
-      <ul className="space-y-1.5 text-[11px] text-slate-600">
+      <ul className="space-y-1.5 text-[11px] leading-5 text-slate-600">
         {purchaseOffer ? (
-          <li className="flex items-center justify-between gap-2">
+          <li className="flex items-start justify-between gap-2">
             <span className="font-medium text-slate-700">شراء رقمي</span>
             <span className="font-bold text-slate-900">{formatPrice(purchaseOffer.priceCents, purchaseOffer.currency)}</span>
           </li>
         ) : null}
         {rentalOffer ? (
-          <li className="flex items-center justify-between gap-2">
+          <li className="flex items-start justify-between gap-2">
             <span className="font-medium text-slate-700">
               استئجار رقمي
               {rentalOffer.rentalDays ? ` (${rentalOffer.rentalDays} يوم)` : ""}
@@ -527,18 +527,18 @@ export function SearchHighlightResult({
             </div>
           </div>
 
-          <div className="flex flex-wrap gap-2.5">
+          <div className="grid gap-2 sm:flex sm:flex-wrap">
             <AddToCartAction bookId={book.id} bookSlug={book.slug} offers={book.offers} isLoggedIn={book.isLoggedIn} />
-            <Link href={`/books/${book.slug}`} className="store-btn-secondary">
+            <Link href={`/books/${book.slug}`} className="store-btn-secondary w-full sm:w-auto">
               عرض التفاصيل
             </Link>
             {!book.isLoggedIn && !book.isWishlisted ? (
-              <Link href={`/login?callbackUrl=${encodeURIComponent(`/books/${book.slug}`)}`} className="store-btn-secondary">
+              <Link href={`/login?callbackUrl=${encodeURIComponent(`/books/${book.slug}`)}`} className="store-btn-secondary w-full sm:w-auto">
                 سجّل الدخول لإضافة الكتاب إلى المفضلة
               </Link>
             ) : null}
             {book.isWishlisted ? (
-              <span className="inline-flex h-9 items-center rounded-md border border-amber-300 bg-amber-50 px-3 text-xs font-semibold text-amber-700">
+              <span className="inline-flex h-9 w-full items-center rounded-md border border-amber-300 bg-amber-50 px-3 text-xs font-semibold text-amber-700 sm:w-auto">
                 ضمن المفضلة
               </span>
             ) : null}
@@ -587,7 +587,7 @@ export function BooksGrid({
         {books.map((book) => (
           <article key={book.id} className="group flex h-full flex-col overflow-hidden rounded-2xl bg-white shadow-sm ring-1 ring-slate-200 transition hover:-translate-y-0.5 hover:shadow-md focus-within:ring-indigo-300">
             <CoverImage src={book.coverImageUrl} alt={`غلاف كتاب ${book.title}`} width={600} height={900} className="h-52 w-full object-cover" />
-            <div className="flex h-full flex-col gap-3 p-4">
+            <div className="flex h-full flex-col gap-3.5 p-4">
               <div className="space-y-1">
                 <h3 className="line-clamp-2 min-h-12 text-base font-bold text-slate-900">{book.title}</h3>
                 <p className="line-clamp-1 text-xs text-slate-600">{book.author}</p>
@@ -611,19 +611,19 @@ export function BooksGrid({
                 </div>
               </div>
 
-              <div className="mt-auto flex flex-col gap-2 pt-1 sm:flex-row sm:items-center">
+              <div className="mt-auto grid gap-2 pt-1 sm:grid-cols-2">
                 <AddToCartAction bookId={book.id} bookSlug={book.slug} offers={book.offers} isLoggedIn={book.isLoggedIn} />
-                <Link href={`/books/${book.slug}`} className="store-btn-secondary h-10 w-full px-3 text-xs sm:w-auto">
+                <Link href={`/books/${book.slug}`} className="store-btn-secondary h-10 w-full px-3 text-xs">
                   عرض التفاصيل
                 </Link>
                 {book.isWishlisted ? (
-                  <span className="inline-flex h-10 w-full items-center justify-center rounded-md border border-amber-300 bg-amber-50 px-3 text-[11px] font-semibold text-amber-700 sm:w-auto">
+                  <span className="inline-flex h-10 w-full items-center justify-center rounded-md border border-amber-300 bg-amber-50 px-3 text-[11px] font-semibold text-amber-700 sm:col-span-2">
                     ضمن المفضلة
                   </span>
                 ) : !book.isLoggedIn ? (
                   <Link
                     href={`/login?callbackUrl=${encodeURIComponent(`/books/${book.slug}`)}`}
-                    className="store-btn-secondary h-10 w-full px-3 text-[11px] sm:w-auto"
+                    className="store-btn-secondary h-10 w-full px-3 text-[11px] sm:col-span-2"
                   >
                     سجّل الدخول لإضافة الكتاب إلى المفضلة
                   </Link>
