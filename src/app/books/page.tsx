@@ -318,7 +318,6 @@ export default async function BooksPage({
             <div className="space-y-1">
               <p className="text-[11px] font-semibold text-slate-500">متجر الكتب الرقمية</p>
               <h1 className="text-xl font-black text-slate-900 sm:text-2xl">اكتشف كتابك القادم بسهولة</h1>
-              <p className="text-xs text-slate-600 sm:text-sm">تصفّح حسب العنوان والتصنيف ونوع العرض مع ترتيب يناسب طريقة قراءتك.</p>
             </div>
             <span className="store-chip bg-indigo-50 text-indigo-700">{sortedBooks.length} نتيجة</span>
           </div>

@@ -38,7 +38,6 @@ export function HomeCategoryDiscovery({ categories }: { categories: DiscoveryCat
     <section className="space-y-4 rounded-2xl border border-white/40 bg-white/70 p-4 shadow-[0_22px_45px_-35px_rgba(15,23,42,0.65)] backdrop-blur-sm sm:p-5" aria-label="اكتشاف حسب التصنيف">
       <div className="flex flex-wrap items-center justify-between gap-2">
         <div>
-          <p className="text-[11px] font-semibold text-slate-500">الاكتشاف السريع</p>
           <h3 className="text-base font-black text-slate-900 sm:text-lg">تصفح حسب التصنيف ثم تابع إلى صفحة الكتب</h3>
         </div>
         <Link href="/books" className="rounded-md border border-slate-300 bg-white px-3 py-2 text-xs font-semibold text-slate-700 hover:bg-slate-50">

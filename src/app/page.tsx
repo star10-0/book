@@ -170,15 +170,12 @@ export default async function HomePage() {
         <section className="grid gap-3 rounded-2xl border border-slate-200 bg-white/80 p-4 shadow-sm sm:grid-cols-3 sm:p-5" aria-label="مسارات التصفح الرئيسية">
           <Link href="/books" className="rounded-xl border border-slate-200 bg-white p-3 transition hover:border-indigo-200 hover:bg-indigo-50/40">
             <p className="text-xs font-bold text-slate-900">ابدأ من المكتبة الكاملة</p>
-            <p className="mt-1 text-[11px] text-slate-600">استعرض كل الكتب مع خيارات الفرز والتصفية.</p>
           </Link>
           <Link href="/books?offer=buy" className="rounded-xl border border-slate-200 bg-white p-3 transition hover:border-indigo-200 hover:bg-indigo-50/40">
             <p className="text-xs font-bold text-slate-900">الشراء الرقمي</p>
-            <p className="mt-1 text-[11px] text-slate-600">العروض المناسبة للشراء والإضافة إلى مكتبتك.</p>
           </Link>
           <Link href="/books?offer=rent" className="rounded-xl border border-slate-200 bg-white p-3 transition hover:border-indigo-200 hover:bg-indigo-50/40">
             <p className="text-xs font-bold text-slate-900">الاستئجار الرقمي</p>
-            <p className="mt-1 text-[11px] text-slate-600">خيارات مرنة للقراءة لفترة محددة.</p>
           </Link>
         </section>
 

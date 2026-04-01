@@ -81,7 +81,6 @@ export function FeaturedBooksSection({ books }: { books: FeaturedBookItem[] }) {
     <section className="store-surface" aria-labelledby="featured-title">
       <div className="flex items-center justify-between gap-3">
         <div>
-          <p className="text-[11px] font-semibold text-slate-500">واجهة العرض</p>
           <h2 id="featured-title" className="text-xl font-bold text-slate-900 sm:text-2xl">كتب مميزة اليوم</h2>
         </div>
         <Link href="/books" className="store-btn-secondary h-9 px-4">
@@ -146,16 +145,14 @@ export function RecommendedBooksSection({ books }: { books: RecommendedBookItem[
     <section className="store-surface border border-slate-200/80" aria-labelledby="recommended-title">
       <div className="flex items-center justify-between gap-3">
         <div>
-          <p className="text-[11px] font-semibold text-slate-500">ترشيحات التسوق</p>
           <h2 id="recommended-title" className="text-xl font-bold text-slate-900 sm:text-2xl">مقترح لك</h2>
         </div>
         <Link href="/books" className="store-btn-secondary h-9 px-4">
           تسوق الآن
         </Link>
       </div>
-      <p className="mt-2 text-xs text-slate-600 sm:text-sm">كتب مختارة حسب تقييمات القرّاء وتنوّع التصنيفات، لتبدأ التصفّح من خيارات موثوقة.</p>
 
-      <div className="mt-4 grid gap-3 sm:grid-cols-2 lg:grid-cols-3">
+      <div className="mt-3 grid gap-3 sm:grid-cols-2 lg:grid-cols-3">
         {books.map((book) => (
           <article key={book.id} className="flex h-full flex-col rounded-xl border border-slate-200 bg-slate-50 p-4">
             <div className="flex gap-3">
@@ -194,7 +191,6 @@ export function CategoriesPreviewSection({ categories }: { categories: CategoryP
     <section className="store-surface" aria-labelledby="categories-title">
       <div className="flex items-center justify-between gap-3">
         <div>
-          <p className="text-[11px] font-semibold text-slate-500">بوابات التصفح</p>
           <h2 id="categories-title" className="text-xl font-bold text-slate-900 sm:text-2xl">ابدأ من التصنيف المناسب لك</h2>
         </div>
         <Link href="/books" className="store-btn-secondary h-9 px-4">
@@ -240,9 +236,7 @@ export function BooksFilters({ categories, search, category, offerType, sort, re
     <section className="rounded-2xl bg-white p-4 shadow-sm ring-1 ring-slate-200 sm:p-5 lg:p-6">
       <div className="mb-4 flex flex-wrap items-center justify-between gap-2.5 border-b border-slate-100 pb-4">
         <div>
-          <p className="text-[11px] font-semibold text-slate-500">البحث والاكتشاف</p>
           <h2 className="text-lg font-bold text-slate-900 sm:text-xl">ابحث عن كتابك القادم</h2>
-          <p className="mt-1 text-xs text-slate-600">خصّص النتائج بسرعة عبر الجمع بين البحث، التصنيف، نوع العرض، والترتيب.</p>
         </div>
         <p className="store-chip bg-indigo-50 font-bold text-indigo-700">{resultsCount} نتيجة متاحة</p>
       </div>
