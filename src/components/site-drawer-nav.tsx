@@ -1,7 +1,7 @@
 "use client";
 
 import Link from "next/link";
-import { useEffect, useId, useRef, useState } from "react";
+import { useEffect, useId, useMemo, useRef, useState } from "react";
 import type { StoreLocale } from "@/lib/locale";
 
 type NavLink = {
@@ -39,9 +39,12 @@ export function SiteDrawerNav({
           openMenu: "Open menu",
           closeMenu: "Close menu",
           browseStore: "Browse store",
-          categories: "Categories",
-          books: "Books",
-          quickLinks: "Quick links",
+          shopping: "Shop books",
+          allBooks: "All books",
+          buyDigital: "Buy digital",
+          rentDigital: "Rent digital",
+          discover: "Discover",
+          info: "Help & information",
           account: "Account",
           accountHome: "Account",
           signIn: "Sign in to continue",
@@ -58,9 +61,12 @@ export function SiteDrawerNav({
           openMenu: "فتح القائمة",
           closeMenu: "إغلاق القائمة",
           browseStore: "تصفح المتجر",
-          categories: "الفئات",
-          books: "الكتب",
-          quickLinks: "روابط سريعة",
+          shopping: "تسوق الكتب",
+          allBooks: "كل الكتب",
+          buyDigital: "شراء رقمي",
+          rentDigital: "استئجار رقمي",
+          discover: "اكتشف",
+          info: "المساعدة والمعلومات",
           account: "الحساب",
           accountHome: "الحساب الشخصي",
           signIn: "سجّل الدخول للمتابعة",
@@ -73,6 +79,67 @@ export function SiteDrawerNav({
           admin: "الإدارة",
           logout: "تسجيل الخروج",
         };
+
+  const infoLinks = useMemo(() => {
+    const infoHrefs = new Set(["/about", "/help", "/contact"]);
+    return primaryLinks.filter((link) => infoHrefs.has(link.href));
+  }, [primaryLinks]);
+
+  const discoveryLinks = useMemo(() => {
+    const seen = new Set<string>();
+    const discovery = [
+      ...primaryLinks.filter((link) => link.href === "/" || link.href === "/books"),
+      ...primaryLinks.filter((link) => !["/about", "/help", "/contact", "/", "/books"].includes(link.href)),
+    ];
+
+    return discovery.filter((link) => {
+      if (seen.has(link.href)) {
+        return false;
+      }
+      seen.add(link.href);
+      return true;
+    });
+  }, [primaryLinks]);
+
+  const accountBaseLinks: NavLink[] = [
+    {
+      href: userSignedIn ? "/account" : "/login?callbackUrl=%2Faccount",
+      label: userSignedIn ? t.accountHome : t.signIn,
+    },
+    {
+      href: userSignedIn ? "/account/library" : "/login?callbackUrl=%2Faccount%2Flibrary",
+      label: t.myLibrary,
+    },
+    {
+      href: userSignedIn ? "/studio" : "/login?callbackUrl=%2Fstudio",
+      label: t.creator,
+    },
+    {
+      href: userSignedIn ? "/account/profile" : "/login?callbackUrl=%2Faccount%2Fprofile",
+      label: t.profile,
+    },
+    {
+      href: userSignedIn ? "/account/orders" : "/login?callbackUrl=%2Faccount%2Forders",
+      label: t.orders,
+    },
+    ...accountLinks,
+    ...(canAccessStudio
+      ? [
+          { href: "/studio/books", label: t.studioBooks },
+          { href: "/studio/profile", label: t.studioProfile },
+        ]
+      : []),
+    ...(canAccessAdmin ? [{ href: "/admin", label: t.admin }] : []),
+  ];
+
+  const seenAccountHrefs = new Set<string>();
+  const accountActionLinks = accountBaseLinks.filter((link) => {
+    if (seenAccountHrefs.has(link.href)) {
+      return false;
+    }
+    seenAccountHrefs.add(link.href);
+    return true;
+  });
 
   useEffect(() => {
     if (!isOpen) {
@@ -119,7 +186,7 @@ export function SiteDrawerNav({
           id={menuId}
           role="menu"
           aria-labelledby={titleId}
-          className="absolute start-0 top-[calc(100%+0.4rem)] z-50 w-[min(22rem,calc(100vw-2rem))] overflow-hidden rounded-2xl border border-slate-200 bg-white shadow-xl"
+          className="absolute start-0 top-[calc(100%+0.4rem)] z-50 w-[min(23rem,calc(100vw-2rem))] overflow-hidden rounded-2xl border border-slate-200 bg-white shadow-xl"
         >
           <div className="border-b border-slate-200 px-4 py-3">
             <p id={titleId} className="text-sm font-bold text-slate-900">
@@ -127,27 +194,47 @@ export function SiteDrawerNav({
             </p>
           </div>
 
-          <div className="max-h-[70vh] space-y-4 overflow-y-auto p-4 text-sm">
-            <section aria-label={t.categories}>
-              <p className="mb-2 text-xs font-semibold text-slate-500">{t.categories}</p>
-              <Link
-                href="/books"
-                onClick={() => setIsOpen(false)}
-                className="flex items-center justify-between rounded-lg bg-indigo-50 px-3 py-2 font-medium text-indigo-700 hover:bg-indigo-100"
-              >
-                {t.books}
-              </Link>
+          <div className="max-h-[70vh] space-y-5 overflow-y-auto p-4 text-sm">
+            <section aria-label={t.shopping} className="space-y-3">
+              <p className="text-xs font-semibold text-slate-500">{t.shopping}</p>
+              <div className="grid gap-2">
+                <Link
+                  href="/books"
+                  onClick={() => setIsOpen(false)}
+                  className="flex items-center justify-between rounded-xl bg-indigo-50 px-3 py-2.5 font-semibold text-indigo-700 transition hover:bg-indigo-100"
+                >
+                  {t.allBooks}
+                </Link>
+                <div className="grid grid-cols-2 gap-2">
+                  <Link
+                    href="/books?offer=buy"
+                    onClick={() => setIsOpen(false)}
+                    className="rounded-lg border border-slate-200 bg-white px-3 py-2 text-center font-medium text-slate-700 transition hover:bg-slate-50"
+                  >
+                    {t.buyDigital}
+                  </Link>
+                  <Link
+                    href="/books?offer=rent"
+                    onClick={() => setIsOpen(false)}
+                    className="rounded-lg border border-slate-200 bg-white px-3 py-2 text-center font-medium text-slate-700 transition hover:bg-slate-50"
+                  >
+                    {t.rentDigital}
+                  </Link>
+                </div>
+              </div>
             </section>
 
-            <section aria-label={t.quickLinks}>
-              <p className="mb-2 text-xs font-semibold text-slate-500">{t.quickLinks}</p>
+            <div className="h-px bg-slate-200" aria-hidden />
+
+            <section aria-label={t.discover} className="space-y-2">
+              <p className="text-xs font-semibold text-slate-500">{t.discover}</p>
               <ul className="space-y-1">
-                {primaryLinks.map((link) => (
+                {discoveryLinks.map((link) => (
                   <li key={link.href}>
                     <Link
                       href={link.href}
                       onClick={() => setIsOpen(false)}
-                      className="block rounded-md px-3 py-2 text-slate-700 hover:bg-slate-100"
+                      className="block rounded-md px-3 py-2 text-slate-700 transition hover:bg-slate-100"
                     >
                       {link.label}
                     </Link>
@@ -156,104 +243,50 @@ export function SiteDrawerNav({
               </ul>
             </section>
 
-            <section aria-label={t.account}>
-              <p className="mb-2 text-xs font-semibold text-slate-500">{t.account}</p>
+            {infoLinks.length > 0 ? (
+              <>
+                <div className="h-px bg-slate-200" aria-hidden />
+                <section aria-label={t.info} className="space-y-2">
+                  <p className="text-xs font-semibold text-slate-500">{t.info}</p>
+                  <ul className="space-y-1">
+                    {infoLinks.map((link) => (
+                      <li key={link.href}>
+                        <Link
+                          href={link.href}
+                          onClick={() => setIsOpen(false)}
+                          className="block rounded-md px-3 py-2 text-slate-700 transition hover:bg-slate-100"
+                        >
+                          {link.label}
+                        </Link>
+                      </li>
+                    ))}
+                  </ul>
+                </section>
+              </>
+            ) : null}
+
+            <div className="h-px bg-slate-200" aria-hidden />
+
+            <section aria-label={t.account} className="space-y-2">
+              <p className="text-xs font-semibold text-slate-500">{t.account}</p>
               <ul className="space-y-1">
-                <li>
-                  <Link
-                    href={userSignedIn ? "/account" : "/login?callbackUrl=%2Faccount"}
-                    onClick={() => setIsOpen(false)}
-                    className="block rounded-md px-3 py-2 text-slate-700 hover:bg-slate-100"
-                  >
-                    {userSignedIn ? t.accountHome : t.signIn}
-                  </Link>
-                </li>
-                <li>
-                  <Link
-                    href={userSignedIn ? "/account/library" : "/login?callbackUrl=%2Faccount%2Flibrary"}
-                    onClick={() => setIsOpen(false)}
-                    className="block rounded-md px-3 py-2 text-slate-700 hover:bg-slate-100"
-                  >
-                    {t.myLibrary}
-                  </Link>
-                </li>
-                <li>
-                  <Link
-                    href={userSignedIn ? "/studio" : "/login?callbackUrl=%2Fstudio"}
-                    onClick={() => setIsOpen(false)}
-                    className="block rounded-md px-3 py-2 text-slate-700 hover:bg-slate-100"
-                  >
-                    {t.creator}
-                  </Link>
-                </li>
-                <li>
-                  <Link
-                    href={userSignedIn ? "/account/profile" : "/login?callbackUrl=%2Faccount%2Fprofile"}
-                    onClick={() => setIsOpen(false)}
-                    className="block rounded-md px-3 py-2 text-slate-700 hover:bg-slate-100"
-                  >
-                    {t.profile}
-                  </Link>
-                </li>
-                <li>
-                  <Link
-                    href={userSignedIn ? "/account/orders" : "/login?callbackUrl=%2Faccount%2Forders"}
-                    onClick={() => setIsOpen(false)}
-                    className="block rounded-md px-3 py-2 text-slate-700 hover:bg-slate-100"
-                  >
-                    {t.orders}
-                  </Link>
-                </li>
-                {accountLinks.map((link) => (
+                {accountActionLinks.map((link) => (
                   <li key={link.href}>
                     <Link
                       href={link.href}
                       onClick={() => setIsOpen(false)}
-                      className="block rounded-md px-3 py-2 text-slate-700 hover:bg-slate-100"
+                      className="block rounded-md px-3 py-2 text-slate-700 transition hover:bg-slate-100"
                     >
                       {link.label}
                     </Link>
                   </li>
                 ))}
-                {canAccessStudio ? (
-                  <>
-                    <li>
-                      <Link
-                        href="/studio/books"
-                        onClick={() => setIsOpen(false)}
-                        className="block rounded-md px-3 py-2 text-slate-700 hover:bg-slate-100"
-                      >
-                        {t.studioBooks}
-                      </Link>
-                    </li>
-                    <li>
-                      <Link
-                        href="/studio/profile"
-                        onClick={() => setIsOpen(false)}
-                        className="block rounded-md px-3 py-2 text-slate-700 hover:bg-slate-100"
-                      >
-                        {t.studioProfile}
-                      </Link>
-                    </li>
-                  </>
-                ) : null}
-                {canAccessAdmin ? (
-                  <li>
-                    <Link
-                      href="/admin"
-                      onClick={() => setIsOpen(false)}
-                      className="block rounded-md px-3 py-2 text-slate-700 hover:bg-slate-100"
-                    >
-                      {t.admin}
-                    </Link>
-                  </li>
-                ) : null}
                 {userSignedIn && logoutAction ? (
                   <li className="pt-2">
                     <form action={logoutAction}>
                       <button
                         type="submit"
-                        className="block w-full rounded-md bg-rose-50 px-3 py-2 text-right font-medium text-rose-700 hover:bg-rose-100"
+                        className="block w-full rounded-md bg-rose-50 px-3 py-2 text-right font-medium text-rose-700 transition hover:bg-rose-100"
                       >
                         {t.logout}
                       </button>
