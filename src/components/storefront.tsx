@@ -449,6 +449,21 @@ function getActiveOffersSummary(offers: BookCardOffer[]) {
   return ActiveOffersSummary({ offers });
 }
 
+function getOfferAvailabilityMessage(offers: BookCardOffer[]) {
+  const hasPurchase = offers.some((offer) => offer.type === "PURCHASE");
+  const hasRental = offers.some((offer) => offer.type === "RENTAL");
+
+  if (hasPurchase && hasRental) {
+    return "متاح للشراء أو الاستئجار حسب تفضيلك";
+  }
+
+  if (hasPurchase) {
+    return "متاح للشراء الرقمي الفوري";
+  }
+
+  return "متاح للاستئجار الرقمي";
+}
+
 function OfferPricingSummary({ offers }: { offers: BookCardOffer[] }) {
   const purchaseOffer = offers.find((offer) => offer.type === "PURCHASE");
   const rentalOffer = offers.find((offer) => offer.type === "RENTAL");
@@ -535,6 +550,7 @@ export function SearchHighlightResult({
             <div className="mt-2">
               <OfferPricingSummary offers={book.offers} />
             </div>
+            <p className="mt-2 border-t border-slate-200 pt-2 text-[11px] text-slate-600">{getOfferAvailabilityMessage(book.offers)}</p>
           </div>
 
           <div className="grid gap-2 sm:flex sm:flex-wrap">
@@ -553,6 +569,7 @@ export function SearchHighlightResult({
               </span>
             ) : null}
           </div>
+          <p className="text-[11px] leading-5 text-slate-600">الوصول إلى الكتاب يتم مباشرة داخل مكتبتك الرقمية بعد إتمام الطلب.</p>
         </div>
       </div>
     </section>
@@ -624,6 +641,7 @@ export function BooksGrid({
                 <div className="mt-2">
                   <OfferPricingSummary offers={book.offers} />
                 </div>
+                <p className="mt-2 border-t border-slate-200 pt-2 text-[11px] text-slate-600">{getOfferAvailabilityMessage(book.offers)}</p>
               </div>
 
               <div className="mt-auto grid gap-2 pt-1 sm:grid-cols-2">
@@ -644,6 +662,7 @@ export function BooksGrid({
                   </Link>
                 ) : null}
               </div>
+              <p className="text-[11px] leading-5 text-slate-500">بعد إتمام الشراء أو الاستئجار، ستجد الكتاب داخل مكتبتك الرقمية.</p>
             </div>
           </article>
         ))}
