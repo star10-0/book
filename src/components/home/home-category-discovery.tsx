@@ -36,6 +36,16 @@ export function HomeCategoryDiscovery({ categories }: { categories: DiscoveryCat
 
   return (
     <section className="space-y-4 rounded-2xl border border-white/40 bg-white/70 p-4 shadow-[0_22px_45px_-35px_rgba(15,23,42,0.65)] backdrop-blur-sm sm:p-5" aria-label="اكتشاف حسب التصنيف">
+      <div className="flex flex-wrap items-center justify-between gap-2">
+        <div>
+          <p className="text-[11px] font-semibold text-slate-500">الاكتشاف السريع</p>
+          <h3 className="text-base font-black text-slate-900 sm:text-lg">تصفح حسب التصنيف ثم تابع إلى صفحة الكتب</h3>
+        </div>
+        <Link href="/books" className="rounded-md border border-slate-300 bg-white px-3 py-2 text-xs font-semibold text-slate-700 hover:bg-slate-50">
+          كل الكتب
+        </Link>
+      </div>
+
       <div className="flex flex-wrap items-center gap-2">
         {categories.map((category) => {
           const isActive = category.slug === selected.slug;
@@ -58,9 +68,9 @@ export function HomeCategoryDiscovery({ categories }: { categories: DiscoveryCat
         })}
       </div>
 
-      <div className="flex flex-wrap items-end justify-between gap-3">
+      <div className="flex flex-wrap items-end justify-between gap-3 border-t border-slate-200/80 pt-3">
         <div>
-          <h3 className="text-lg font-black text-slate-900 sm:text-xl">{selected.name}</h3>
+          <h4 className="text-lg font-black text-slate-900 sm:text-xl">{selected.name}</h4>
           <p className="mt-1 text-xs leading-6 text-slate-600 sm:text-sm">{selected.description}</p>
         </div>
         <Link href={`/books?category=${selected.slug}`} className="rounded-md border border-indigo-200 bg-white px-3 py-2 text-xs font-semibold text-indigo-700 hover:bg-indigo-50">

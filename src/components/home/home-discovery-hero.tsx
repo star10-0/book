@@ -17,7 +17,7 @@ export function HomeDiscoveryHero({ billboard, categories }: HomeDiscoveryHeroPr
       <div className="pointer-events-none absolute inset-0 bg-[radial-gradient(circle_at_top,_rgba(255,255,255,0.2),_transparent_45%)]" aria-hidden />
       <div className="pointer-events-none absolute -start-24 top-16 h-52 w-52 rounded-full bg-fuchsia-300/20 blur-3xl" aria-hidden />
 
-      <div className="relative space-y-5">
+      <div className="relative space-y-4 sm:space-y-5">
         <div className="grid gap-4 lg:grid-cols-[1.3fr_1fr] lg:items-stretch">
           <div className="space-y-3 text-white">
             <p className="text-[11px] font-semibold tracking-wide text-indigo-100">سوق الكتب الرقمية</p>
@@ -33,6 +33,9 @@ export function HomeDiscoveryHero({ billboard, categories }: HomeDiscoveryHeroPr
               </Link>
               <Link href="/books?offer=rent" className="inline-flex h-9 items-center justify-center rounded-md border border-indigo-200/70 bg-white/10 px-4 text-xs font-semibold text-white hover:bg-white/20">
                 تصفح الاستئجار
+              </Link>
+              <Link href="/books?sort=rating" className="inline-flex h-9 items-center justify-center rounded-md border border-indigo-200/70 bg-white/10 px-4 text-xs font-semibold text-white hover:bg-white/20">
+                الأعلى تقييمًا
               </Link>
             </div>
           </div>
@@ -53,6 +56,23 @@ export function HomeDiscoveryHero({ billboard, categories }: HomeDiscoveryHeroPr
               {billboard.ctaLabel}
             </Link>
           </aside>
+        </div>
+
+        <div className="rounded-2xl border border-white/20 bg-black/15 px-4 py-3 text-white/90">
+          <div className="flex flex-wrap items-center justify-between gap-3">
+            <p className="text-xs font-semibold">انتقل مباشرة إلى ما تريد:</p>
+            <div className="flex flex-wrap gap-2">
+              {categories.slice(0, 4).map((category) => (
+                <Link
+                  key={category.slug}
+                  href={`/books?category=${category.slug}`}
+                  className="inline-flex h-8 items-center rounded-full border border-white/30 bg-white/10 px-3 text-[11px] font-semibold hover:bg-white/20"
+                >
+                  {category.name}
+                </Link>
+              ))}
+            </div>
+          </div>
         </div>
 
         <HomeCategoryDiscovery categories={categories} />

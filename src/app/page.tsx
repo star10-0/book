@@ -1,4 +1,5 @@
 import type { Metadata } from "next";
+import Link from "next/link";
 import { prisma } from "@/lib/prisma";
 import { HOME_BILLBOARD_FALLBACKS } from "@/lib/home-billboards";
 import { SiteFooter } from "@/components/site-footer";
@@ -61,6 +62,7 @@ export default async function HomePage() {
       orderBy: { books: { _count: "desc" } },
       take: 4,
       select: {
+        slug: true,
         nameAr: true,
         description: true,
       },
@@ -140,7 +142,7 @@ export default async function HomePage() {
 
   return (
     <main className="bg-gradient-to-b from-slate-100 via-slate-50 to-white">
-      <div className="space-y-5 pb-8 sm:space-y-6">
+      <div className="space-y-4 pb-8 sm:space-y-5">
         <HomeDiscoveryHero
           billboard={fallbackBillboard}
           categories={discoveryCategories
@@ -163,6 +165,29 @@ export default async function HomePage() {
               })),
             }))
             .filter((category) => category.books.length > 0)}
+        />
+
+        <section className="grid gap-3 rounded-2xl border border-slate-200 bg-white/80 p-4 shadow-sm sm:grid-cols-3 sm:p-5" aria-label="مسارات التصفح الرئيسية">
+          <Link href="/books" className="rounded-xl border border-slate-200 bg-white p-3 transition hover:border-indigo-200 hover:bg-indigo-50/40">
+            <p className="text-xs font-bold text-slate-900">ابدأ من المكتبة الكاملة</p>
+            <p className="mt-1 text-[11px] text-slate-600">استعرض كل الكتب مع خيارات الفرز والتصفية.</p>
+          </Link>
+          <Link href="/books?offer=buy" className="rounded-xl border border-slate-200 bg-white p-3 transition hover:border-indigo-200 hover:bg-indigo-50/40">
+            <p className="text-xs font-bold text-slate-900">الشراء الرقمي</p>
+            <p className="mt-1 text-[11px] text-slate-600">العروض المناسبة للشراء والإضافة إلى مكتبتك.</p>
+          </Link>
+          <Link href="/books?offer=rent" className="rounded-xl border border-slate-200 bg-white p-3 transition hover:border-indigo-200 hover:bg-indigo-50/40">
+            <p className="text-xs font-bold text-slate-900">الاستئجار الرقمي</p>
+            <p className="mt-1 text-[11px] text-slate-600">خيارات مرنة للقراءة لفترة محددة.</p>
+          </Link>
+        </section>
+
+        <CategoriesPreviewSection
+          categories={categories.map((category) => ({
+            slug: category.slug,
+            name: category.nameAr,
+            description: category.description ?? "مجموعة متنوعة من الكتب المختارة بعناية.",
+          }))}
         />
 
         <FeaturedBooksSection
@@ -233,13 +258,6 @@ export default async function HomePage() {
                   ? `تقييم ${book.averageRating.toFixed(1)} من ${book.reviewsCount} مراجعة`
                   : "ضمن أحدث الكتب المضافة",
             }))}
-        />
-
-        <CategoriesPreviewSection
-          categories={categories.map((category) => ({
-            name: category.nameAr,
-            description: category.description ?? "مجموعة متنوعة من الكتب المختارة بعناية.",
-          }))}
         />
       </div>
       <SiteFooter />
