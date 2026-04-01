@@ -76,7 +76,7 @@ export async function SiteHeader() {
     <header className="sticky top-1 z-40 mb-3 overflow-visible rounded-2xl bg-white shadow-sm ring-1 ring-slate-200 sm:mb-4">
       <div className="px-3 py-2 sm:px-4 sm:py-2.5">
         <div className="grid gap-2 lg:grid-cols-[auto_minmax(0,1fr)_auto] lg:items-center lg:gap-3">
-          <div className="flex w-fit flex-col items-end gap-1 sm:gap-1.5">
+          <div className="flex w-fit flex-col items-end gap-1.5 sm:gap-2">
             <Link
               href="/"
               className="rounded-lg px-1 py-0.5 focus-visible:outline-none focus-visible:ring-2 focus-visible:ring-indigo-400"
@@ -85,15 +85,17 @@ export async function SiteHeader() {
               <p className="mt-0.5 text-[10px] font-semibold uppercase tracking-[0.16em] text-indigo-600">{t.brandSub}</p>
             </Link>
 
-            <SiteDrawerNav
-              locale={locale}
-              primaryLinks={primaryLinks}
-              accountLinks={accountNavigation}
-              userSignedIn={Boolean(user)}
-              canAccessStudio={canAccessStudio}
-              canAccessAdmin={canAccessAdmin}
-              logoutAction={signOutAction}
-            />
+            <div className="w-full border-t border-slate-200 pt-1.5 sm:pt-2">
+              <SiteDrawerNav
+                locale={locale}
+                primaryLinks={primaryLinks}
+                accountLinks={accountNavigation}
+                userSignedIn={Boolean(user)}
+                canAccessStudio={canAccessStudio}
+                canAccessAdmin={canAccessAdmin}
+                logoutAction={signOutAction}
+              />
+            </div>
           </div>
 
           <form action="/books" method="get" className="order-last w-full lg:order-none">
