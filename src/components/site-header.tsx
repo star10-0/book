@@ -20,9 +20,7 @@ const translations = {
     searchPlaceholder: "ابحث عن كتاب، كاتب، أو تصنيف...",
     searchAria: "البحث في الكتب",
     searchCta: "بحث",
-    allBooks: "كل الكتب",
-    digitalBuy: "شراء رقمي",
-    digitalRent: "استئجار رقمي",
+    all: "الكل",
     cart: "السلة",
     myAccount: "حسابي",
     signIn: "تسجيل الدخول",
@@ -41,9 +39,7 @@ const translations = {
     searchPlaceholder: "Search by title, author, or category...",
     searchAria: "Search books",
     searchCta: "Search",
-    allBooks: "All Books",
-    digitalBuy: "Buy Digital",
-    digitalRent: "Rent Digital",
+    all: "All",
     cart: "Cart",
     myAccount: "My Account",
     signIn: "Sign In",
@@ -73,10 +69,10 @@ export async function SiteHeader() {
   const canAccessAdmin = user?.role === "ADMIN";
 
   return (
-    <header className="sticky top-1 z-40 mb-1.5 overflow-visible rounded-2xl bg-white shadow-sm ring-1 ring-slate-200 sm:mb-2">
-      <div className="px-2.5 py-1 sm:px-3.5 sm:py-1.5">
-        <div className="grid items-start gap-1 lg:grid-cols-[auto_minmax(0,1fr)_auto] lg:items-center lg:gap-2">
-          <div className="flex w-fit flex-col items-end gap-0.5 sm:gap-1">
+    <header className="sticky top-1 z-40 mb-1 overflow-visible rounded-2xl bg-white shadow-sm ring-1 ring-slate-200 sm:mb-1.5">
+      <div className="px-2.5 py-1 sm:px-3.5 sm:py-1">
+        <div className="grid items-start gap-0.5 lg:grid-cols-[auto_minmax(0,1fr)_auto] lg:items-center lg:gap-1.5">
+          <div className="flex w-fit flex-col items-end">
             <Link
               href="/"
               className="rounded-lg px-1 py-0.5 focus-visible:outline-none focus-visible:ring-2 focus-visible:ring-indigo-400"
@@ -84,18 +80,6 @@ export async function SiteHeader() {
               <p className="text-[1.45rem] font-black leading-none tracking-tight text-slate-900 sm:text-[1.6rem]">أمجد</p>
               <p className="mt-0.5 text-[10px] font-semibold uppercase tracking-[0.16em] text-indigo-600">{t.brandSub}</p>
             </Link>
-
-            <div className="w-full border-t border-slate-200 pt-0.5">
-              <SiteDrawerNav
-                locale={locale}
-                primaryLinks={primaryLinks}
-                accountLinks={accountNavigation}
-                userSignedIn={Boolean(user)}
-                canAccessStudio={canAccessStudio}
-                canAccessAdmin={canAccessAdmin}
-                logoutAction={signOutAction}
-              />
-            </div>
           </div>
 
           <form action="/books" method="get" className="order-last w-full lg:order-none">
@@ -135,27 +119,24 @@ export async function SiteHeader() {
           </div>
         </div>
 
-        <div className="mt-1 flex flex-wrap items-center gap-0.5">
-          <Link href="/books" className="store-chip h-6.5 px-2 bg-indigo-50 text-indigo-700 hover:bg-indigo-100 sm:h-7 sm:px-2.5">
-            {t.allBooks}
-          </Link>
-          <Link
-            href="/books?offer=buy"
-            className="store-chip h-6.5 px-2 bg-slate-100 text-slate-700 hover:bg-slate-200 sm:h-7 sm:px-2.5"
-          >
-            {t.digitalBuy}
-          </Link>
-          <Link
-            href="/books?offer=rent"
-            className="store-chip h-6.5 px-2 bg-slate-100 text-slate-700 hover:bg-slate-200 sm:h-7 sm:px-2.5"
-          >
-            {t.digitalRent}
-          </Link>
-        </div>
       </div>
 
       <nav aria-label="التنقل الرئيسي" className="border-t border-slate-200 bg-slate-50/90 px-2.5 py-px sm:px-3.5">
         <ul className="flex min-w-0 flex-wrap items-center gap-0.5 overflow-x-auto py-px">
+          <li>
+            <SiteDrawerNav
+              locale={locale}
+              primaryLinks={primaryLinks}
+              accountLinks={accountNavigation}
+              userSignedIn={Boolean(user)}
+              canAccessStudio={canAccessStudio}
+              canAccessAdmin={canAccessAdmin}
+              logoutAction={signOutAction}
+              triggerLabel={t.all}
+              triggerClassName="inline-flex h-5.5 items-center gap-1 rounded-md border border-slate-300 bg-white px-1.5 text-xs font-medium text-slate-700 transition hover:bg-slate-100 hover:text-slate-900 focus-visible:outline-none focus-visible:ring-2 focus-visible:ring-indigo-400 sm:h-6 sm:px-2"
+              triggerIconClassName="text-[0.9rem] leading-none"
+            />
+          </li>
           {primaryLinks.map((link) => (
             <li key={link.href}>
               <Link
