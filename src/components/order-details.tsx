@@ -94,7 +94,7 @@ export function OrderDetailsCard({
       <section className="mt-5 rounded-xl border border-dashed border-indigo-200 bg-indigo-50 p-4">
         <h2 className="text-base font-bold text-indigo-900">وسيلة الدفع</h2>
         <p className="mt-1 text-sm text-indigo-800">
-          سيتم قريبًا تفعيل اختيار وسيلة الدفع (مثل Sham Cash وSyriatel Cash). حالياً الطلب محفوظ بانتظار الدفع.
+          يمكنك اختيار وسيلة الدفع عند المتابعة إلى صفحة الدفع (مثل Sham Cash وSyriatel Cash) لإتمام الطلب.
         </p>
       </section>
 
