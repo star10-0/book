@@ -153,9 +153,9 @@ export function RecommendedBooksSection({ books }: { books: RecommendedBookItem[
         </Link>
       </div>
 
-      <div className="mt-3 grid gap-3 sm:grid-cols-2 lg:grid-cols-3">
+      <div className="mt-2 grid gap-2.5 sm:grid-cols-2 lg:grid-cols-3">
         {books.map((book) => (
-          <article key={book.id} className="flex h-full flex-col rounded-xl border border-slate-200 bg-slate-50 p-4">
+          <article key={book.id} className="flex h-full flex-col rounded-xl border border-slate-200 bg-slate-50 p-3.5">
             <div className="flex gap-3">
               <CoverImage src={book.coverImageUrl} alt={`غلاف ${book.title}`} width={120} height={170} className="h-24 w-16 rounded-md object-cover" />
               <div className="min-w-0 flex-1">
@@ -163,10 +163,9 @@ export function RecommendedBooksSection({ books }: { books: RecommendedBookItem[
                 <p className="mt-1 text-xs text-slate-600">{book.author}</p>
                 {book.publisher ? <p className="mt-1 line-clamp-1 text-[11px] text-slate-500">{book.publisher}</p> : null}
                 {book.category ? <p className="mt-1 text-[11px] font-semibold text-indigo-700">{book.category}</p> : null}
-                <p className="mt-2 text-[11px] text-indigo-700">{book.reason}</p>
               </div>
             </div>
-            <div className="mt-auto space-y-2.5 pt-3">
+            <div className="mt-auto space-y-2 pt-2.5">
               <div className="rounded-lg border border-slate-200 bg-white px-2.5 py-2">
                 <p className="text-[11px] font-semibold text-slate-500">ملخص العرض</p>
                 <div className="mt-1.5">
