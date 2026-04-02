@@ -64,12 +64,14 @@ export async function PATCH(request: Request, context: { params: Promise<{ acces
     return jsonError(API_ERROR_CODES.invalid_request, validation.error ?? "بيانات التقدم غير صالحة.", 400);
   }
 
+  const now = new Date();
   const accessGrant = await prisma.accessGrant.findFirst({
     where: {
       id: accessId,
       userId: user.id,
       status: "ACTIVE",
-      OR: [{ expiresAt: null }, { expiresAt: { gt: new Date() } }],
+      startsAt: { lte: now },
+      OR: [{ expiresAt: null }, { expiresAt: { gt: now } }],
     },
     select: {
       bookId: true,
@@ -80,7 +82,6 @@ export async function PATCH(request: Request, context: { params: Promise<{ acces
     return jsonError(API_ERROR_CODES.forbidden, "الوصول غير متاح أو منتهي الصلاحية.", 403);
   }
 
-  const now = new Date();
   const completedAt = validation.data.progressPercent >= 100 ? now : null;
 
   const progress = await prisma.readingProgress.upsert({
