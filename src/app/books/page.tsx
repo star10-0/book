@@ -13,8 +13,8 @@ type BooksSearchParams = {
 };
 
 export const metadata: Metadata = {
-  title: "ط·آ§ط¸â€‍ط¸ئ’ط·ع¾ط·آ¨",
-  description: "ط·آ§ط¸ئ’ط·ع¾ط·آ´ط¸ظ¾ ط¸ئ’ط·ع¾ط·آ¨ Amjad ط·آ¹ط·آ¨ط·آ± ط·آ§ط¸â€‍ط·آ¨ط·آ­ط·آ« ط¸ث†ط·آ§ط¸â€‍ط¸ظ¾ط¸â€‍ط·آ§ط·ع¾ط·آ± ط·آ¨ط·آ­ط·آ±ط¸ظ¹ط·آ©ط·إ’ ط·آ«ط¸â€¦ ط·آ³ط·آ¬ط¸â€کط¸â€‍ ط·آ§ط¸â€‍ط·آ¯ط·آ®ط¸ث†ط¸â€‍ ط¸ظ¾ط¸â€ڑط·آ· ط·آ¹ط¸â€ ط·آ¯ ط·ع¾ط¸â€ ط¸ظ¾ط¸ظ¹ط·آ° ط·آ¥ط·آ¬ط·آ±ط·آ§ط·طŒط·آ§ط·ع¾ ط¸â€¦ط·آ­ط¸â€¦ط¸ظ¹ط·آ©.",
+  title: "الكتب",
+  description: "اكتشف كتب Amjad عبر البحث والفلاتر بحرية، ثم سجّل الدخول فقط عند تنفيذ إجراءات محمية.",
 };
 
 function normalizeOfferType(value?: string): "all" | "buy" | "rent" {
@@ -278,8 +278,8 @@ export default async function BooksPage({
       isLoggedIn: Boolean(user),
       reason:
         book.reviewsCount > 0
-          ? `ط·ع¾ط¸â€ڑط¸ظ¹ط¸ظ¹ط¸â€¦ ${book.averageRating.toFixed(1)} ط¸â€¦ط¸â€  ${book.reviewsCount} ط¸â€¦ط·آ±ط·آ§ط·آ¬ط·آ¹ط·آ©`
-          : `ط·آ§ط·آ®ط·ع¾ط¸ظ¹ط·آ§ط·آ± ط·آ­ط·آ¯ط¸ظ¹ط·آ« ط·آ¶ط¸â€¦ط¸â€  ط·آ§ط¸â€‍ط¸â€¦ط¸â€ ط·آµط·آ© #${index + 1}`,
+          ? `تقييم ${book.averageRating.toFixed(1)} من ${book.reviewsCount} مراجعة`
+          : `اختيار حديث ضمن المنصة #${index + 1}`,
     }));
 
   const searchRecommendations = highlightedResult
@@ -298,8 +298,8 @@ export default async function BooksPage({
         isLoggedIn: Boolean(user),
         reason:
           book.categoryId === highlightedResult.categoryId
-            ? "ط¸â€¦ط·آ´ط·آ§ط·آ¨ط¸â€، ط¸â€‍ط¸â€،ط·آ°ط·آ§ ط·آ§ط¸â€‍ط¸ئ’ط·ع¾ط·آ§ط·آ¨ ط·آ¶ط¸â€¦ط¸â€  ط¸â€ ط¸ظ¾ط·آ³ ط·آ§ط¸â€‍ط·ع¾ط·آµط¸â€ ط¸ظ¹ط¸ظ¾"
-            : `ط¸â€‍ط¸â€ ط¸ظ¾ط·آ³ ط·آ§ط¸â€‍ط¸ئ’ط·آ§ط·ع¾ط·آ¨ أ¢â‚¬آ¢ ط·آ§ط·آ®ط·ع¾ط¸ظ¹ط·آ§ط·آ± #${index + 1}`,
+            ? "مشابه لهذا الكتاب ضمن نفس التصنيف"
+            : `لنفس الكاتب • اختيار #${index + 1}`,
       }))
     : [];
 
@@ -316,9 +316,9 @@ export default async function BooksPage({
         <section className="rounded-2xl border border-slate-200/90 bg-white p-4 shadow-sm sm:p-5">
           <div className="flex flex-wrap items-center justify-between gap-3">
             <div className="space-y-1">
-              <h1 className="text-xl font-black text-slate-900 sm:text-2xl">ط·آ§ط¸ئ’ط·ع¾ط·آ´ط¸ظ¾ ط¸ئ’ط·ع¾ط·آ§ط·آ¨ط¸ئ’ ط·آ§ط¸â€‍ط¸â€ڑط·آ§ط·آ¯ط¸â€¦ ط·آ¨ط·آ³ط¸â€،ط¸ث†ط¸â€‍ط·آ©</h1>
+              <h1 className="text-xl font-black text-slate-900 sm:text-2xl">اكتشف كتابك القادم بسهولة</h1>
             </div>
-            <span className="store-chip bg-indigo-50 text-indigo-700">{sortedBooks.length} ط¸â€ ط·ع¾ط¸ظ¹ط·آ¬ط·آ©</span>
+            <span className="store-chip bg-indigo-50 text-indigo-700">{sortedBooks.length} نتيجة</span>
           </div>
         </section>
 
