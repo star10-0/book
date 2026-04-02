@@ -12,6 +12,7 @@ const navItems = [
   { href: "/admin/orders", label: "الطلبات" },
   { href: "/admin/payments", label: "المدفوعات" },
   { href: "/admin/promo-codes", label: "أكواد الخصم" },
+  { href: "/admin/curriculum", label: "المنهاج" },
   { href: "/admin/users", label: "المستخدمون" },
 ];
 
