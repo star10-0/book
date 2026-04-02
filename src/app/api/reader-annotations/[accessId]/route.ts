@@ -85,12 +85,14 @@ function sanitizePayload(type: "DRAWING" | "NOTE" | "BOOKMARK", payload: unknown
 }
 
 async function getAuthorizedBookId(accessId: string, userId: string) {
+  const now = new Date();
   const accessGrant = await prisma.accessGrant.findFirst({
     where: {
       id: accessId,
       userId,
       status: "ACTIVE",
-      OR: [{ expiresAt: null }, { expiresAt: { gt: new Date() } }],
+      startsAt: { lte: now },
+      OR: [{ expiresAt: null }, { expiresAt: { gt: now } }],
     },
     select: {
       bookId: true,
@@ -180,23 +182,78 @@ export async function POST(request: Request, context: { params: Promise<{ access
     return jsonError(API_ERROR_CODES.forbidden, "الوصول غير متاح أو منتهي الصلاحية.", 403);
   }
 
-  const annotation = await prisma.readerAnnotation.create({
-    data: {
-      userId: user.id,
-      bookId,
-      type,
-      locator,
-      payload: sanitizedPayload,
-    },
-    select: {
-      id: true,
-      type: true,
-      locator: true,
-      payload: true,
-      updatedAt: true,
-      createdAt: true,
-    },
-  });
+  const annotation =
+    type === "NOTE"
+      ? await prisma.readerAnnotation.create({
+          data: {
+            userId: user.id,
+            bookId,
+            type,
+            locator,
+            payload: sanitizedPayload,
+          },
+          select: {
+            id: true,
+            type: true,
+            locator: true,
+            payload: true,
+            updatedAt: true,
+            createdAt: true,
+          },
+        })
+      : await prisma.$transaction(async (tx) => {
+          const existing = await tx.readerAnnotation.findFirst({
+            where: {
+              userId: user.id,
+              bookId,
+              type,
+              locator,
+            },
+            orderBy: {
+              updatedAt: "desc",
+            },
+            select: {
+              id: true,
+            },
+          });
+
+          if (existing) {
+            return await tx.readerAnnotation.update({
+              where: {
+                id: existing.id,
+              },
+              data: {
+                payload: sanitizedPayload,
+              },
+              select: {
+                id: true,
+                type: true,
+                locator: true,
+                payload: true,
+                updatedAt: true,
+                createdAt: true,
+              },
+            });
+          }
+
+          return await tx.readerAnnotation.create({
+            data: {
+              userId: user.id,
+              bookId,
+              type,
+              locator,
+              payload: sanitizedPayload,
+            },
+            select: {
+              id: true,
+              type: true,
+              locator: true,
+              payload: true,
+              updatedAt: true,
+              createdAt: true,
+            },
+          });
+        });
 
   return NextResponse.json({ annotation }, { status: 201 });
 }

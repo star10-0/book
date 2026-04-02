@@ -266,7 +266,7 @@ export function ReaderViewport({
         <iframe
           key={`${source.publicUrl}-${currentPage}-${theme}`}
           title="قارئ PDF"
-          src={`${source.publicUrl}#page=${currentPage}&view=FitH`}
+          src={`${source.publicUrl}#page=${currentPage}&view=FitH&toolbar=0&navpanes=0`}
           className={`h-[82vh] w-full ${palette.wrapper}`}
         />
         <canvas

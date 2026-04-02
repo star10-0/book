@@ -138,26 +138,35 @@ export function ReaderShell({ accessId, bookTitle, initialProgressPercent, initi
   const createAnnotation = useCallback(
     async (type: AnnotationType, annotationLocator: string, payload: unknown) => {
       setAnnotationMessage(null);
-      const response = await fetch(`/api/reader-annotations/${accessId}`, {
-        method: "POST",
-        headers: {
-          "Content-Type": "application/json",
-        },
-        body: JSON.stringify({
-          type,
-          locator: annotationLocator,
-          payload,
-        }),
-      });
+      try {
+        const response = await fetch(`/api/reader-annotations/${accessId}`, {
+          method: "POST",
+          headers: {
+            "Content-Type": "application/json",
+          },
+          credentials: "same-origin",
+          body: JSON.stringify({
+            type,
+            locator: annotationLocator,
+            payload,
+          }),
+        });
 
-      if (!response.ok) {
+        if (!response.ok) {
+          const body = (await response.json().catch(() => null)) as { message?: string } | null;
+          setAnnotationMessage(body?.message ?? "تعذر حفظ التعليق.");
+          return;
+        }
+
+        const data = (await response.json()) as { annotation: ReaderAnnotation };
+        setAnnotations((current) => {
+          const withoutSameId = current.filter((annotation) => annotation.id !== data.annotation.id);
+          return [data.annotation, ...withoutSameId];
+        });
+        setAnnotationMessage(type === "DRAWING" ? "تم حفظ الرسم." : "تم حفظ التعليق.");
+      } catch {
         setAnnotationMessage("تعذر حفظ التعليق.");
-        return;
       }
-
-      const data = (await response.json()) as { annotation: ReaderAnnotation };
-      setAnnotations((current) => [data.annotation, ...current]);
-      setAnnotationMessage("تم حفظ التعليق.");
     },
     [accessId],
   );
@@ -212,10 +221,12 @@ export function ReaderShell({ accessId, bookTitle, initialProgressPercent, initi
       setAnnotationMessage(null);
       const response = await fetch(`/api/reader-annotations/${accessId}?id=${encodeURIComponent(annotationId)}`, {
         method: "DELETE",
+        credentials: "same-origin",
       });
 
       if (!response.ok) {
-        setAnnotationMessage("تعذر حذف التعليق.");
+        const body = (await response.json().catch(() => null)) as { message?: string } | null;
+        setAnnotationMessage(body?.message ?? "تعذر حذف التعليق.");
         return;
       }
 
@@ -273,7 +284,7 @@ export function ReaderShell({ accessId, bookTitle, initialProgressPercent, initi
             value={noteDraft}
             onChange={(event) => setNoteDraft(event.target.value)}
             rows={3}
-            className="w-full rounded-lg border border-slate-300 bg-white px-3 py-2 text-sm outline-none focus:border-indigo-500 dark:border-slate-600 dark:bg-slate-950"
+            className="w-full rounded-lg border border-slate-300 bg-white px-3 py-2 text-sm text-slate-900 outline-none placeholder:text-slate-400 focus:border-indigo-500 dark:border-slate-600 dark:bg-slate-900 dark:text-slate-100 dark:placeholder:text-slate-500"
           />
           <div className="mt-2 flex flex-wrap gap-2">
             <button
