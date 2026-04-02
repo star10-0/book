@@ -1,7 +1,7 @@
 "use client";
 
-import { useEffect, useMemo, useRef } from "react";
-import { parsePdfPageFromLocator, toPdfLocator } from "@/lib/reader/locator";
+import { useEffect, useMemo, useRef, useState } from "react";
+import { parseEpubSectionFromLocator, parsePdfPageFromLocator, toEpubLocator, toPdfLocator } from "@/lib/reader/locator";
 import { ReaderDocumentSource, ReaderTheme } from "@/lib/reader/types";
 
 type ReaderControls = {
@@ -15,6 +15,12 @@ type Stroke = {
   color: string;
   width: number;
   points: Point[];
+};
+
+type EpubSection = {
+  id: string;
+  title: string;
+  bodyHtml: string;
 };
 
 type ReaderViewportProps = {
@@ -43,6 +49,14 @@ function getViewerPalette(theme: ReaderTheme) {
   };
 }
 
+function toSectionProgress(sectionIndex: number, totalSections: number) {
+  if (totalSections <= 0) {
+    return 0;
+  }
+
+  return Math.min(100, (sectionIndex / totalSections) * 100);
+}
+
 export function ReaderViewport({
   source,
   locator,
@@ -57,12 +71,76 @@ export function ReaderViewport({
   const palette = useMemo(() => getViewerPalette(theme), [theme]);
   const currentPage = parsePdfPageFromLocator(locator);
   const totalPages = source?.kind === "PDF" && typeof source.pageCount === "number" && source.pageCount > 0 ? source.pageCount : null;
+  const [epubSections, setEpubSections] = useState<EpubSection[]>([]);
+  const [epubStatus, setEpubStatus] = useState<"idle" | "loading" | "ready" | "error">("idle");
   const canvasRef = useRef<HTMLCanvasElement | null>(null);
   const currentStrokeRef = useRef<Point[]>([]);
 
   useEffect(() => {
+    let isCancelled = false;
+
+    async function loadEpubSections() {
+      if (!source || source.kind !== "EPUB" || !source.publicUrl) {
+        setEpubSections([]);
+        setEpubStatus("idle");
+        return;
+      }
+
+      setEpubStatus("loading");
+      try {
+        const fileId = source.publicUrl.split("/").filter(Boolean).at(-1);
+        if (!fileId) {
+          throw new Error("missing_epub_file_id");
+        }
+
+        const response = await fetch(`/api/reader-epub/${fileId}/sections`, {
+          cache: "no-store",
+          credentials: "same-origin",
+        });
+
+        if (!response.ok) {
+          throw new Error("epub_fetch_failed");
+        }
+
+        const data = (await response.json()) as { sections?: EpubSection[] };
+        const sections = Array.isArray(data.sections) ? data.sections : [];
+
+        if (!isCancelled) {
+          setEpubSections(sections);
+          setEpubStatus("ready");
+        }
+      } catch {
+        if (!isCancelled) {
+          setEpubSections([]);
+          setEpubStatus("error");
+        }
+      }
+    }
+
+    void loadEpubSections();
+
+    return () => {
+      isCancelled = true;
+    };
+  }, [source]);
+
+  const currentEpubSection = useMemo(() => {
+    if (!epubSections.length) {
+      return null;
+    }
+
+    const sectionNumber = parseEpubSectionFromLocator(locator, epubSections.length);
+    return {
+      sectionNumber,
+      data: epubSections[sectionNumber - 1] ?? null,
+    };
+  }, [epubSections, locator]);
+
+  useEffect(() => {
     if (!source || source.kind !== "PDF" || !source.publicUrl) {
-      onControlsReady(null);
+      if (source?.kind !== "EPUB") {
+        onControlsReady(null);
+      }
       return;
     }
 
@@ -85,6 +163,36 @@ export function ReaderViewport({
       },
     });
   }, [currentPage, onControlsReady, onLocationChange, source, totalPages]);
+
+  useEffect(() => {
+    if (!source || source.kind !== "EPUB") {
+      return;
+    }
+
+    if (epubStatus !== "ready" || !epubSections.length) {
+      onControlsReady(null);
+      return;
+    }
+
+    const currentSection = parseEpubSectionFromLocator(locator, epubSections.length);
+
+    onControlsReady({
+      next: () => {
+        const nextSection = Math.min(epubSections.length, currentSection + 1);
+        onLocationChange({
+          locator: toEpubLocator(nextSection),
+          progressPercent: toSectionProgress(nextSection, epubSections.length),
+        });
+      },
+      previous: () => {
+        const previousSection = Math.max(1, currentSection - 1);
+        onLocationChange({
+          locator: toEpubLocator(previousSection),
+          progressPercent: toSectionProgress(previousSection, epubSections.length),
+        });
+      },
+    });
+  }, [epubSections, epubStatus, locator, onControlsReady, onLocationChange, source]);
 
   useEffect(() => {
     const canvas = canvasRef.current;
@@ -199,18 +307,40 @@ export function ReaderViewport({
     );
   }
 
-  return (
-    <div className={`overflow-hidden rounded-xl border ${palette.frame}`}>
-      <iframe
-        key={`${source.publicUrl}-${locator}-${theme}`}
-        title="قارئ EPUB"
-        src={source.publicUrl}
-        className={`h-[82vh] w-full ${palette.wrapper}`}
-      />
-      <div className="border-t border-dashed border-slate-300 bg-slate-50 p-3 text-xs text-slate-600 dark:border-slate-700 dark:bg-slate-900 dark:text-slate-300">
-        تمت تهيئة EPUB كعرض أولي Placeholder عبر Web Viewer URL مع حفظ آخر موضع ({locator}). يمكن لاحقاً استبداله بمحرك
-        EPUB.js دون تغيير واجهة الصفحة.
+  if (epubStatus === "loading") {
+    return (
+      <div className={`rounded-xl border p-8 text-center ${palette.wrapper} ${palette.frame}`}>
+        <p className="text-sm font-semibold">جارٍ تجهيز ملف EPUB...</p>
       </div>
-    </div>
+    );
+  }
+
+  if (epubStatus === "error") {
+    return (
+      <div className={`rounded-xl border p-8 text-center ${palette.wrapper} ${palette.frame}`}>
+        <p className="text-sm font-semibold">تعذّر تحميل EPUB لهذا الكتاب.</p>
+        <p className="mt-2 text-xs text-slate-500 dark:text-slate-400">تحقق من سلامة ملف EPUB والمحاولة مرة أخرى.</p>
+      </div>
+    );
+  }
+
+  if (!currentEpubSection?.data) {
+    return (
+      <div className={`rounded-xl border p-8 text-center ${palette.wrapper} ${palette.frame}`}>
+        <p className="text-sm font-semibold">لا يحتوي ملف EPUB على فصول قابلة للعرض.</p>
+      </div>
+    );
+  }
+
+  return (
+    <article className={`max-h-[82vh] overflow-y-auto rounded-xl border p-6 leading-8 ${palette.wrapper} ${palette.frame}`}>
+      <header className="mb-4 border-b border-slate-200 pb-3 dark:border-slate-700">
+        <p className="text-xs text-slate-500 dark:text-slate-400">
+          {currentEpubSection.sectionNumber} / {epubSections.length}
+        </p>
+        <h2 className="text-base font-semibold">{currentEpubSection.data.title}</h2>
+      </header>
+      <div className="prose prose-slate max-w-none dark:prose-invert" dangerouslySetInnerHTML={{ __html: currentEpubSection.data.bodyHtml }} />
+    </article>
   );
 }
