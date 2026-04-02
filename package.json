@@ -23,9 +23,6 @@
     "prisma:migrate:deploy": "prisma migrate deploy",
     "start:prod": "npm run prisma:migrate:deploy && next start"
   },
-  "prisma": {
-    "seed": "tsx prisma/seed.ts"
-  },
   "dependencies": {
     "@prisma/client": "6.19.2",
     "next": "15.5.14",
