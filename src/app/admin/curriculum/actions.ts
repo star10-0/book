@@ -8,7 +8,7 @@ import {
   reorderCurriculumLevelBooks,
   updateCurriculumLevel,
 } from "@/lib/curriculum/admin";
-import { requireAdmin } from "@/lib/auth-session";
+import { requireCurriculumAdmin } from "@/lib/curriculum/permissions";
 import { prisma } from "@/lib/prisma";
 
 export type CurriculumFormState = {
@@ -43,7 +43,7 @@ export async function createCurriculumLevelAction(
   formData: FormData,
 ): Promise<CurriculumFormState> {
   void _prevState;
-  await requireAdmin({ callbackUrl: "/admin/curriculum" });
+  await requireCurriculumAdmin();
 
   const nameAr = readText(formData, "nameAr");
   const slug = readText(formData, "slug").toLowerCase();
@@ -65,7 +65,7 @@ export async function updateCurriculumLevelAction(
   formData: FormData,
 ): Promise<CurriculumFormState> {
   void _prevState;
-  await requireAdmin({ callbackUrl: "/admin/curriculum" });
+  await requireCurriculumAdmin();
 
   const nameAr = readText(formData, "nameAr");
   const slug = readText(formData, "slug").toLowerCase();
@@ -86,7 +86,7 @@ export async function deleteCurriculumLevelAction(
   formData: FormData,
 ): Promise<CurriculumFormState> {
   void _prevState;
-  await requireAdmin({ callbackUrl: "/admin/curriculum" });
+  await requireCurriculumAdmin();
 
   const levelId = readText(formData, "levelId");
   const confirmCascade = readText(formData, "confirmCascade") === "yes";
@@ -111,7 +111,7 @@ export async function attachBookToLevelAction(
   formData: FormData,
 ): Promise<CurriculumFormState> {
   void _prevState;
-  await requireAdmin({ callbackUrl: "/admin/curriculum" });
+  await requireCurriculumAdmin();
 
   const bookId = readText(formData, "bookId");
   const sortOrder = readNumber(formData, "sortOrder", 0);
@@ -139,7 +139,7 @@ export async function detachBookFromLevelAction(
   formData: FormData,
 ): Promise<CurriculumFormState> {
   void _prevState;
-  await requireAdmin({ callbackUrl: "/admin/curriculum" });
+  await requireCurriculumAdmin();
 
   const curriculumLevelId = readText(formData, "curriculumLevelId");
   const bookId = readText(formData, "bookId");
@@ -157,7 +157,7 @@ export async function updateLevelBookOrderAction(
   formData: FormData,
 ): Promise<CurriculumFormState> {
   void _prevState;
-  await requireAdmin({ callbackUrl: "/admin/curriculum" });
+  await requireCurriculumAdmin();
 
   const curriculumLevelBookId = readText(formData, "curriculumLevelBookId");
   const sortOrder = readNumber(formData, "sortOrder", 0);

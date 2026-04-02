@@ -1,8 +1,11 @@
 import { AdminPageCard, AdminPageHeader } from "@/components/admin/admin-page";
 import { CurriculumManager } from "@/components/admin/curriculum-manager";
+import { requireCurriculumAdmin } from "@/lib/curriculum/permissions";
 import { prisma } from "@/lib/prisma";
 
 export default async function AdminCurriculumPage() {
+  await requireCurriculumAdmin();
+
   const [levels, books] = await Promise.all([
     prisma.curriculumLevel.findMany({
       orderBy: [{ sortOrder: "asc" }, { createdAt: "asc" }],

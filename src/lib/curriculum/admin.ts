@@ -2,7 +2,7 @@ import "server-only";
 
 import { Prisma } from "@prisma/client";
 import { revalidatePath } from "next/cache";
-import { requireAdmin } from "@/lib/auth-session";
+import { requireCurriculumAdmin } from "@/lib/curriculum/permissions";
 import { prisma } from "@/lib/prisma";
 
 const SLUG_PATTERN = /^[a-z0-9]+(?:-[a-z0-9]+)*$/;
@@ -62,7 +62,7 @@ function isUniqueConstraintError(error: unknown) {
 }
 
 export async function createCurriculumLevel(input: CurriculumLevelInput) {
-  await requireAdmin({ callbackUrl: "/admin/curriculum" });
+  await requireCurriculumAdmin();
   const values = validateLevelInput(input);
 
   try {
@@ -79,7 +79,7 @@ export async function createCurriculumLevel(input: CurriculumLevelInput) {
 }
 
 export async function updateCurriculumLevel(levelId: string, input: CurriculumLevelInput) {
-  await requireAdmin({ callbackUrl: "/admin/curriculum" });
+  await requireCurriculumAdmin();
   const values = validateLevelInput(input);
 
   try {
@@ -101,7 +101,7 @@ export async function updateCurriculumLevel(levelId: string, input: CurriculumLe
 }
 
 export async function deleteCurriculumLevelSafely(levelId: string) {
-  await requireAdmin({ callbackUrl: "/admin/curriculum" });
+  await requireCurriculumAdmin();
 
   await prisma.$transaction(async (tx) => {
     await tx.curriculumLevelBook.deleteMany({ where: { curriculumLevelId: levelId } });
@@ -116,7 +116,7 @@ export async function attachBookToCurriculumLevel(input: {
   bookId: string;
   sortOrder?: number;
 }) {
-  const admin = await requireAdmin({ callbackUrl: "/admin/curriculum" });
+  const admin = await requireCurriculumAdmin();
 
   try {
     const link = await prisma.curriculumLevelBook.create({
@@ -141,7 +141,7 @@ export async function attachBookToCurriculumLevel(input: {
 }
 
 export async function detachBookFromCurriculumLevel(input: { curriculumLevelId: string; bookId: string }) {
-  await requireAdmin({ callbackUrl: "/admin/curriculum" });
+  await requireCurriculumAdmin();
 
   await prisma.curriculumLevelBook.deleteMany({
     where: {
@@ -155,7 +155,7 @@ export async function detachBookFromCurriculumLevel(input: { curriculumLevelId: 
 }
 
 export async function reorderCurriculumLevels(items: ReorderLevelInput[]) {
-  await requireAdmin({ callbackUrl: "/admin/curriculum" });
+  await requireCurriculumAdmin();
 
   await prisma.$transaction(
     items.map((item) =>
@@ -170,7 +170,7 @@ export async function reorderCurriculumLevels(items: ReorderLevelInput[]) {
 }
 
 export async function reorderCurriculumLevelBooks(items: ReorderLevelBookInput[]) {
-  await requireAdmin({ callbackUrl: "/admin/curriculum" });
+  await requireCurriculumAdmin();
 
   await prisma.$transaction(
     items.map((item) =>
