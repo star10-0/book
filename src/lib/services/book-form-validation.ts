@@ -109,6 +109,27 @@ async function validateCommonBookFields(input: ValidateCommonBookFieldsInput): P
     fieldErrors.description = "الوصف يجب ألا يتجاوز 2000 حرف.";
   }
 
+  const paidOnlyModeEnabled = values.paidOnlyMode === "enabled";
+  const previewOnlyEnabled = values.previewOnly === "enabled";
+  const allowReadingEnabled = values.allowReadingOnSite === "enabled";
+  const allowDownloadingEnabled = values.allowDownloading === "enabled";
+
+  const enabledAccessModesCount = [paidOnlyModeEnabled, previewOnlyEnabled, allowReadingEnabled, allowDownloadingEnabled].filter(Boolean).length;
+
+  if (enabledAccessModesCount > 1) {
+    const message = "خيارات الوصول متعارضة. فعّل وضعاً واحداً فقط (مدفوع فقط / معاينة فقط / قراءة عامة / تحميل عام).";
+    fieldErrors.paidOnlyMode = message;
+    fieldErrors.previewOnly = message;
+    fieldErrors.allowReadingOnSite = message;
+    fieldErrors.allowDownloading = message;
+  }
+
+  if (allowDownloadingEnabled && !allowReadingEnabled) {
+    const message = "عند تفعيل التحميل العام يجب تفعيل القراءة على الموقع أيضاً.";
+    fieldErrors.allowDownloading = message;
+    fieldErrors.allowReadingOnSite = message;
+  }
+
   const metadata = parseMetadata(values);
   if (!metadata.ok && metadata.error === "invalid-json") {
     fieldErrors.metadata = "صيغة metadata غير صحيحة. أدخل JSON صالحًا.";
