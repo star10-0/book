@@ -2,10 +2,11 @@ import { Prisma } from "@prisma/client";
 import { prisma } from "@/lib/prisma";
 import {
   BOOK_SLUG_PATTERN,
-  parseBookOffers,
   parseContentAccessPolicy,
+  parseBookOffers,
   parseMetadata,
   parseStatus,
+  resolveContentAccessPolicy,
   type SharedBookFormValues,
 } from "@/lib/services/book-form";
 
@@ -109,25 +110,22 @@ async function validateCommonBookFields(input: ValidateCommonBookFieldsInput): P
     fieldErrors.description = "الوصف يجب ألا يتجاوز 2000 حرف.";
   }
 
-  const paidOnlyModeEnabled = values.paidOnlyMode === "enabled";
-  const previewOnlyEnabled = values.previewOnly === "enabled";
-  const allowReadingEnabled = values.allowReadingOnSite === "enabled";
-  const allowDownloadingEnabled = values.allowDownloading === "enabled";
+  const accessResolution = resolveContentAccessPolicy(values);
 
-  const enabledAccessModesCount = [paidOnlyModeEnabled, previewOnlyEnabled, allowReadingEnabled, allowDownloadingEnabled].filter(Boolean).length;
-
-  if (enabledAccessModesCount > 1) {
-    const message = "خيارات الوصول متعارضة. فعّل وضعاً واحداً فقط (مدفوع فقط / معاينة فقط / قراءة عامة / تحميل عام).";
+  if (!accessResolution.ok && accessResolution.reason === "conflict") {
+    const message = "خيارات الوصول متعارضة. اختر وضع وصول واحدًا فقط (مدفوع فقط / معاينة فقط / قراءة عامة / تحميل عام).";
     fieldErrors.paidOnlyMode = message;
     fieldErrors.previewOnly = message;
     fieldErrors.allowReadingOnSite = message;
     fieldErrors.allowDownloading = message;
   }
 
-  if (allowDownloadingEnabled && !allowReadingEnabled) {
-    const message = "عند تفعيل التحميل العام يجب تفعيل القراءة على الموقع أيضاً.";
-    fieldErrors.allowDownloading = message;
+  if (!accessResolution.ok && accessResolution.reason === "none-selected") {
+    const message = "اختر وضع وصول واحدًا على الأقل لتحديد طريقة إتاحة المحتوى.";
+    fieldErrors.paidOnlyMode = message;
+    fieldErrors.previewOnly = message;
     fieldErrors.allowReadingOnSite = message;
+    fieldErrors.allowDownloading = message;
   }
 
   const metadata = parseMetadata(values);
@@ -140,6 +138,9 @@ async function validateCommonBookFields(input: ValidateCommonBookFieldsInput): P
   if (Object.keys(fieldErrors).length > 0 || !status) {
     return { ok: false, error: fieldErrors };
   }
+  if (!accessResolution.ok) {
+    return { ok: false, error: fieldErrors };
+  }
 
   return {
     ok: true,
@@ -150,7 +151,7 @@ async function validateCommonBookFields(input: ValidateCommonBookFieldsInput): P
       purchasePriceCents: offerValues.purchasePriceCents,
       rentalPriceCents: offerValues.rentalPriceCents,
       rentalDays: offerValues.rentalDays,
-      contentAccessPolicy: parseContentAccessPolicy(values),
+      contentAccessPolicy: accessResolution.policy,
       metadata: metadata.ok ? (metadata.data ?? Prisma.JsonNull) : undefined,
     },
   };

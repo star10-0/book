@@ -1,9 +1,10 @@
 "use client";
 
 import Link from "next/link";
-import { useActionState } from "react";
+import { useActionState, useEffect, useState } from "react";
 import type { BookFormState, BookFormValues } from "@/app/admin/books/actions";
 import { AdminFormSection, AdminInput, AdminSelect, AdminTextArea } from "@/components/admin/form-fields";
+import { buildAccessSettingsFromPolicy, resolveContentAccessPolicy, type AccessSettingsValues } from "@/lib/services/book-form";
 
 type BaseBookValues = BookFormValues;
 
@@ -49,6 +50,63 @@ export function BookForm({ mode, initialValues, authors, categories, hideAuthorF
 
   const [state, formAction, isPending] = useActionState(action, initialState);
   const values = mergeValues(initialValues, state.values);
+  const [accessValues, setAccessValues] = useState<AccessSettingsValues>({
+    paidOnlyMode: values.paidOnlyMode,
+    previewOnly: values.previewOnly,
+    allowReadingOnSite: values.allowReadingOnSite,
+    allowDownloading: values.allowDownloading,
+  });
+
+  useEffect(() => {
+    setAccessValues({
+      paidOnlyMode: values.paidOnlyMode,
+      previewOnly: values.previewOnly,
+      allowReadingOnSite: values.allowReadingOnSite,
+      allowDownloading: values.allowDownloading,
+    });
+  }, [values.paidOnlyMode, values.previewOnly, values.allowReadingOnSite, values.allowDownloading]);
+
+  const applyAccessPolicy = (nextPolicy: "PAID_ONLY" | "PREVIEW_ONLY" | "PUBLIC_READ" | "PUBLIC_DOWNLOAD") => {
+    setAccessValues(buildAccessSettingsFromPolicy(nextPolicy));
+  };
+
+  const handleAccessSelectChange = (field: keyof AccessSettingsValues, value: string) => {
+    if (value === "enabled") {
+      if (field === "paidOnlyMode") {
+        applyAccessPolicy("PAID_ONLY");
+        return;
+      }
+      if (field === "previewOnly") {
+        applyAccessPolicy("PREVIEW_ONLY");
+        return;
+      }
+      if (field === "allowDownloading") {
+        applyAccessPolicy("PUBLIC_DOWNLOAD");
+        return;
+      }
+
+      applyAccessPolicy("PUBLIC_READ");
+      return;
+    }
+
+    if (field === "allowReadingOnSite" && accessValues.allowDownloading === "enabled") {
+      applyAccessPolicy("PAID_ONLY");
+      return;
+    }
+
+    const nextValues: AccessSettingsValues = {
+      ...accessValues,
+      [field]: "disabled",
+    };
+
+    const resolved = resolveContentAccessPolicy(nextValues);
+    if (!resolved.ok) {
+      applyAccessPolicy("PAID_ONLY");
+      return;
+    }
+
+    setAccessValues(resolved.values);
+  };
 
   return (
     <form action={formAction} className="space-y-5 rounded-2xl border border-slate-200 bg-white p-6 shadow-sm" noValidate>
@@ -184,17 +242,22 @@ export function BookForm({ mode, initialValues, authors, categories, hideAuthorF
           <p className="text-xs text-slate-600">
             هذه الخيارات لا تلغي مسار الشراء/الإيجار. عند التعطيل يبقى الوصول عبر المنح بعد الدفع فقط.
           </p>
+          <p className="rounded-lg border border-indigo-200 bg-indigo-50 px-3 py-2 text-xs text-indigo-900">
+            ملاحظة: أوضاع الوصول التالية متبادلة الإقصاء. عند تفعيل خيار سيتم تعطيل الخيارات غير المتوافقة تلقائيًا.
+          </p>
         </div>
 
         <div className="space-y-2">
           <AdminSelect
             label="وضع مدفوع فقط"
             name="paidOnlyMode"
-            defaultValue={values.paidOnlyMode}
+            defaultValue={accessValues.paidOnlyMode}
             options={[
               { value: "enabled", label: "مفعل" },
               { value: "disabled", label: "متوقف" },
             ]}
+            value={accessValues.paidOnlyMode}
+            onValueChange={(value) => handleAccessSelectChange("paidOnlyMode", value)}
           />
           <p className="text-xs text-slate-500">عند التفعيل: يتم تعطيل أي وصول عام للمحتوى ويظل الوصول عبر الشراء/الإيجار فقط.</p>
           {state.fieldErrors?.paidOnlyMode ? <p className="text-sm font-medium text-rose-700">{state.fieldErrors.paidOnlyMode}</p> : null}
@@ -204,11 +267,13 @@ export function BookForm({ mode, initialValues, authors, categories, hideAuthorF
           <AdminSelect
             label="السماح بالقراءة على الموقع"
             name="allowReadingOnSite"
-            defaultValue={values.allowReadingOnSite}
+            defaultValue={accessValues.allowReadingOnSite}
             options={[
               { value: "disabled", label: "لا" },
               { value: "enabled", label: "نعم" },
             ]}
+            value={accessValues.allowReadingOnSite}
+            onValueChange={(value) => handleAccessSelectChange("allowReadingOnSite", value)}
           />
           {state.fieldErrors?.allowReadingOnSite ? <p className="text-sm font-medium text-rose-700">{state.fieldErrors.allowReadingOnSite}</p> : null}
         </div>
@@ -217,11 +282,13 @@ export function BookForm({ mode, initialValues, authors, categories, hideAuthorF
           <AdminSelect
             label="السماح بالتحميل"
             name="allowDownloading"
-            defaultValue={values.allowDownloading}
+            defaultValue={accessValues.allowDownloading}
             options={[
               { value: "disabled", label: "لا" },
               { value: "enabled", label: "نعم" },
             ]}
+            value={accessValues.allowDownloading}
+            onValueChange={(value) => handleAccessSelectChange("allowDownloading", value)}
           />
           {state.fieldErrors?.allowDownloading ? <p className="text-sm font-medium text-rose-700">{state.fieldErrors.allowDownloading}</p> : null}
         </div>
@@ -230,11 +297,13 @@ export function BookForm({ mode, initialValues, authors, categories, hideAuthorF
           <AdminSelect
             label="وضع المعاينة فقط"
             name="previewOnly"
-            defaultValue={values.previewOnly}
+            defaultValue={accessValues.previewOnly}
             options={[
               { value: "disabled", label: "لا" },
               { value: "enabled", label: "نعم" },
             ]}
+            value={accessValues.previewOnly}
+            onValueChange={(value) => handleAccessSelectChange("previewOnly", value)}
           />
           <p className="text-xs text-slate-500">عند التفعيل: يظهر للزوار نموذج قراءة (عينة) من المحتوى النصي فقط.</p>
           {state.fieldErrors?.previewOnly ? <p className="text-sm font-medium text-rose-700">{state.fieldErrors.previewOnly}</p> : null}

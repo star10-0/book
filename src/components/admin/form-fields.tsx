@@ -32,16 +32,21 @@ type SelectProps = {
   label: string;
   name: string;
   defaultValue?: string;
+  value?: string;
+  onValueChange?: (value: string) => void;
   options: SelectOption[];
 };
 
-export function AdminSelect({ label, name, defaultValue, options }: SelectProps) {
+export function AdminSelect({ label, name, defaultValue, value, onValueChange, options }: SelectProps) {
+  const selectValueProps = value === undefined ? { defaultValue } : { value };
+
   return (
     <label className="flex flex-col gap-2 text-sm font-medium text-slate-700">
       {label}
       <select
         name={name}
-        defaultValue={defaultValue}
+        {...selectValueProps}
+        onChange={onValueChange ? (event) => onValueChange(event.target.value) : undefined}
         className="rounded-lg border border-slate-300 bg-white px-3 py-2 focus:border-slate-500 focus:outline-none"
       >
         {options.map((option) => (
