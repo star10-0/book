@@ -51,20 +51,20 @@ export function HomeCategoryDiscovery({ categories }: { categories: DiscoveryCat
 
       <div className="grid gap-3 sm:grid-cols-2 xl:grid-cols-4">
         {selected.books.slice(0, 4).map((book) => (
-          <article key={book.id} className="rounded-xl border border-slate-200 bg-white p-3 shadow-sm">
-            <Link href={`/books/${book.slug}`} className="flex gap-3">
+          <article key={book.id} className="group overflow-hidden rounded-xl border border-slate-200 bg-white shadow-sm transition hover:-translate-y-0.5 hover:shadow-md">
+            <Link href={`/books/${book.slug}`} className="block">
               <CoverImage
                 src={book.coverImageUrl}
                 alt={`غلاف كتاب ${book.title}`}
-                width={140}
-                height={210}
-                className="h-36 w-24 rounded-md object-cover"
+                width={320}
+                height={460}
+                className="h-48 w-full object-cover transition duration-300 group-hover:scale-[1.02]"
               />
-              <div className="min-w-0">
-                <h4 className="line-clamp-2 text-sm font-bold text-slate-900 sm:text-base">{book.title}</h4>
-                <p className="mt-1 line-clamp-1 text-xs text-slate-600 sm:text-sm">{book.author}</p>
-                <p className="mt-2 text-[11px] font-semibold text-indigo-700 sm:text-xs">{book.pricingLabel}</p>
-                <p className="mt-1 text-[11px] text-amber-600">
+              <div className="space-y-1.5 p-3">
+                <h4 className="line-clamp-2 min-h-10 text-sm font-extrabold text-slate-900 sm:text-base">{book.title}</h4>
+                <p className="line-clamp-1 text-xs text-slate-600 sm:text-sm">{book.author}</p>
+                <p className="text-xs font-bold text-indigo-700 sm:text-sm">{book.pricingLabel}</p>
+                <p className="text-[11px] text-amber-600">
                   {book.averageRating > 0 ? `★ ${book.averageRating.toFixed(1)} (${book.reviewsCount})` : "بدون تقييمات بعد"}
                 </p>
               </div>
