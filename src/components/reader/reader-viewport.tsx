@@ -241,7 +241,7 @@ export function ReaderViewport({
 
   if (source.kind === "TEXT") {
     return (
-      <article className={`max-h-[calc(100vh-10rem)] overflow-y-auto whitespace-pre-wrap rounded-xl border p-4 leading-8 ${palette.wrapper} ${palette.frame}`}>
+      <article className={`max-h-[calc(100vh-9.5rem)] min-h-[70vh] overflow-y-auto whitespace-pre-wrap rounded-xl border p-6 leading-8 ${palette.wrapper} ${palette.frame}`}>
         {source.textContent}
       </article>
     );
@@ -267,7 +267,7 @@ export function ReaderViewport({
           key={`${source.publicUrl}-${currentPage}-${theme}`}
           title="قارئ PDF"
           src={`${source.publicUrl}#page=${currentPage}&view=FitH&toolbar=0&navpanes=0`}
-          className={`h-[calc(100vh-10rem)] min-h-[420px] w-full ${palette.wrapper}`}
+          className={`h-[calc(100vh-9.5rem)] min-h-[70vh] w-full ${palette.wrapper}`}
         />
         <canvas
           ref={canvasRef}
@@ -333,7 +333,7 @@ export function ReaderViewport({
   }
 
   return (
-    <article className={`max-h-[calc(100vh-10rem)] overflow-y-auto rounded-xl border p-4 leading-8 ${palette.wrapper} ${palette.frame}`}>
+    <article className={`max-h-[calc(100vh-9.5rem)] min-h-[70vh] overflow-y-auto rounded-xl border p-6 leading-8 ${palette.wrapper} ${palette.frame}`}>
       <header className="mb-4 border-b border-slate-200 pb-3 dark:border-slate-700">
         <p className="text-xs text-slate-500 dark:text-slate-400">
           {currentEpubSection.sectionNumber} / {epubSections.length}

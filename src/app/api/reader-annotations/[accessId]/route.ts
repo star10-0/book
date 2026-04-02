@@ -11,6 +11,10 @@ type AnnotationBody = {
   locator?: string;
   payload?: unknown;
 };
+type AnnotationUpdateBody = {
+  id?: string;
+  payload?: unknown;
+};
 
 function isReaderAnnotationTableMissing(error: unknown) {
   return error instanceof Prisma.PrismaClientKnownRequestError && error.code === "P2021" && error.message.includes("ReaderAnnotation");
@@ -329,4 +333,85 @@ export async function DELETE(request: Request, context: { params: Promise<{ acce
   }
 
   return NextResponse.json({ success: true });
+}
+
+export async function PATCH(request: Request, context: { params: Promise<{ accessId: string }> }) {
+  if (!isSameOriginMutation(request)) {
+    return rejectCrossOriginMutation();
+  }
+
+  const rateLimit = await enforceRateLimit({ key: `reader-annotations:update:${getClientIp(request)}`, limit: 120, windowMs: 60_000 });
+  if (!rateLimit.allowed) {
+    return rejectRateLimited(rateLimit.retryAfterSeconds);
+  }
+
+  const user = await getCurrentUser();
+  if (!user) {
+    return jsonError(API_ERROR_CODES.unauthorized, "يجب تسجيل الدخول أولاً.", 401);
+  }
+
+  const parsedBody = await parseJsonBody<unknown>(request, { invalidMessage: "تعذر قراءة بيانات التعليق." });
+  if ("error" in parsedBody) {
+    return parsedBody.error;
+  }
+
+  const body = parsedBody.data as AnnotationUpdateBody;
+  const annotationId = typeof body.id === "string" ? body.id.trim() : "";
+  if (!annotationId) {
+    return jsonError(API_ERROR_CODES.invalid_request, "معرف التعليق مطلوب.", 400);
+  }
+
+  const { accessId } = await context.params;
+  const bookId = await getAuthorizedBookId(accessId, user.id);
+  if (!bookId) {
+    return jsonError(API_ERROR_CODES.forbidden, "الوصول غير متاح أو منتهي الصلاحية.", 403);
+  }
+
+  try {
+    const existing = await prisma.readerAnnotation.findFirst({
+      where: {
+        id: annotationId,
+        userId: user.id,
+        bookId,
+      },
+      select: {
+        id: true,
+        type: true,
+      },
+    });
+
+    if (!existing) {
+      return jsonError(API_ERROR_CODES.not_found, "لم يتم العثور على التعليق.", 404);
+    }
+
+    if (existing.type !== "NOTE") {
+      return jsonError(API_ERROR_CODES.invalid_request, "التعديل مدعوم للملاحظات فقط.", 400);
+    }
+
+    const sanitizedPayload = sanitizePayload("NOTE", body.payload);
+    if (!sanitizedPayload) {
+      return jsonError(API_ERROR_CODES.invalid_request, "بيانات التعليق غير صالحة.", 400);
+    }
+
+    const annotation = await prisma.readerAnnotation.update({
+      where: { id: existing.id },
+      data: { payload: sanitizedPayload },
+      select: {
+        id: true,
+        type: true,
+        locator: true,
+        payload: true,
+        updatedAt: true,
+        createdAt: true,
+      },
+    });
+
+    return NextResponse.json({ annotation });
+  } catch (error) {
+    if (isReaderAnnotationTableMissing(error)) {
+      return jsonError(API_ERROR_CODES.server_error, "ميزة الملاحظات غير مهيأة في قاعدة البيانات حالياً.", 503);
+    }
+
+    throw error;
+  }
 }
