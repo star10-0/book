@@ -40,29 +40,28 @@ export function OrderDetailsCard({
   const statusTag = orderStatusMeta[status];
 
   return (
-    <section className="rounded-2xl bg-white p-5 shadow-sm ring-1 ring-slate-200 sm:p-6">
-      <header className="flex flex-wrap items-center justify-between gap-3 border-b border-slate-200 pb-4">
-        <div>
-          <p className="text-sm text-slate-500">رقم الطلب</p>
-          <h1 className="text-lg font-bold text-slate-900">{orderId}</h1>
+    <section className="rounded-3xl border border-slate-200 bg-white p-5 shadow-sm ring-1 ring-slate-100 sm:p-6">
+      <header className="space-y-3 border-b border-slate-200 pb-4">
+        <div className="flex items-start justify-between gap-3">
+          <div>
+            <p className="text-xs font-semibold text-slate-500">ملخص الطلب</p>
+            <h2 className="mt-1 text-base font-bold text-slate-900">{orderId}</h2>
+          </div>
+          <span className={`rounded-full px-3 py-1 text-xs font-semibold ${statusTag.tone}`}>{statusTag.label}</span>
         </div>
-        <div className="text-left">
-          <p className="text-sm text-slate-500">تاريخ الإنشاء</p>
-          <p className="font-semibold text-slate-800">{formatArabicDate(createdAt)}</p>
-        </div>
-        <span className={`rounded-full px-3 py-1 text-xs font-semibold ${statusTag.tone}`}>{statusTag.label}</span>
+        <p className="text-xs text-slate-500">تاريخ الإنشاء: {formatArabicDate(createdAt)}</p>
       </header>
 
-      <section className="mt-5 space-y-3" aria-label="عناصر الطلب">
-        <h2 className="text-base font-bold text-slate-900">العناصر المختارة</h2>
-        <ul className="space-y-2">
+      <section className="mt-4" aria-label="عناصر الطلب">
+        <h3 className="text-sm font-bold text-slate-900">العناصر</h3>
+        <ul className="mt-3 space-y-2">
           {items.map((item) => (
-            <li key={item.id} className="rounded-xl border border-slate-200 px-4 py-3">
-              <div className="flex flex-wrap items-center justify-between gap-2">
-                <p className="font-semibold text-slate-900">{item.titleSnapshot}</p>
-                <p className="font-bold text-indigo-700">{formatPrice(item.unitPriceCents * item.quantity, currency)}</p>
+            <li key={item.id} className="rounded-xl border border-slate-200 bg-slate-50 px-3 py-2.5">
+              <div className="flex items-start justify-between gap-2">
+                <p className="text-sm font-semibold text-slate-900">{item.titleSnapshot}</p>
+                <p className="text-sm font-bold text-indigo-700">{formatPrice(item.unitPriceCents * item.quantity, currency)}</p>
               </div>
-              <p className="mt-1 text-sm text-slate-600">
+              <p className="mt-1 text-xs text-slate-600">
                 {offerTypeLabel[item.offerType]}
                 {item.offerType === "RENTAL" && item.rentalDays ? ` - لمدة ${item.rentalDays} يوم` : ""}
               </p>
@@ -71,8 +70,8 @@ export function OrderDetailsCard({
         </ul>
       </section>
 
-      <section className="mt-5 rounded-xl bg-slate-50 p-4">
-        <h2 className="text-base font-bold text-slate-900">الإجماليات</h2>
+      <section className="mt-4 rounded-2xl border border-slate-200 bg-slate-50 p-4">
+        <h3 className="text-sm font-bold text-slate-900">الإجمالي</h3>
         <dl className="mt-3 space-y-2 text-sm">
           <div className="flex items-center justify-between gap-2">
             <dt className="text-slate-600">الإجمالي الفرعي</dt>
@@ -85,17 +84,10 @@ export function OrderDetailsCard({
             </div>
           ) : null}
           <div className="flex items-center justify-between gap-2 border-t border-slate-200 pt-2">
-            <dt className="font-bold text-slate-800">الإجمالي الكلي</dt>
-            <dd className="text-base font-bold text-indigo-700">{formatPrice(totalCents, currency)}</dd>
+            <dt className="font-bold text-slate-800">المبلغ المستحق</dt>
+            <dd className="text-lg font-black text-indigo-700">{formatPrice(totalCents, currency)}</dd>
           </div>
         </dl>
-      </section>
-
-      <section className="mt-5 rounded-xl border border-dashed border-indigo-200 bg-indigo-50 p-4">
-        <h2 className="text-base font-bold text-indigo-900">وسيلة الدفع</h2>
-        <p className="mt-1 text-sm text-indigo-800">
-          يمكنك اختيار وسيلة الدفع عند المتابعة إلى صفحة الدفع (مثل Sham Cash وSyriatel Cash) لإتمام الطلب.
-        </p>
       </section>
 
       {showCheckoutAction ? (
