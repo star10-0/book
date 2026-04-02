@@ -27,6 +27,8 @@ type ReaderViewportProps = {
   source: ReaderDocumentSource | null;
   locator: string;
   theme: ReaderTheme;
+  zoomPercent?: number;
+  focusMode?: boolean;
   drawingStrokes?: Stroke[];
   drawingMode?: "navigate" | "draw" | "eraser";
   onLocationChange: (payload: { locator: string; progressPercent: number }) => void;
@@ -40,12 +42,16 @@ function getViewerPalette(theme: ReaderTheme) {
     return {
       wrapper: "bg-slate-900 text-slate-100",
       frame: "border-slate-700",
+      muted: "text-slate-400",
+      prose: "prose-invert",
     };
   }
 
   return {
     wrapper: "bg-white text-slate-900",
     frame: "border-slate-200",
+    muted: "text-slate-500",
+    prose: "",
   };
 }
 
@@ -61,6 +67,8 @@ export function ReaderViewport({
   source,
   locator,
   theme,
+  zoomPercent = 100,
+  focusMode = false,
   drawingStrokes = [],
   drawingMode = "navigate",
   onLocationChange,
@@ -75,6 +83,7 @@ export function ReaderViewport({
   const [epubStatus, setEpubStatus] = useState<"idle" | "loading" | "ready" | "error">("idle");
   const canvasRef = useRef<HTMLCanvasElement | null>(null);
   const currentStrokeRef = useRef<Point[]>([]);
+  const heightClass = focusMode ? "h-[calc(100vh-5.5rem)] min-h-[84vh]" : "h-[calc(100vh-8.5rem)] min-h-[76vh]";
 
   useEffect(() => {
     let isCancelled = false;
@@ -234,14 +243,17 @@ export function ReaderViewport({
     return (
       <div className={`rounded-xl border p-8 text-center ${palette.wrapper} ${palette.frame}`}>
         <p className="text-sm font-semibold">لا يوجد محتوى قابل للقراءة لهذا الكتاب حالياً.</p>
-        <p className="mt-2 text-xs text-slate-500 dark:text-slate-400">تمت إضافة بيانات الكتاب فقط. يجب رفع PDF/EPUB أو حفظ محتوى نصي أولاً.</p>
+        <p className={`mt-2 text-xs ${palette.muted}`}>تمت إضافة بيانات الكتاب فقط. يجب رفع PDF/EPUB أو حفظ محتوى نصي أولاً.</p>
       </div>
     );
   }
 
   if (source.kind === "TEXT") {
     return (
-      <article className={`max-h-[calc(100vh-9.5rem)] min-h-[70vh] overflow-y-auto whitespace-pre-wrap rounded-xl border p-6 leading-8 ${palette.wrapper} ${palette.frame}`}>
+      <article
+        className={`${heightClass} overflow-y-auto whitespace-pre-wrap rounded-xl border p-8 leading-8 ${palette.wrapper} ${palette.frame}`}
+        style={{ fontSize: `${Math.round(zoomPercent)}%` }}
+      >
         {source.textContent}
       </article>
     );
@@ -251,9 +263,7 @@ export function ReaderViewport({
     return (
       <div className={`rounded-xl border p-8 text-center ${palette.wrapper} ${palette.frame}`}>
         <p className="text-sm font-semibold">ملف القراءة غير متاح للعرض الآن.</p>
-        <p className="mt-2 text-xs text-slate-500 dark:text-slate-400">
-          تأكد من ربط publicUrl للملف أو إضافة مزود تخزين يدعم روابط قراءة مباشرة.
-        </p>
+        <p className={`mt-2 text-xs ${palette.muted}`}>تأكد من ربط publicUrl للملف أو إضافة مزود تخزين يدعم روابط قراءة مباشرة.</p>
       </div>
     );
   }
@@ -264,10 +274,10 @@ export function ReaderViewport({
     return (
       <div className={`relative overflow-hidden rounded-xl border ${palette.frame}`}>
         <iframe
-          key={`${source.publicUrl}-${currentPage}-${theme}`}
+          key={`${source.publicUrl}-${currentPage}-${theme}-${zoomPercent}`}
           title="قارئ PDF"
-          src={`${source.publicUrl}#page=${currentPage}&view=FitH&toolbar=0&navpanes=0`}
-          className={`h-[calc(100vh-9.5rem)] min-h-[70vh] w-full ${palette.wrapper}`}
+          src={`${source.publicUrl}#page=${currentPage}&zoom=${zoomPercent}&view=FitH&toolbar=0&navpanes=0`}
+          className={`w-full ${heightClass} ${theme === "dark" ? "bg-slate-900 invert hue-rotate-180" : "bg-white"}`}
         />
         <canvas
           ref={canvasRef}
@@ -319,7 +329,7 @@ export function ReaderViewport({
     return (
       <div className={`rounded-xl border p-8 text-center ${palette.wrapper} ${palette.frame}`}>
         <p className="text-sm font-semibold">تعذّر تحميل EPUB لهذا الكتاب.</p>
-        <p className="mt-2 text-xs text-slate-500 dark:text-slate-400">تحقق من سلامة ملف EPUB والمحاولة مرة أخرى.</p>
+        <p className={`mt-2 text-xs ${palette.muted}`}>تحقق من سلامة ملف EPUB والمحاولة مرة أخرى.</p>
       </div>
     );
   }
@@ -333,14 +343,17 @@ export function ReaderViewport({
   }
 
   return (
-    <article className={`max-h-[calc(100vh-9.5rem)] min-h-[70vh] overflow-y-auto rounded-xl border p-6 leading-8 ${palette.wrapper} ${palette.frame}`}>
-      <header className="mb-4 border-b border-slate-200 pb-3 dark:border-slate-700">
-        <p className="text-xs text-slate-500 dark:text-slate-400">
+    <article
+      className={`${heightClass} overflow-y-auto rounded-xl border p-8 leading-8 ${palette.wrapper} ${palette.frame}`}
+      style={{ fontSize: `${Math.round(zoomPercent)}%` }}
+    >
+      <header className={`mb-4 border-b pb-3 ${palette.frame}`}>
+        <p className={`text-xs ${palette.muted}`}>
           {currentEpubSection.sectionNumber} / {epubSections.length}
         </p>
         <h2 className="text-base font-semibold">{currentEpubSection.data.title}</h2>
       </header>
-      <div className="prose prose-slate max-w-none dark:prose-invert" dangerouslySetInnerHTML={{ __html: currentEpubSection.data.bodyHtml }} />
+      <div className={`prose prose-slate max-w-none ${palette.prose}`} dangerouslySetInnerHTML={{ __html: currentEpubSection.data.bodyHtml }} />
     </article>
   );
 }
