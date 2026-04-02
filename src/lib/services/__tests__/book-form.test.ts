@@ -1,6 +1,6 @@
 import { strict as assert } from "node:assert";
 import test from "node:test";
-import { buildBookOfferWrites, parseContentAccessPolicy, parseMetadata, parseRentalDays } from "@/lib/services/book-form";
+import { buildAccessSettingsFromPolicy, buildBookOfferWrites, parseContentAccessPolicy, parseMetadata, parseRentalDays, resolveContentAccessPolicy } from "@/lib/services/book-form";
 
 test("parseRentalDays accepts range 1..365", () => {
   assert.equal(parseRentalDays("1"), 1);
@@ -40,14 +40,58 @@ test("buildBookOfferWrites preserves purchase and rental semantics", () => {
   assert.equal(rental?.rentalDays, 14);
 });
 
-test("parseContentAccessPolicy prioritizes paid-only then preview then download then read", () => {
+test("parseContentAccessPolicy falls back to paid-only for conflicting/empty inputs", () => {
   assert.equal(
     parseContentAccessPolicy({ paidOnlyMode: "enabled", previewOnly: "enabled", allowDownloading: "enabled", allowReadingOnSite: "enabled" }),
     "PAID_ONLY",
   );
-  assert.equal(parseContentAccessPolicy({ previewOnly: "enabled", allowDownloading: "enabled", allowReadingOnSite: "enabled" }), "PREVIEW_ONLY");
+  assert.equal(parseContentAccessPolicy({ previewOnly: "enabled", allowDownloading: "enabled", allowReadingOnSite: "enabled" }), "PAID_ONLY");
   assert.equal(parseContentAccessPolicy({ allowDownloading: "enabled", allowReadingOnSite: "enabled" }), "PUBLIC_DOWNLOAD");
   assert.equal(parseContentAccessPolicy({ allowReadingOnSite: "enabled" }), "PUBLIC_READ");
   assert.equal(parseContentAccessPolicy({ paidOnlyMode: "disabled" }), "PAID_ONLY");
   assert.equal(parseContentAccessPolicy({}), "PAID_ONLY");
+});
+
+test("resolveContentAccessPolicy accepts valid exclusive modes and normalizes download mode", () => {
+  const paidOnly = resolveContentAccessPolicy(buildAccessSettingsFromPolicy("PAID_ONLY"));
+  assert.equal(paidOnly.ok, true);
+  if (paidOnly.ok) {
+    assert.equal(paidOnly.policy, "PAID_ONLY");
+  }
+
+  const downloadOnlyToggle = resolveContentAccessPolicy({
+    paidOnlyMode: "disabled",
+    previewOnly: "disabled",
+    allowReadingOnSite: "disabled",
+    allowDownloading: "enabled",
+  });
+  assert.equal(downloadOnlyToggle.ok, true);
+  if (downloadOnlyToggle.ok) {
+    assert.equal(downloadOnlyToggle.policy, "PUBLIC_DOWNLOAD");
+    assert.equal(downloadOnlyToggle.values.allowReadingOnSite, "enabled");
+  }
+});
+
+test("resolveContentAccessPolicy rejects empty and conflicting combinations", () => {
+  const noneSelected = resolveContentAccessPolicy({
+    paidOnlyMode: "disabled",
+    previewOnly: "disabled",
+    allowReadingOnSite: "disabled",
+    allowDownloading: "disabled",
+  });
+  assert.equal(noneSelected.ok, false);
+  if (!noneSelected.ok) {
+    assert.equal(noneSelected.reason, "none-selected");
+  }
+
+  const conflict = resolveContentAccessPolicy({
+    paidOnlyMode: "enabled",
+    previewOnly: "enabled",
+    allowReadingOnSite: "disabled",
+    allowDownloading: "disabled",
+  });
+  assert.equal(conflict.ok, false);
+  if (!conflict.ok) {
+    assert.equal(conflict.reason, "conflict");
+  }
 });

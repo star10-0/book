@@ -6,6 +6,7 @@ import { redirect } from "next/navigation";
 import { requireAdmin } from "@/lib/auth-session";
 import { prisma } from "@/lib/prisma";
 import {
+  buildAccessSettingsFromPolicy,
   type SharedBookFormValues,
 } from "@/lib/services/book-form";
 import { validateAdminBookForm } from "@/lib/services/book-form-validation";
@@ -126,7 +127,10 @@ export async function updateBookAction(bookId: string, _prevState: BookFormState
 
   return {
     success: "تم حفظ بيانات الكتاب والعروض بنجاح.",
-    values,
+    values: {
+      ...values,
+      ...buildAccessSettingsFromPolicy(validation.data.contentAccessPolicy),
+    },
   };
 }
 

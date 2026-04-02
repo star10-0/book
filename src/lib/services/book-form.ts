@@ -26,6 +26,19 @@ export type SharedBookFormValues = {
   metadataPublisher?: string;
 };
 
+export type AccessSettingsValues = Pick<SharedBookFormValues, "allowReadingOnSite" | "allowDownloading" | "previewOnly" | "paidOnlyMode">;
+
+export type ContentAccessResolution =
+  | {
+      ok: true;
+      policy: ContentAccessPolicy;
+      values: AccessSettingsValues;
+    }
+  | {
+      ok: false;
+      reason: "none-selected" | "conflict";
+    };
+
 export type ParsedBookOffers = {
   buyEnabled: boolean;
   rentEnabled: boolean;
@@ -75,28 +88,78 @@ export function parseRentalDays(value: string) {
 }
 
 export function parseContentAccessPolicy(values: SharedBookFormValues) {
+  const resolved = resolveContentAccessPolicy(values);
+
+  if (resolved.ok) {
+    return resolved.policy;
+  }
+
+  return ContentAccessPolicy.PAID_ONLY;
+}
+
+export function buildAccessSettingsFromPolicy(policy: ContentAccessPolicy): AccessSettingsValues {
+  if (policy === ContentAccessPolicy.PAID_ONLY) {
+    return {
+      paidOnlyMode: "enabled",
+      previewOnly: "disabled",
+      allowReadingOnSite: "disabled",
+      allowDownloading: "disabled",
+    };
+  }
+
+  if (policy === ContentAccessPolicy.PREVIEW_ONLY) {
+    return {
+      paidOnlyMode: "disabled",
+      previewOnly: "enabled",
+      allowReadingOnSite: "disabled",
+      allowDownloading: "disabled",
+    };
+  }
+
+  if (policy === ContentAccessPolicy.PUBLIC_DOWNLOAD) {
+    return {
+      paidOnlyMode: "disabled",
+      previewOnly: "disabled",
+      allowReadingOnSite: "enabled",
+      allowDownloading: "enabled",
+    };
+  }
+
+  return {
+    paidOnlyMode: "disabled",
+    previewOnly: "disabled",
+    allowReadingOnSite: "enabled",
+    allowDownloading: "disabled",
+  };
+}
+
+export function resolveContentAccessPolicy(values: AccessSettingsValues): ContentAccessResolution {
   const paidOnlyMode = values.paidOnlyMode === "enabled";
   const previewOnly = values.previewOnly === "enabled";
   const allowDownloading = values.allowDownloading === "enabled";
   const allowReadingOnSite = values.allowReadingOnSite === "enabled";
 
-  if (paidOnlyMode) {
-    return ContentAccessPolicy.PAID_ONLY;
+  if (paidOnlyMode && !previewOnly && !allowReadingOnSite && !allowDownloading) {
+    return { ok: true, policy: ContentAccessPolicy.PAID_ONLY, values: buildAccessSettingsFromPolicy(ContentAccessPolicy.PAID_ONLY) };
   }
 
-  if (previewOnly) {
-    return ContentAccessPolicy.PREVIEW_ONLY;
+  if (previewOnly && !paidOnlyMode && !allowReadingOnSite && !allowDownloading) {
+    return { ok: true, policy: ContentAccessPolicy.PREVIEW_ONLY, values: buildAccessSettingsFromPolicy(ContentAccessPolicy.PREVIEW_ONLY) };
   }
 
-  if (allowDownloading) {
-    return ContentAccessPolicy.PUBLIC_DOWNLOAD;
+  if (allowDownloading && !paidOnlyMode && !previewOnly) {
+    return { ok: true, policy: ContentAccessPolicy.PUBLIC_DOWNLOAD, values: buildAccessSettingsFromPolicy(ContentAccessPolicy.PUBLIC_DOWNLOAD) };
   }
 
-  if (allowReadingOnSite) {
-    return ContentAccessPolicy.PUBLIC_READ;
+  if (allowReadingOnSite && !paidOnlyMode && !previewOnly && !allowDownloading) {
+    return { ok: true, policy: ContentAccessPolicy.PUBLIC_READ, values: buildAccessSettingsFromPolicy(ContentAccessPolicy.PUBLIC_READ) };
   }
 
-  return ContentAccessPolicy.PAID_ONLY;
+  if (!paidOnlyMode && !previewOnly && !allowReadingOnSite && !allowDownloading) {
+    return { ok: false, reason: "none-selected" };
+  }
+
+  return { ok: false, reason: "conflict" };
 }
 
 export function parseMetadata(values: SharedBookFormValues): ServiceResult<Prisma.InputJsonObject | null, MetadataParseError> {
@@ -202,13 +265,7 @@ export function buildBookInitialValues(input: {
     publicationStatus: input.status.toLowerCase(),
     buyOfferEnabled: purchaseOffer?.isActive ? "enabled" : "disabled",
     rentOfferEnabled: rentalOffer?.isActive ? "enabled" : "disabled",
-    allowReadingOnSite:
-      input.contentAccessPolicy === ContentAccessPolicy.PUBLIC_READ || input.contentAccessPolicy === ContentAccessPolicy.PUBLIC_DOWNLOAD
-        ? "enabled"
-        : "disabled",
-    allowDownloading: input.contentAccessPolicy === ContentAccessPolicy.PUBLIC_DOWNLOAD ? "enabled" : "disabled",
-    previewOnly: input.contentAccessPolicy === ContentAccessPolicy.PREVIEW_ONLY ? "enabled" : "disabled",
-    paidOnlyMode: input.contentAccessPolicy === ContentAccessPolicy.PAID_ONLY ? "enabled" : "disabled",
+    ...buildAccessSettingsFromPolicy(input.contentAccessPolicy),
     description: input.descriptionAr ?? "",
     metadata: input.metadata ? JSON.stringify(input.metadata, null, 2) : "",
     metadataLanguage: typeof metadata?.language === "string" ? metadata.language : "",
