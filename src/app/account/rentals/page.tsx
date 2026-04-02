@@ -37,10 +37,6 @@ export default async function AccountRentalsPage() {
   return (
     <main>
       <section className="space-y-5">
-        <header className="space-y-2">
-          <h1 className="text-2xl font-bold text-slate-900">إعاراتي</h1>
-        </header>
-
         {rentals.length === 0 ? (
           <p className="rounded-xl border border-dashed border-slate-300 bg-white px-4 py-5 text-sm text-slate-600">
             لا توجد إعارات بعد. يمكنك استئجار كتاب من صفحة الكتب.

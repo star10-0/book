@@ -313,14 +313,6 @@ export default async function BooksPage({
   return (
     <main>
       <div className="space-y-5 sm:space-y-6">
-        <section className="rounded-2xl border border-slate-200/90 bg-white p-4 shadow-sm sm:p-5">
-          <div className="flex flex-wrap items-center justify-between gap-3">
-            <div className="space-y-1">
-              <h1 className="text-xl font-black text-slate-900 sm:text-2xl">اكتشف كتابك القادم بسهولة</h1>
-            </div>
-            <span className="store-chip bg-indigo-50 text-indigo-700">{sortedBooks.length} نتيجة</span>
-          </div>
-        </section>
 
         {highlightedResult ? (
           <SearchHighlightResult
