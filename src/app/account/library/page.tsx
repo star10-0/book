@@ -55,8 +55,6 @@ export default async function AccountLibraryPage() {
     <main>
       <section className="space-y-6">
         <header className="space-y-2">
-          <h1 className="text-2xl font-bold text-slate-900">مكتبتي</h1>
-          <p className="text-sm text-slate-600">الكتب المملوكة والكتب المستأجرة حالياً لحسابك.</p>
         </header>
 
         <div className="grid gap-4 lg:grid-cols-2">

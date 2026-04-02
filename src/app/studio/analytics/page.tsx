@@ -37,8 +37,7 @@ export default async function StudioAnalyticsPage() {
     <section className="space-y-4 rounded-2xl border border-slate-200 bg-white p-5 shadow-sm" dir="rtl">
       <div>
         <h2 className="text-lg font-bold text-slate-900">تحليلات الكاتب</h2>
-        <p className="mt-1 text-sm text-slate-600">عرض سريع لإيرادات الشراء والإيجار اعتمادًا على الطلبات المدفوعة.</p>
-      </div>
+              </div>
 
       <div className="grid gap-3 sm:grid-cols-3">
         <article className="rounded-xl border border-slate-200 bg-slate-50 p-3 text-sm">

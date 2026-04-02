@@ -38,12 +38,12 @@ export default async function AccountRentalsPage() {
     <main>
       <section className="space-y-5">
         <header className="space-y-2">
-          <h1 className="text-2xl font-bold text-slate-900">إعاراتي</h1>
+          <h1 className="text-2xl font-bold text-slate-900">ط·آ¥ط·آ¹ط·آ§ط·آ±ط·آ§ط·ع¾ط¸ظ¹</h1>
         </header>
 
         {rentals.length === 0 ? (
           <p className="rounded-xl border border-dashed border-slate-300 bg-white px-4 py-5 text-sm text-slate-600">
-            لا توجد إعارات بعد. يمكنك استئجار كتاب من صفحة الكتب.
+            ط¸â€‍ط·آ§ ط·ع¾ط¸ث†ط·آ¬ط·آ¯ ط·آ¥ط·آ¹ط·آ§ط·آ±ط·آ§ط·ع¾ ط·آ¨ط·آ¹ط·آ¯. ط¸ظ¹ط¸â€¦ط¸ئ’ط¸â€ ط¸ئ’ ط·آ§ط·آ³ط·ع¾ط·آ¦ط·آ¬ط·آ§ط·آ± ط¸ئ’ط·ع¾ط·آ§ط·آ¨ ط¸â€¦ط¸â€  ط·آµط¸ظ¾ط·آ­ط·آ© ط·آ§ط¸â€‍ط¸ئ’ط·ع¾ط·آ¨.
           </p>
         ) : (
           <ul className="grid gap-4 sm:grid-cols-2">
@@ -60,20 +60,20 @@ export default async function AccountRentalsPage() {
                         isActive ? "bg-emerald-100 text-emerald-800" : "bg-slate-200 text-slate-700"
                       }`}
                     >
-                      {isActive ? "نشطة" : "منتهية"}
+                      {isActive ? "ط¸â€ ط·آ´ط·آ·ط·آ©" : "ط¸â€¦ط¸â€ ط·ع¾ط¸â€،ط¸ظ¹ط·آ©"}
                     </span>
                   </div>
 
-                  <p className="mt-2 text-sm text-slate-600">بدأت في {formatArabicDate(rental.startsAt, { timeStyle: "short" })}</p>
+                  <p className="mt-2 text-sm text-slate-600">ط·آ¨ط·آ¯ط·آ£ط·ع¾ ط¸ظ¾ط¸ظ¹ {formatArabicDate(rental.startsAt, { timeStyle: "short" })}</p>
                   <p className="mt-1 text-sm font-semibold text-amber-700">
-                    تاريخ الانتهاء: {rental.expiresAt ? formatArabicDate(rental.expiresAt, { timeStyle: "short" }) : "غير محدد"}
+                    ط·ع¾ط·آ§ط·آ±ط¸ظ¹ط·آ® ط·آ§ط¸â€‍ط·آ§ط¸â€ ط·ع¾ط¸â€،ط·آ§ط·طŒ: {rental.expiresAt ? formatArabicDate(rental.expiresAt, { timeStyle: "short" }) : "ط·ط›ط¸ظ¹ط·آ± ط¸â€¦ط·آ­ط·آ¯ط·آ¯"}
                   </p>
                   {remainingDays !== null ? (
-                    <p className="mt-1 text-xs text-slate-500">المدة المتبقية: {remainingDays} يوم</p>
+                    <p className="mt-1 text-xs text-slate-500">ط·آ§ط¸â€‍ط¸â€¦ط·آ¯ط·آ© ط·آ§ط¸â€‍ط¸â€¦ط·ع¾ط·آ¨ط¸â€ڑط¸ظ¹ط·آ©: {remainingDays} ط¸ظ¹ط¸ث†ط¸â€¦</p>
                   ) : null}
 
                   <Link href={`/books/${rental.book.slug}`} className="mt-4 inline-flex text-sm font-semibold text-indigo-700 hover:text-indigo-600">
-                    فتح صفحة الكتاب
+                    ط¸ظ¾ط·ع¾ط·آ­ ط·آµط¸ظ¾ط·آ­ط·آ© ط·آ§ط¸â€‍ط¸ئ’ط·ع¾ط·آ§ط·آ¨
                   </Link>
                 </li>
               );
