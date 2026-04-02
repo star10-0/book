@@ -98,40 +98,34 @@ export function FeaturedBooksSection({ books }: { books: FeaturedBookItem[] }) {
           {books.map((book, index) => (
             <article key={book.id} className="group flex h-full flex-col overflow-hidden rounded-2xl border border-slate-200 bg-white shadow-sm transition hover:-translate-y-0.5 hover:shadow-md">
               <div className="relative">
-                <CoverImage src={book.coverImageUrl} alt={`غلاف كتاب ${book.title}`} width={600} height={900} className="h-64 w-full object-cover transition duration-300 group-hover:scale-[1.02]" />
-                <div className="pointer-events-none absolute inset-x-0 bottom-0 h-16 bg-gradient-to-t from-slate-950/30 to-transparent" />
+                <CoverImage
+                  src={book.coverImageUrl}
+                  alt={`غلاف كتاب ${book.title}`}
+                  width={600}
+                  height={900}
+                  className="h-72 w-full object-contain bg-slate-100 transition duration-300 group-hover:scale-[1.02]"
+                />
+                <div className="pointer-events-none absolute inset-x-0 bottom-0 h-20 bg-gradient-to-t from-slate-950/80 via-slate-950/45 to-transparent" />
                 <div className="absolute inset-x-3 top-3 flex items-center justify-between gap-2 text-[11px]">
                   <span className="rounded-full bg-white/95 px-2.5 py-1 font-semibold text-amber-800 ring-1 ring-amber-200">الأكثر تميزًا</span>
                   <span className="rounded-full bg-slate-900/85 px-2.5 py-1 font-bold text-white">#{index + 1}</span>
                 </div>
+                <div className="absolute inset-x-3 bottom-3 min-w-0 text-white">
+                  <h3 className="line-clamp-2 text-sm font-extrabold leading-5 drop-shadow-sm">{book.title}</h3>
+                  <p className="line-clamp-1 mt-1 text-[11px] font-medium text-slate-100/95">{book.author}</p>
+                </div>
               </div>
 
-              <div className="flex h-full flex-col gap-3 p-4">
-                <div className="space-y-1.5">
-                  <h3 className="line-clamp-2 min-h-12 text-base font-extrabold text-slate-900">{book.title}</h3>
-                  <p className="line-clamp-1 text-xs font-medium text-slate-600">{book.author}</p>
-                  <div className="flex items-center justify-between gap-2 text-[11px]">
-                    <span className="inline-flex rounded-full bg-slate-100 px-2.5 py-1 font-semibold text-slate-700">{book.category}</span>
-                    <span className="font-semibold text-amber-600">
-                      {book.averageRating > 0 ? `★ ${book.averageRating.toFixed(1)} (${book.reviewsCount})` : "بدون تقييم"}
-                    </span>
-                  </div>
+              <div className="p-3">
+                <div className="grid gap-2 sm:grid-cols-2">
+                  <AddToCartAction bookId={book.id} bookSlug={book.slug} offers={book.offers} isLoggedIn={book.isLoggedIn} />
+                  <Link href={`/books/${book.slug}`} className="store-btn-secondary h-10 w-full px-3 text-xs">
+                    عرض التفاصيل
+                  </Link>
                 </div>
-
-                <div className="rounded-xl border border-indigo-100 bg-gradient-to-l from-indigo-50 to-white px-3 py-2.5">
-                  <OfferPricingSummary offers={book.offers} compact />
-                </div>
-
-                {book.publisher ? <p className="line-clamp-1 text-[11px] text-slate-500">الناشر: {book.publisher}</p> : null}
-
-                <div className="mt-auto pt-1">
-                  <div className="grid gap-2 sm:grid-cols-2">
-                    <AddToCartAction bookId={book.id} bookSlug={book.slug} offers={book.offers} isLoggedIn={book.isLoggedIn} />
-                    <Link href={`/books/${book.slug}`} className="store-btn-secondary h-10 w-full px-3 text-xs">
-                      عرض التفاصيل
-                    </Link>
-                  </div>
-                </div>
+                <p className="mt-2 line-clamp-1 text-[11px] font-semibold text-slate-500">
+                  {book.averageRating > 0 ? `★ ${book.averageRating.toFixed(1)} (${book.reviewsCount})` : "بدون تقييم"}
+                </p>
               </div>
             </article>
           ))}
