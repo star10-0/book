@@ -146,6 +146,7 @@ model User {
   promoRedemptions  PromoRedemption[]
   creatorPromoCodes PromoCode[]       @relation("PromoCodeCreator")
   createdPromoCodes PromoCode[]       @relation("PromoCodeCreatedBy")
+  curriculumLevelBookLinks CurriculumLevelBook[] @relation("CurriculumLevelBookAddedByAdmin")
   createdAt         DateTime          @default(now())
   updatedAt         DateTime          @updatedAt
 
@@ -231,6 +232,7 @@ model Book {
   readerAnnotations   ReaderAnnotation[]
   wishlistItems       WishlistItem[]
   reviews             BookReview[]
+  curriculumLevelLinks CurriculumLevelBook[]
   createdAt           DateTime            @default(now())
   updatedAt           DateTime            @updatedAt
 
@@ -239,6 +241,41 @@ model Book {
   @@index([authorId])
   @@index([categoryId])
   @@index([creatorId])
+}
+
+model CurriculumLevel {
+  id          String                @id @default(cuid())
+  slug        String                @unique
+  nameAr      String
+  nameEn      String?
+  description String?
+  sortOrder   Int                   @default(0)
+  isActive    Boolean               @default(true)
+  books       CurriculumLevelBook[]
+  createdAt   DateTime              @default(now())
+  updatedAt   DateTime              @updatedAt
+
+  @@index([isActive, sortOrder])
+  @@index([sortOrder])
+}
+
+model CurriculumLevelBook {
+  id                String          @id @default(cuid())
+  curriculumLevelId String
+  bookId            String
+  sortOrder         Int             @default(0)
+  addedByAdminId    String
+  curriculumLevel   CurriculumLevel @relation(fields: [curriculumLevelId], references: [id], onDelete: Cascade)
+  book              Book            @relation(fields: [bookId], references: [id], onDelete: Cascade)
+  addedByAdmin      User            @relation("CurriculumLevelBookAddedByAdmin", fields: [addedByAdminId], references: [id], onDelete: Restrict)
+  createdAt         DateTime        @default(now())
+  updatedAt         DateTime        @updatedAt
+
+  @@unique([curriculumLevelId, bookId])
+  @@index([curriculumLevelId, sortOrder])
+  @@index([bookId])
+  @@index([addedByAdminId])
+  @@index([sortOrder])
 }
 
 model BookFile {
