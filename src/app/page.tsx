@@ -131,7 +131,7 @@ export default async function HomePage() {
 
   return (
     <main className="bg-gradient-to-b from-slate-100 via-slate-50 to-white">
-      <div className="space-y-4 pb-8 sm:space-y-5">
+      <div className="space-y-3 pb-8 sm:space-y-4">
         <HomeDiscoveryHero
           billboard={fallbackBillboard}
           categories={discoveryCategories
