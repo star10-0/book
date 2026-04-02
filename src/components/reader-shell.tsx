@@ -71,6 +71,7 @@ export function ReaderShell({ accessId, bookTitle, initialProgressPercent, initi
   const [isAnnotationSaving, setIsAnnotationSaving] = useState(false);
   const [zoomPercent, setZoomPercent] = useState(100);
   const [isFocusMode, setIsFocusMode] = useState(false);
+  const [drawingOverride, setDrawingOverride] = useState<Stroke[] | null>(null);
   const readerRootRef = useRef<HTMLElement | null>(null);
   const lastSavedRef = useRef<string>(`${normalizeProgress(initialProgressPercent)}|${initialLocator ?? "page:1"}`);
 
@@ -92,6 +93,7 @@ export function ReaderShell({ accessId, bookTitle, initialProgressPercent, initi
 
     return strokes;
   }, [annotations, locator]);
+  const visibleDrawing = drawingOverride ?? currentDrawing;
 
   const resolveProgressFromLocator = useCallback(
     (nextLocator: string) => {
@@ -296,37 +298,49 @@ export function ReaderShell({ accessId, bookTitle, initialProgressPercent, initi
 
   const persistDrawingForLocator = useCallback(
     async (nextStrokes: Stroke[]) => {
-      await createAnnotation("DRAWING", locator, {
+      const didSave = await createAnnotation("DRAWING", locator, {
         strokes: nextStrokes,
       });
+      if (!didSave) {
+        setDrawingOverride(currentDrawing);
+        return;
+      }
+
+      setDrawingOverride(null);
     },
-    [createAnnotation, locator],
+    [createAnnotation, currentDrawing, locator],
   );
 
   const handleAddStroke = useCallback(
     (stroke: Stroke) => {
-      const nextStrokes = [...currentDrawing, stroke];
+      const baseStrokes = drawingOverride ?? currentDrawing;
+      const nextStrokes = [...baseStrokes, stroke];
+      setDrawingOverride(nextStrokes);
       void persistDrawingForLocator(nextStrokes);
     },
-    [currentDrawing, persistDrawingForLocator],
+    [currentDrawing, drawingOverride, persistDrawingForLocator],
   );
 
   const handleEraseLastStroke = useCallback(() => {
-    if (!currentDrawing.length) {
+    const baseStrokes = drawingOverride ?? currentDrawing;
+    if (!baseStrokes.length) {
       return;
     }
 
-    const nextStrokes = currentDrawing.slice(0, -1);
+    const nextStrokes = baseStrokes.slice(0, -1);
+    setDrawingOverride(nextStrokes);
     void persistDrawingForLocator(nextStrokes);
-  }, [currentDrawing, persistDrawingForLocator]);
+  }, [currentDrawing, drawingOverride, persistDrawingForLocator]);
 
   const handleClearCurrentDrawing = useCallback(() => {
-    if (!currentDrawing.length) {
+    const baseStrokes = drawingOverride ?? currentDrawing;
+    if (!baseStrokes.length) {
       return;
     }
 
+    setDrawingOverride([]);
     void persistDrawingForLocator([]);
-  }, [currentDrawing.length, persistDrawingForLocator]);
+  }, [currentDrawing, drawingOverride, persistDrawingForLocator]);
 
   const jumpToLocator = useCallback(
     (nextLocator: string) => {
@@ -368,6 +382,10 @@ export function ReaderShell({ accessId, bookTitle, initialProgressPercent, initi
   const addBookmarkAtCurrentLocator = useCallback(async () => {
     await createAnnotation("BOOKMARK", locator, { label: `مرجع عند ${locator}` });
   }, [createAnnotation, locator]);
+
+  useEffect(() => {
+    setDrawingOverride(null);
+  }, [currentDrawing, locator]);
 
   const toggleFocusMode = useCallback(async () => {
     if (document.fullscreenElement) {
@@ -674,6 +692,65 @@ export function ReaderShell({ accessId, bookTitle, initialProgressPercent, initi
         >
           التالية
         </button>
+        <button
+          type="button"
+          onClick={() => {
+            setActivePanel("contents");
+            setIsPanelOpen(true);
+          }}
+          className={`rounded-md px-2 py-1 font-semibold ${
+            theme === "dark" ? "bg-slate-800 text-slate-100 hover:bg-slate-700" : "bg-slate-100 text-slate-700 hover:bg-slate-200"
+          }`}
+        >
+          المراجع
+        </button>
+        <button
+          type="button"
+          onClick={() => {
+            setActivePanel("compose");
+            setIsPanelOpen(true);
+          }}
+          className={`rounded-md px-2 py-1 font-semibold ${
+            theme === "dark" ? "bg-slate-800 text-slate-100 hover:bg-slate-700" : "bg-slate-100 text-slate-700 hover:bg-slate-200"
+          }`}
+        >
+          ملاحظة
+        </button>
+        <button
+          type="button"
+          onClick={() => void addBookmarkAtCurrentLocator()}
+          className="rounded-md bg-amber-100 px-2 py-1 font-semibold text-amber-900 hover:bg-amber-200"
+        >
+          مرجع
+        </button>
+        {isPdf ? (
+          <>
+            <button
+              type="button"
+              onClick={() => setAnnotationMode("navigate")}
+              className={`rounded-md px-2 py-1 font-semibold ${annotationMode === "navigate" ? "bg-emerald-600 text-white" : theme === "dark" ? "bg-slate-800 text-slate-200 hover:bg-slate-700" : "bg-slate-100 text-slate-700 hover:bg-slate-200"}`}
+            >
+              قراءة
+            </button>
+            <button
+              type="button"
+              onClick={() => setAnnotationMode("draw")}
+              className={`rounded-md px-2 py-1 font-semibold ${annotationMode === "draw" ? "bg-indigo-600 text-white" : theme === "dark" ? "bg-slate-800 text-slate-200 hover:bg-slate-700" : "bg-slate-100 text-slate-700 hover:bg-slate-200"}`}
+            >
+              رسم
+            </button>
+            <button
+              type="button"
+              onClick={() => setAnnotationMode("eraser")}
+              className={`rounded-md px-2 py-1 font-semibold ${annotationMode === "eraser" ? "bg-rose-600 text-white" : theme === "dark" ? "bg-slate-800 text-slate-200 hover:bg-slate-700" : "bg-slate-100 text-slate-700 hover:bg-slate-200"}`}
+            >
+              محو
+            </button>
+            <button type="button" onClick={handleClearCurrentDrawing} className="rounded-md bg-rose-50 px-2 py-1 font-semibold text-rose-700 hover:bg-rose-100">
+              مسح
+            </button>
+          </>
+        ) : null}
 
         <div className={`inline-flex items-center rounded-md border p-0.5 ${theme === "dark" ? "border-slate-600" : "border-slate-300"}`} role="radiogroup" aria-label="مظهر القارئ">
           <button
@@ -728,96 +805,16 @@ export function ReaderShell({ accessId, bookTitle, initialProgressPercent, initi
           {isFocusMode ? "إنهاء وضع التركيز" : "وضع التركيز"}
         </button>
 
-        <button
-          type="button"
-          onClick={() => {
-            setActivePanel("contents");
-            setIsPanelOpen(true);
-          }}
-          className={`rounded-md px-2 py-1 font-semibold lg:hidden ${
-            theme === "dark" ? "bg-slate-800 text-slate-100" : "bg-slate-100 text-slate-700"
-          }`}
-        >
-          المراجع والملاحظات
-        </button>
       </header>
 
-      <div className={`grid gap-2 ${isFocusMode ? "lg:grid-cols-[minmax(0,1fr)_320px]" : "lg:grid-cols-[52px_minmax(0,1fr)_320px]"}`}>
-        {!isFocusMode ? (
-          <nav
-            className={`hidden h-[calc(100vh-7rem)] rounded-xl border p-2 lg:flex lg:flex-col lg:items-center lg:gap-2 ${
-              theme === "dark" ? "border-slate-700 bg-slate-900" : "border-slate-200 bg-white"
-            }`}
-          >
-            <button
-              type="button"
-              onClick={() => {
-                setActivePanel("contents");
-                setIsPanelOpen(true);
-              }}
-              className={`w-full rounded-lg px-2 py-2 text-[11px] font-semibold ${
-                theme === "dark" ? "bg-slate-800 text-slate-200" : "bg-slate-100 text-slate-700"
-              }`}
-            >
-              المراجع
-            </button>
-            <button
-              type="button"
-              onClick={() => {
-                setActivePanel("compose");
-                setIsPanelOpen(true);
-              }}
-              className={`w-full rounded-lg px-2 py-2 text-[11px] font-semibold ${
-                theme === "dark" ? "bg-slate-800 text-slate-200" : "bg-slate-100 text-slate-700"
-              }`}
-            >
-              ملاحظة
-            </button>
-            <button
-              type="button"
-              onClick={() => void addBookmarkAtCurrentLocator()}
-              className="w-full rounded-lg bg-amber-100 px-2 py-2 text-[11px] font-semibold text-amber-900"
-            >
-              مرجع
-            </button>
-            {isPdf ? (
-              <>
-                <button
-                  type="button"
-                  onClick={() => setAnnotationMode("navigate")}
-                  className={`w-full rounded-lg px-2 py-2 text-[11px] font-semibold ${annotationMode === "navigate" ? "bg-emerald-600 text-white" : theme === "dark" ? "bg-slate-800 text-slate-200" : "bg-slate-100 text-slate-700"}`}
-                >
-                  قراءة
-                </button>
-                <button
-                  type="button"
-                  onClick={() => setAnnotationMode("draw")}
-                  className={`w-full rounded-lg px-2 py-2 text-[11px] font-semibold ${annotationMode === "draw" ? "bg-indigo-600 text-white" : theme === "dark" ? "bg-slate-800 text-slate-200" : "bg-slate-100 text-slate-700"}`}
-                >
-                  رسم
-                </button>
-                <button
-                  type="button"
-                  onClick={() => setAnnotationMode("eraser")}
-                  className={`w-full rounded-lg px-2 py-2 text-[11px] font-semibold ${annotationMode === "eraser" ? "bg-rose-600 text-white" : theme === "dark" ? "bg-slate-800 text-slate-200" : "bg-slate-100 text-slate-700"}`}
-                >
-                  محو
-                </button>
-                <button type="button" onClick={handleClearCurrentDrawing} className="w-full rounded-lg bg-rose-50 px-2 py-2 text-[11px] font-semibold text-rose-700">
-                  مسح
-                </button>
-              </>
-            ) : null}
-          </nav>
-        ) : null}
-
+      <div className={`grid gap-2 ${isFocusMode ? "lg:grid-cols-[minmax(0,1fr)_320px]" : "lg:grid-cols-[minmax(0,1fr)_320px]"}`}>
         <div className={`min-w-0 overflow-hidden rounded-xl border ${theme === "dark" ? "border-slate-700 bg-slate-900" : "border-slate-200 bg-white"}`}>
           <ReaderViewport
             source={source}
             locator={locator}
             theme={theme}
             drawingMode={isPdf ? annotationMode : "navigate"}
-            drawingStrokes={currentDrawing}
+            drawingStrokes={visibleDrawing}
             zoomPercent={zoomPercent}
             focusMode={isFocusMode}
             onLocationChange={handleLocationChange}
@@ -829,35 +826,6 @@ export function ReaderShell({ accessId, bookTitle, initialProgressPercent, initi
 
         <div className={`hidden h-[calc(100vh-7rem)] lg:block ${isFocusMode ? "max-h-[calc(100vh-5rem)]" : ""}`}>{panel}</div>
       </div>
-
-      {isPdf ? (
-        <div className="mt-2 flex flex-wrap gap-2 lg:hidden">
-          <button
-            type="button"
-            onClick={() => setAnnotationMode("navigate")}
-            className={`rounded-md px-2 py-1 text-xs font-semibold ${annotationMode === "navigate" ? "bg-emerald-600 text-white" : theme === "dark" ? "bg-slate-800 text-slate-200" : "bg-slate-100 text-slate-700"}`}
-          >
-            قراءة
-          </button>
-          <button
-            type="button"
-            onClick={() => setAnnotationMode("draw")}
-            className={`rounded-md px-2 py-1 text-xs font-semibold ${annotationMode === "draw" ? "bg-indigo-600 text-white" : theme === "dark" ? "bg-slate-800 text-slate-200" : "bg-slate-100 text-slate-700"}`}
-          >
-            رسم
-          </button>
-          <button
-            type="button"
-            onClick={() => setAnnotationMode("eraser")}
-            className={`rounded-md px-2 py-1 text-xs font-semibold ${annotationMode === "eraser" ? "bg-rose-600 text-white" : theme === "dark" ? "bg-slate-800 text-slate-200" : "bg-slate-100 text-slate-700"}`}
-          >
-            محو
-          </button>
-          <button type="button" onClick={handleClearCurrentDrawing} className="rounded-md bg-rose-50 px-2 py-1 text-xs font-semibold text-rose-700">
-            مسح طبقة الصفحة
-          </button>
-        </div>
-      ) : null}
 
       {annotationMessage ? <p className="mt-2 text-xs text-indigo-600">{annotationMessage}</p> : null}
       {isSaving ? <p className={`mt-1 text-xs ${theme === "dark" ? "text-slate-400" : "text-slate-500"}`}>جارٍ حفظ التقدم...</p> : null}
