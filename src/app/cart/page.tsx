@@ -1,8 +1,10 @@
 import Link from "next/link";
+import { cookies } from "next/headers";
 import { SiteFooter } from "@/components/site-footer";
 import { getCurrentUser } from "@/lib/auth-session";
-import { getStoreLocale } from "@/lib/locale";
+import { CART_COOKIE_NAME, parseCartCookie } from "@/lib/cart";
 import { formatArabicCurrency } from "@/lib/formatters/intl";
+import { getStoreLocale } from "@/lib/locale";
 import { isOfferCurrentlyAvailable } from "@/lib/orders/create-order";
 import { prisma } from "@/lib/prisma";
 
@@ -16,14 +18,18 @@ export default async function CartPage({ searchParams }: CartPageProps) {
   const offerId = params.offerId?.trim();
   const returnTo = params.returnTo?.trim();
 
-  const [user, locale, selectedOffer] = await Promise.all([
+  const cookieStore = await cookies();
+  const cartItems = parseCartCookie(cookieStore.get(CART_COOKIE_NAME)?.value);
+  const selectedFromQuery = bookId && offerId ? [{ bookId, offerId, quantity: 1 }] : [];
+  const itemsToLoad = [...cartItems, ...selectedFromQuery];
+
+  const [user, locale, offers] = await Promise.all([
     getCurrentUser(),
     getStoreLocale(),
-    bookId && offerId
-      ? prisma.bookOffer.findFirst({
+    itemsToLoad.length
+      ? prisma.bookOffer.findMany({
           where: {
-            id: offerId,
-            bookId,
+            id: { in: itemsToLoad.map((item) => item.offerId) },
           },
           include: {
             book: {
@@ -39,45 +45,66 @@ export default async function CartPage({ searchParams }: CartPageProps) {
             },
           },
         })
-      : Promise.resolve(null),
+      : Promise.resolve([]),
   ]);
 
-  const isOfferAvailable = selectedOffer ? isOfferCurrentlyAvailable(selectedOffer, new Date()) : false;
-  const checkoutHref = selectedOffer && isOfferAvailable ? `/checkout?bookId=${selectedOffer.book.id}&offerId=${selectedOffer.id}` : null;
+  const offerById = new Map(offers.map((offer) => [offer.id, offer]));
+  const cartEntries = itemsToLoad
+    .map((item) => {
+      const selectedOffer = offerById.get(item.offerId);
+
+      if (!selectedOffer || selectedOffer.book.id !== item.bookId) {
+        return null;
+      }
+
+      const isOfferAvailable = isOfferCurrentlyAvailable(selectedOffer, new Date());
+
+      return {
+        quantity: item.quantity,
+        selectedOffer,
+        isOfferAvailable,
+        checkoutHref: isOfferAvailable ? `/checkout?bookId=${selectedOffer.book.id}&offerId=${selectedOffer.id}` : null,
+      };
+    })
+    .filter((entry) => entry !== null);
+
   const normalizedReturnTo = returnTo?.startsWith("/") ? returnTo : "/books";
 
   const copy =
     locale === "en"
       ? {
           title: "Cart",
-          description: "Select an offer from any book page, then continue to checkout from that book.",
+          description: "Review your selected items and continue to checkout.",
           browse: "Browse books",
           orders: "My orders",
           signIn: "Sign in",
           signInNote: "You need an account to create orders and complete checkout.",
-          selectedTitle: "Selected item",
+          selectedTitle: "Selected items",
           selectedMeta: "Offer type",
           continueCheckout: "Continue to checkout",
           unavailable: "This offer is no longer available. Please select a different book offer.",
           backToBook: "Back to book",
+          quantity: "Quantity",
+          empty: "Your cart is currently empty.",
         }
       : {
           title: "السلة",
-          description: "اختر عرض شراء أو استئجار من صفحة أي كتاب، ثم أكمل إنشاء الطلب من نفس الصفحة.",
+          description: "راجع العناصر المحددة ثم أكمل إنشاء الطلب من هنا عندما تكون جاهزًا.",
           browse: "تصفح الكتب",
           orders: "طلباتي",
           signIn: "تسجيل الدخول",
           signInNote: "تحتاج إلى تسجيل الدخول لإنشاء الطلبات وإكمال الدفع.",
-          selectedTitle: "العنصر المحدد",
+          selectedTitle: "العناصر المحددة",
           selectedMeta: "نوع العرض",
           continueCheckout: "متابعة الإتمام",
           unavailable: "هذا العرض لم يعد متاحًا. اختر عرضًا آخر من صفحة الكتاب.",
           backToBook: "العودة إلى الكتاب",
+          quantity: "الكمية",
+          empty: "السلة فارغة حاليًا.",
         };
 
   return (
     <main>
-
       <section className="store-surface mx-auto max-w-2xl">
         <h1 className="text-2xl font-bold text-slate-900">{copy.title}</h1>
         <p className="mt-2 text-sm text-slate-600 sm:text-base">{copy.description}</p>
@@ -101,57 +128,76 @@ export default async function CartPage({ searchParams }: CartPageProps) {
           )}
         </div>
 
-        {selectedOffer ? (
-          <section className="mt-6 rounded-2xl border border-slate-200 bg-slate-50 p-4">
+        {cartEntries.length > 0 ? (
+          <section className="mt-6 space-y-3 rounded-2xl border border-slate-200 bg-slate-50 p-4">
             <h2 className="text-base font-bold text-slate-900">{copy.selectedTitle}</h2>
-            <p className="mt-2 text-sm font-semibold text-slate-800">{selectedOffer.book.titleAr}</p>
-            <p className="mt-1 text-xs text-slate-600">
-              {selectedOffer.book.author.nameAr} · {selectedOffer.book.category.nameAr}
-            </p>
-            <dl className="mt-3 space-y-1 text-sm">
-              <div className="flex items-center justify-between gap-2">
-                <dt className="text-slate-600">{copy.selectedMeta}</dt>
-                <dd className="font-semibold text-slate-900">
-                  {selectedOffer.type === "PURCHASE"
-                    ? locale === "en"
-                      ? "Digital purchase"
-                      : "شراء رقمي"
-                    : locale === "en"
-                      ? `Digital rental${selectedOffer.rentalDays ? ` (${selectedOffer.rentalDays} days)` : ""}`
-                      : `استئجار رقمي${selectedOffer.rentalDays ? ` (${selectedOffer.rentalDays} يوم)` : ""}`}
-                </dd>
-              </div>
-              <div className="flex items-center justify-between gap-2">
-                <dt className="text-slate-600">{locale === "en" ? "Price" : "السعر"}</dt>
-                <dd className="font-bold text-indigo-700">{formatArabicCurrency(selectedOffer.priceCents / 100, { currency: selectedOffer.currency })}</dd>
-              </div>
-            </dl>
+            {cartEntries.map((entry) => (
+              <article key={`${entry.selectedOffer.id}-${entry.selectedOffer.book.id}`} className="rounded-xl border border-slate-200 bg-white p-4">
+                <p className="text-sm font-semibold text-slate-800">{entry.selectedOffer.book.titleAr}</p>
+                <p className="mt-1 text-xs text-slate-600">
+                  {entry.selectedOffer.book.author.nameAr} · {entry.selectedOffer.book.category.nameAr}
+                </p>
 
-            <div className="mt-4 flex flex-wrap gap-2.5">
-              {checkoutHref ? (
-                user ? (
-                  <Link href={checkoutHref} className="store-btn-primary">
-                    {copy.continueCheckout}
+                <dl className="mt-3 space-y-1 text-sm">
+                  <div className="flex items-center justify-between gap-2">
+                    <dt className="text-slate-600">{copy.selectedMeta}</dt>
+                    <dd className="font-semibold text-slate-900">
+                      {entry.selectedOffer.type === "PURCHASE"
+                        ? locale === "en"
+                          ? "Digital purchase"
+                          : "شراء رقمي"
+                        : locale === "en"
+                          ? `Digital rental${entry.selectedOffer.rentalDays ? ` (${entry.selectedOffer.rentalDays} days)` : ""}`
+                          : `استئجار رقمي${entry.selectedOffer.rentalDays ? ` (${entry.selectedOffer.rentalDays} يوم)` : ""}`}
+                    </dd>
+                  </div>
+
+                  <div className="flex items-center justify-between gap-2">
+                    <dt className="text-slate-600">{copy.quantity}</dt>
+                    <dd className="font-semibold text-slate-900">{entry.quantity}</dd>
+                  </div>
+
+                  <div className="flex items-center justify-between gap-2">
+                    <dt className="text-slate-600">{locale === "en" ? "Price" : "السعر"}</dt>
+                    <dd className="font-bold text-indigo-700">
+                      {formatArabicCurrency(entry.selectedOffer.priceCents / 100, { currency: entry.selectedOffer.currency })}
+                    </dd>
+                  </div>
+                </dl>
+
+                <div className="mt-4 flex flex-wrap gap-2.5">
+                  {entry.checkoutHref ? (
+                    user ? (
+                      <Link href={entry.checkoutHref} className="store-btn-primary">
+                        {copy.continueCheckout}
+                      </Link>
+                    ) : (
+                      <Link href={`/login?callbackUrl=${encodeURIComponent(entry.checkoutHref)}`} className="store-btn-primary">
+                        {copy.signIn}
+                      </Link>
+                    )
+                  ) : (
+                    <p className="text-xs font-semibold text-rose-700">{copy.unavailable}</p>
+                  )}
+
+                  <Link href={`/books/${entry.selectedOffer.book.slug}`} className="store-btn-secondary">
+                    {copy.backToBook}
                   </Link>
-                ) : (
-                  <Link href={`/login?callbackUrl=${encodeURIComponent(checkoutHref)}`} className="store-btn-primary">
-                    {copy.signIn}
-                  </Link>
-                )
-              ) : (
-                <p className="text-xs font-semibold text-rose-700">{copy.unavailable}</p>
-              )}
-              <Link href={`/books/${selectedOffer.book.slug}`} className="store-btn-secondary">
-                {copy.backToBook}
-              </Link>
-              {normalizedReturnTo !== `/books/${selectedOffer.book.slug}` ? (
+                </div>
+              </article>
+            ))}
+
+            {normalizedReturnTo !== "/cart" ? (
+              <div className="pt-1">
                 <Link href={normalizedReturnTo} className="store-btn-secondary">
                   {locale === "en" ? "Back" : "عودة"}
                 </Link>
-              ) : null}
-            </div>
+              </div>
+            ) : null}
           </section>
-        ) : null}
+        ) : (
+          <p className="mt-6 rounded-2xl border border-dashed border-slate-300 bg-slate-50 p-4 text-sm text-slate-600">{copy.empty}</p>
+        )}
       </section>
 
       <SiteFooter />

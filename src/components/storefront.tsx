@@ -1,4 +1,5 @@
 import Link from "next/link";
+import { AddToCartButton } from "@/components/add-to-cart-button";
 import type { OfferType } from "@prisma/client";
 import { formatArabicCurrency } from "@/lib/formatters/intl";
 import { CoverImage } from "@/components/ui/cover-image";
@@ -369,16 +370,6 @@ function getPrimaryOffer(offers: BookCardOffer[]): PrimaryOffer | null {
   };
 }
 
-function buildAddToCartHref(bookSlug: string, bookId: string, offerId: string) {
-  const params = new URLSearchParams({
-    bookId,
-    offerId,
-    returnTo: `/books/${bookSlug}`,
-  });
-
-  return `/cart?${params.toString()}`;
-}
-
 function AddToCartAction({
   bookId,
   bookSlug,
@@ -404,12 +395,10 @@ function AddToCartAction({
     );
   }
 
-  const addToCartHref = buildAddToCartHref(bookSlug, bookId, primaryOffer.id);
-
   if (!isLoggedIn) {
     return (
       <Link
-        href={`/login?callbackUrl=${encodeURIComponent(addToCartHref)}`}
+        href={`/login?callbackUrl=${encodeURIComponent(`/books/${bookSlug}`)}`}
         className="store-btn-primary h-10 w-full px-3 text-[11px] sm:w-auto sm:min-w-[10rem] sm:text-xs"
       >
         سجّل الدخول للإضافة إلى السلة
@@ -418,9 +407,12 @@ function AddToCartAction({
   }
 
   return (
-    <Link href={addToCartHref} className="store-btn-primary h-10 w-full px-3 text-xs sm:w-auto sm:min-w-[8.5rem]">
-      أضف إلى السلة
-    </Link>
+    <AddToCartButton
+      bookId={bookId}
+      offerId={primaryOffer.id}
+      label="أضف إلى السلة"
+      className="store-btn-primary h-10 w-full px-3 text-xs sm:w-auto sm:min-w-[8.5rem]"
+    />
   );
 }
 
