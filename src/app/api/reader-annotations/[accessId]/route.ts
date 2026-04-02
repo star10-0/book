@@ -1,5 +1,4 @@
 import { NextResponse } from "next/server";
-import { Prisma } from "@prisma/client";
 import { API_ERROR_CODES, jsonError, parseJsonBody } from "@/lib/api-response";
 import { getCurrentUser } from "@/lib/auth-session";
 import { getClientIp } from "@/lib/observability/logger";
@@ -15,66 +14,6 @@ type AnnotationUpdateBody = {
   id?: string;
   payload?: unknown;
 };
-
-function isReaderAnnotationTableMissing(error: unknown) {
-  return error instanceof Prisma.PrismaClientKnownRequestError && error.code === "P2021" && error.message.includes("ReaderAnnotation");
-}
-
-async function ensureReaderAnnotationStorage() {
-  await prisma.$executeRawUnsafe(`
-DO $$
-BEGIN
-  IF NOT EXISTS (SELECT 1 FROM pg_type WHERE typname = 'ReaderAnnotationType') THEN
-    CREATE TYPE "ReaderAnnotationType" AS ENUM ('DRAWING', 'NOTE', 'BOOKMARK');
-  END IF;
-END
-$$;
-
-CREATE TABLE IF NOT EXISTS "ReaderAnnotation" (
-  "id" TEXT NOT NULL,
-  "userId" TEXT NOT NULL,
-  "bookId" TEXT NOT NULL,
-  "type" "ReaderAnnotationType" NOT NULL,
-  "locator" TEXT NOT NULL,
-  "payload" JSONB,
-  "createdAt" TIMESTAMP(3) NOT NULL DEFAULT CURRENT_TIMESTAMP,
-  "updatedAt" TIMESTAMP(3) NOT NULL,
-  CONSTRAINT "ReaderAnnotation_pkey" PRIMARY KEY ("id")
-);
-
-CREATE INDEX IF NOT EXISTS "ReaderAnnotation_userId_bookId_type_idx" ON "ReaderAnnotation"("userId", "bookId", "type");
-CREATE INDEX IF NOT EXISTS "ReaderAnnotation_bookId_locator_idx" ON "ReaderAnnotation"("bookId", "locator");
-
-DO $$
-BEGIN
-  IF NOT EXISTS (SELECT 1 FROM pg_constraint WHERE conname = 'ReaderAnnotation_userId_fkey') THEN
-    ALTER TABLE "ReaderAnnotation"
-      ADD CONSTRAINT "ReaderAnnotation_userId_fkey"
-      FOREIGN KEY ("userId") REFERENCES "User"("id") ON DELETE CASCADE ON UPDATE CASCADE;
-  END IF;
-
-  IF NOT EXISTS (SELECT 1 FROM pg_constraint WHERE conname = 'ReaderAnnotation_bookId_fkey') THEN
-    ALTER TABLE "ReaderAnnotation"
-      ADD CONSTRAINT "ReaderAnnotation_bookId_fkey"
-      FOREIGN KEY ("bookId") REFERENCES "Book"("id") ON DELETE CASCADE ON UPDATE CASCADE;
-  END IF;
-END
-$$;
-`);
-}
-
-async function withReaderAnnotationTableRetry<T>(operation: () => Promise<T>) {
-  try {
-    return await operation();
-  } catch (error) {
-    if (!isReaderAnnotationTableMissing(error)) {
-      throw error;
-    }
-
-    await ensureReaderAnnotationStorage();
-    return await operation();
-  }
-}
 
 function sanitizePayload(type: "DRAWING" | "NOTE" | "BOOKMARK", payload: unknown) {
   if (type === "NOTE") {
@@ -182,8 +121,7 @@ export async function GET(_: Request, context: { params: Promise<{ accessId: str
   }
 
   try {
-    const annotations = await withReaderAnnotationTableRetry(() =>
-      prisma.readerAnnotation.findMany({
+    const annotations = await prisma.readerAnnotation.findMany({
       where: {
         userId: user.id,
         bookId,
@@ -199,8 +137,7 @@ export async function GET(_: Request, context: { params: Promise<{ accessId: str
         updatedAt: true,
         createdAt: true,
       },
-      }),
-    );
+    });
 
     return NextResponse.json({ annotations });
   } catch {
@@ -254,7 +191,7 @@ export async function POST(request: Request, context: { params: Promise<{ access
   }
 
   try {
-    const annotation = await withReaderAnnotationTableRetry(async () =>
+    const annotation = await (
       type === "NOTE"
         ? prisma.readerAnnotation.create({
             data: {
@@ -325,7 +262,7 @@ export async function POST(request: Request, context: { params: Promise<{ access
                 createdAt: true,
               },
             });
-          }),
+          })
     );
 
     return NextResponse.json({ annotation }, { status: 201 });
@@ -364,15 +301,13 @@ export async function DELETE(request: Request, context: { params: Promise<{ acce
 
   let deleted;
   try {
-    deleted = await withReaderAnnotationTableRetry(() =>
-      prisma.readerAnnotation.deleteMany({
-        where: {
-          id: annotationId,
-          userId: user.id,
-          bookId,
-        },
-      }),
-    );
+    deleted = await prisma.readerAnnotation.deleteMany({
+      where: {
+        id: annotationId,
+        userId: user.id,
+        bookId,
+      },
+    });
   } catch {
     return jsonError(API_ERROR_CODES.server_error, "تعذر حذف التعليق حالياً. حاول مرة أخرى.", 500);
   }
@@ -417,8 +352,7 @@ export async function PATCH(request: Request, context: { params: Promise<{ acces
   }
 
   try {
-    const existing = await withReaderAnnotationTableRetry(() =>
-      prisma.readerAnnotation.findFirst({
+    const existing = await prisma.readerAnnotation.findFirst({
         where: {
           id: annotationId,
           userId: user.id,
@@ -428,8 +362,7 @@ export async function PATCH(request: Request, context: { params: Promise<{ acces
           id: true,
           type: true,
         },
-      }),
-    );
+      });
 
     if (!existing) {
       return jsonError(API_ERROR_CODES.not_found, "لم يتم العثور على التعليق.", 404);
