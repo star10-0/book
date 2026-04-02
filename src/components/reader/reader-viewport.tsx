@@ -281,7 +281,7 @@ export function ReaderViewport({
         />
         <canvas
           ref={canvasRef}
-          className={`absolute inset-0 h-full w-full ${annotationEnabled ? "pointer-events-auto" : "pointer-events-none"}`}
+          className={`absolute inset-0 z-10 h-full w-full touch-none ${annotationEnabled ? "pointer-events-auto" : "pointer-events-none"}`}
           onPointerDown={(event) => {
             if (drawingMode === "navigate") {
               return;
@@ -292,6 +292,7 @@ export function ReaderViewport({
               return;
             }
 
+            event.currentTarget.setPointerCapture(event.pointerId);
             const rect = event.currentTarget.getBoundingClientRect();
             currentStrokeRef.current = [[(event.clientX - rect.left) / rect.width, (event.clientY - rect.top) / rect.height]];
           }}
@@ -303,14 +304,23 @@ export function ReaderViewport({
             const rect = event.currentTarget.getBoundingClientRect();
             currentStrokeRef.current.push([(event.clientX - rect.left) / rect.width, (event.clientY - rect.top) / rect.height]);
           }}
-          onPointerUp={() => {
+          onPointerUp={(event) => {
             if (drawingMode !== "draw" || currentStrokeRef.current.length < 2) {
               currentStrokeRef.current = [];
               return;
             }
 
+            event.currentTarget.releasePointerCapture(event.pointerId);
             onAddStroke?.({ color: "#2563eb", width: 2, points: currentStrokeRef.current });
             currentStrokeRef.current = [];
+          }}
+          onPointerCancel={() => {
+            currentStrokeRef.current = [];
+          }}
+          onPointerLeave={() => {
+            if (drawingMode !== "draw") {
+              currentStrokeRef.current = [];
+            }
           }}
         />
       </div>
