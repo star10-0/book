@@ -66,7 +66,7 @@ This repository includes a production-first Docker/VPS deployment flow with expl
 ### Build/start contract
 
 - Build image contents: `npm run build`
-- Run app server only: `npm run start`
+- Run app server (migration-first): `npm run start`
 - Run migrations only: `npm run prisma:migrate:deploy`
 
 > Production startup order is migration-first, app-second. Do **not** use `prisma migrate dev` in production.
@@ -228,7 +228,7 @@ To quickly detect deployment drift versus local/main code:
 docker compose -f docker-compose.app.yml --env-file .env.production up -d --build
 ```
 
-This runs `migrate` first, then starts `app`.
+This runs migrations first, then starts `app` (same behavior as `npm run start`).
 
 ### Production monitoring deployment (Compose / VPS)
 
