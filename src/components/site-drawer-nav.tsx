@@ -17,6 +17,9 @@ type SiteDrawerNavProps = {
   canAccessStudio: boolean;
   canAccessAdmin: boolean;
   logoutAction?: () => Promise<void>;
+  triggerLabel?: string;
+  triggerClassName?: string;
+  triggerIconClassName?: string;
 };
 
 export function SiteDrawerNav({
@@ -27,6 +30,9 @@ export function SiteDrawerNav({
   canAccessStudio,
   canAccessAdmin,
   logoutAction,
+  triggerLabel,
+  triggerClassName,
+  triggerIconClassName,
 }: SiteDrawerNavProps) {
   const [isOpen, setIsOpen] = useState(false);
   const titleId = useId();
@@ -164,17 +170,23 @@ export function SiteDrawerNav({
   }, [isOpen]);
 
   return (
-    <div className="inline-flex flex-col items-end">
+    <div className="inline-flex">
       <button
         type="button"
         onClick={() => setIsOpen((prev) => !prev)}
         aria-haspopup="dialog"
         aria-expanded={isOpen}
         aria-controls={menuId}
-        className="inline-flex h-8 w-8 items-center justify-center rounded-md border border-slate-300 bg-white text-sm text-slate-700 transition hover:bg-slate-50 focus-visible:outline-none focus-visible:ring-2 focus-visible:ring-indigo-300"
+        className={
+          triggerClassName ??
+          "inline-flex h-8 w-8 items-center justify-center rounded-md border border-slate-300 bg-white text-sm text-slate-700 transition hover:bg-slate-50 focus-visible:outline-none focus-visible:ring-2 focus-visible:ring-indigo-300"
+        }
         aria-label={isOpen ? t.closeMenu : t.openMenu}
       >
-        ☰
+        <span aria-hidden className={triggerIconClassName}>
+          ☰
+        </span>
+        {triggerLabel ? <span>{triggerLabel}</span> : null}
       </button>
 
       <div
