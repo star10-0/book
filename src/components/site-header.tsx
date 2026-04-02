@@ -73,10 +73,10 @@ export async function SiteHeader() {
   const canAccessAdmin = user?.role === "ADMIN";
 
   return (
-    <header className="sticky top-1 z-40 mb-2 overflow-visible rounded-2xl bg-white shadow-sm ring-1 ring-slate-200 sm:mb-3">
-      <div className="px-3 py-1.5 sm:px-4 sm:py-2">
-        <div className="grid items-start gap-1.5 lg:grid-cols-[auto_minmax(0,1fr)_auto] lg:items-center lg:gap-2.5">
-          <div className="flex w-fit flex-col items-end gap-1 sm:gap-1.5">
+    <header className="sticky top-1 z-40 mb-1.5 overflow-visible rounded-2xl bg-white shadow-sm ring-1 ring-slate-200 sm:mb-2">
+      <div className="px-2.5 py-1 sm:px-3.5 sm:py-1.5">
+        <div className="grid items-start gap-1 lg:grid-cols-[auto_minmax(0,1fr)_auto] lg:items-center lg:gap-2">
+          <div className="flex w-fit flex-col items-end gap-0.5 sm:gap-1">
             <Link
               href="/"
               className="rounded-lg px-1 py-0.5 focus-visible:outline-none focus-visible:ring-2 focus-visible:ring-indigo-400"
@@ -85,7 +85,7 @@ export async function SiteHeader() {
               <p className="mt-0.5 text-[10px] font-semibold uppercase tracking-[0.16em] text-indigo-600">{t.brandSub}</p>
             </Link>
 
-            <div className="w-full border-t border-slate-200 pt-1">
+            <div className="w-full border-t border-slate-200 pt-0.5">
               <SiteDrawerNav
                 locale={locale}
                 primaryLinks={primaryLinks}
@@ -99,62 +99,68 @@ export async function SiteHeader() {
           </div>
 
           <form action="/books" method="get" className="order-last w-full lg:order-none">
-            <div className="flex overflow-hidden rounded-xl border border-slate-300 bg-white shadow-sm ring-1 ring-transparent transition focus-within:border-indigo-500 focus-within:ring-indigo-100 lg:border-indigo-200/80 lg:shadow">
+            <div className="flex overflow-hidden rounded-lg border border-slate-300 bg-white shadow-sm ring-1 ring-transparent transition focus-within:border-indigo-500 focus-within:ring-indigo-100 lg:border-indigo-200/80 lg:shadow">
               <input
                 type="search"
                 name="q"
                 placeholder={t.searchPlaceholder}
-                className="h-9 w-full border-0 px-3 text-sm text-slate-900 outline-none placeholder:text-slate-400"
+                className="h-8 w-full border-0 px-2.5 text-sm text-slate-900 outline-none placeholder:text-slate-400 sm:h-9"
                 aria-label={t.searchAria}
               />
               <button
                 type="submit"
-                className="h-9 bg-indigo-600 px-3.5 text-xs font-semibold text-white transition hover:bg-indigo-500 focus-visible:outline-none focus-visible:ring-2 focus-visible:ring-indigo-300"
+                className="h-8 bg-indigo-600 px-3 text-xs font-semibold text-white transition hover:bg-indigo-500 focus-visible:outline-none focus-visible:ring-2 focus-visible:ring-indigo-300 sm:h-9 sm:px-3.5"
               >
                 {t.searchCta}
               </button>
             </div>
           </form>
 
-          <div className="flex items-center gap-1 lg:justify-end">
+          <div className="flex items-center gap-0.5 lg:justify-end">
             <LanguageSwitcher locale={locale} />
 
-            <Link href="/cart" className="store-btn-secondary h-8 px-2.5 text-xs sm:px-3">
+            <Link href="/cart" className="store-btn-secondary h-7.5 px-2 text-xs sm:h-8 sm:px-2.5">
               {t.cart}
             </Link>
 
             {user ? (
-              <Link href="/account" className="store-btn-primary h-8 px-2.5 text-xs sm:px-3">
+              <Link href="/account" className="store-btn-primary h-7.5 px-2 text-xs sm:h-8 sm:px-2.5">
                 {t.myAccount}
               </Link>
             ) : (
-              <Link href="/login" className="store-btn-secondary h-8 px-2.5 text-xs sm:px-3">
+              <Link href="/login" className="store-btn-secondary h-7.5 px-2 text-xs sm:h-8 sm:px-2.5">
                 {t.signIn}
               </Link>
             )}
           </div>
         </div>
 
-        <div className="mt-1.5 flex flex-wrap items-center gap-1">
-          <Link href="/books" className="store-chip h-7 px-2.5 bg-indigo-50 text-indigo-700 hover:bg-indigo-100">
+        <div className="mt-1 flex flex-wrap items-center gap-0.5">
+          <Link href="/books" className="store-chip h-6.5 px-2 bg-indigo-50 text-indigo-700 hover:bg-indigo-100 sm:h-7 sm:px-2.5">
             {t.allBooks}
           </Link>
-          <Link href="/books?offer=buy" className="store-chip h-7 px-2.5 bg-slate-100 text-slate-700 hover:bg-slate-200">
+          <Link
+            href="/books?offer=buy"
+            className="store-chip h-6.5 px-2 bg-slate-100 text-slate-700 hover:bg-slate-200 sm:h-7 sm:px-2.5"
+          >
             {t.digitalBuy}
           </Link>
-          <Link href="/books?offer=rent" className="store-chip h-7 px-2.5 bg-slate-100 text-slate-700 hover:bg-slate-200">
+          <Link
+            href="/books?offer=rent"
+            className="store-chip h-6.5 px-2 bg-slate-100 text-slate-700 hover:bg-slate-200 sm:h-7 sm:px-2.5"
+          >
             {t.digitalRent}
           </Link>
         </div>
       </div>
 
-      <nav aria-label="التنقل الرئيسي" className="border-t border-slate-200 bg-slate-50/90 px-3 py-0.5 sm:px-4">
-        <ul className="flex min-w-0 flex-wrap items-center gap-0.5 overflow-x-auto py-0.5">
+      <nav aria-label="التنقل الرئيسي" className="border-t border-slate-200 bg-slate-50/90 px-2.5 py-px sm:px-3.5">
+        <ul className="flex min-w-0 flex-wrap items-center gap-0.5 overflow-x-auto py-px">
           {primaryLinks.map((link) => (
             <li key={link.href}>
               <Link
                 href={link.href}
-                className="inline-flex h-6 items-center rounded-md px-2 text-xs font-medium text-slate-700 hover:bg-white hover:text-slate-900 focus-visible:outline-none focus-visible:ring-2 focus-visible:ring-indigo-400"
+                className="inline-flex h-5.5 items-center rounded-md px-1.5 text-xs font-medium text-slate-700 hover:bg-white hover:text-slate-900 focus-visible:outline-none focus-visible:ring-2 focus-visible:ring-indigo-400 sm:h-6 sm:px-2"
               >
                 {link.label}
               </Link>
@@ -167,7 +173,7 @@ export async function SiteHeader() {
             <li key={link.href}>
               <Link
                 href={link.href}
-                className="inline-flex h-6 items-center rounded-md px-2 text-xs font-medium text-slate-700 hover:bg-white hover:text-slate-900 focus-visible:outline-none focus-visible:ring-2 focus-visible:ring-indigo-400"
+                className="inline-flex h-5.5 items-center rounded-md px-1.5 text-xs font-medium text-slate-700 hover:bg-white hover:text-slate-900 focus-visible:outline-none focus-visible:ring-2 focus-visible:ring-indigo-400 sm:h-6 sm:px-2"
               >
                 {link.label}
               </Link>
