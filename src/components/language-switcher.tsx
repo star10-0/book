@@ -16,10 +16,10 @@ export function LanguageSwitcher({ locale }: { locale: StoreLocale }) {
 
   return (
     <details className="group relative">
-      <summary className="inline-flex h-9 cursor-pointer list-none items-center rounded-md border border-slate-300 bg-white px-2.5 text-[11px] font-semibold text-slate-700 hover:bg-slate-50">
+      <summary className="inline-flex h-8 cursor-pointer list-none items-center rounded-md border border-slate-300 bg-white px-2.5 text-[11px] font-semibold text-slate-700 hover:bg-slate-50">
         {locale === "ar" ? "اللغة" : "Language"}
       </summary>
-      <div className="absolute end-0 top-10 z-20 w-40 rounded-md border border-slate-200 bg-white p-1 shadow-lg">
+      <div className="absolute end-0 top-9 z-20 w-40 rounded-md border border-slate-200 bg-white p-1 shadow-lg">
         <Link
           href={`/api/locale?lang=ar&redirect=${encodeURIComponent(redirect)}`}
           className={`block rounded px-2 py-1.5 text-xs ${locale === "ar" ? "bg-slate-100 font-semibold text-slate-700" : "text-slate-500 hover:bg-slate-50"}`}
