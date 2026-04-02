@@ -9,7 +9,14 @@ function normalizeOrigin(origin: string) {
 
 function getAllowedOrigin(request: Request) {
   const host = request.headers.get("x-forwarded-host") ?? request.headers.get("host");
-  const proto = request.headers.get("x-forwarded-proto") ?? "https";
+  const requestProto = (() => {
+    try {
+      return new URL(request.url).protocol.replace(":", "");
+    } catch {
+      return null;
+    }
+  })();
+  const proto = request.headers.get("x-forwarded-proto") ?? requestProto ?? "https";
 
   if (!host) {
     return null;

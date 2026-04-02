@@ -52,6 +52,7 @@ export function ReaderShell({ accessId, bookTitle, initialProgressPercent, initi
   const [isNoteComposerOpen, setIsNoteComposerOpen] = useState(false);
   const [noteDraft, setNoteDraft] = useState("");
   const [annotationMessage, setAnnotationMessage] = useState<string | null>(null);
+  const [isAnnotationSaving, setIsAnnotationSaving] = useState(false);
   const lastSavedRef = useRef<string>(`${normalizeProgress(initialProgressPercent)}|${initialLocator ?? "page:1"}`);
 
   const readerEngine = useMemo(() => getReaderEngine(source), [source]);
@@ -138,6 +139,7 @@ export function ReaderShell({ accessId, bookTitle, initialProgressPercent, initi
   const createAnnotation = useCallback(
     async (type: AnnotationType, annotationLocator: string, payload: unknown) => {
       setAnnotationMessage(null);
+      setIsAnnotationSaving(true);
       try {
         const response = await fetch(`/api/reader-annotations/${accessId}`, {
           method: "POST",
@@ -164,11 +166,14 @@ export function ReaderShell({ accessId, bookTitle, initialProgressPercent, initi
           return [data.annotation, ...withoutSameId];
         });
         setAnnotationMessage(type === "DRAWING" ? "تم حفظ الرسم." : "تم حفظ التعليق.");
+        await loadAnnotations();
       } catch {
         setAnnotationMessage("تعذر حفظ التعليق.");
+      } finally {
+        setIsAnnotationSaving(false);
       }
     },
-    [accessId],
+    [accessId, loadAnnotations],
   );
 
   const handleLocationChange = useCallback(
@@ -219,31 +224,39 @@ export function ReaderShell({ accessId, bookTitle, initialProgressPercent, initi
   const deleteAnnotation = useCallback(
     async (annotationId: string) => {
       setAnnotationMessage(null);
-      const response = await fetch(`/api/reader-annotations/${accessId}?id=${encodeURIComponent(annotationId)}`, {
-        method: "DELETE",
-        credentials: "same-origin",
-      });
+      setIsAnnotationSaving(true);
+      try {
+        const response = await fetch(`/api/reader-annotations/${accessId}?id=${encodeURIComponent(annotationId)}`, {
+          method: "DELETE",
+          credentials: "same-origin",
+        });
 
-      if (!response.ok) {
-        const body = (await response.json().catch(() => null)) as { message?: string } | null;
-        setAnnotationMessage(body?.message ?? "تعذر حذف التعليق.");
-        return;
+        if (!response.ok) {
+          const body = (await response.json().catch(() => null)) as { message?: string } | null;
+          setAnnotationMessage(body?.message ?? "تعذر حذف التعليق.");
+          return;
+        }
+
+        setAnnotations((current) => current.filter((annotation) => annotation.id !== annotationId));
+        setAnnotationMessage("تم حذف التعليق.");
+        await loadAnnotations();
+      } catch {
+        setAnnotationMessage("تعذر حذف التعليق.");
+      } finally {
+        setIsAnnotationSaving(false);
       }
-
-      setAnnotations((current) => current.filter((annotation) => annotation.id !== annotationId));
-      setAnnotationMessage("تم حذف التعليق.");
     },
-    [accessId],
+    [accessId, loadAnnotations],
   );
 
   return (
-    <section className="space-y-4 rounded-2xl bg-white p-4 shadow-sm ring-1 ring-slate-200 dark:bg-slate-950 dark:ring-slate-800 lg:p-6">
-      <header className="space-y-1">
+    <section className="space-y-3 rounded-2xl bg-white p-3 shadow-sm ring-1 ring-slate-200 dark:bg-slate-950 dark:ring-slate-800 lg:p-4">
+      <header className="space-y-0.5">
         <Link href={returnHref} className="inline-flex text-xs font-semibold text-indigo-700 hover:text-indigo-600">
           العودة إلى مكتبتي
         </Link>
         <p className="text-xs font-medium text-indigo-600">قارئ الكتاب</p>
-        <h1 className="text-2xl font-bold text-slate-900 dark:text-slate-100">{bookTitle}</h1>
+        <h1 className="text-xl font-bold text-slate-900 dark:text-slate-100">{bookTitle}</h1>
         <p className="text-sm text-slate-500 dark:text-slate-400">
           {readerEngine ? `المحرّك: ${readerEngine.displayName}` : "لا يوجد ملف قراءة مدعوم لهذا الكتاب."}
         </p>
@@ -283,12 +296,13 @@ export function ReaderShell({ accessId, bookTitle, initialProgressPercent, initi
             id="reader-note"
             value={noteDraft}
             onChange={(event) => setNoteDraft(event.target.value)}
-            rows={3}
-            className="w-full rounded-lg border border-slate-300 bg-white px-3 py-2 text-sm text-slate-900 outline-none placeholder:text-slate-400 focus:border-indigo-500 dark:border-slate-600 dark:bg-slate-900 dark:text-slate-100 dark:placeholder:text-slate-500"
+            rows={4}
+            className="w-full rounded-lg border border-slate-300 bg-white px-3 py-2 text-sm leading-6 text-slate-900 outline-none placeholder:text-slate-400 focus:border-indigo-500 focus-visible:ring-2 focus-visible:ring-indigo-200 dark:border-slate-600 dark:bg-slate-900 dark:text-slate-100 dark:placeholder:text-slate-500"
           />
           <div className="mt-2 flex flex-wrap gap-2">
             <button
               type="button"
+              disabled={isAnnotationSaving || !noteDraft.trim()}
               onClick={() => {
                 if (!noteDraft.trim()) {
                   return;
@@ -297,7 +311,7 @@ export function ReaderShell({ accessId, bookTitle, initialProgressPercent, initi
                 void createAnnotation("NOTE", locator, { text: noteDraft.trim() });
                 setNoteDraft("");
               }}
-              className="rounded-lg bg-indigo-600 px-3 py-1.5 text-xs font-semibold text-white hover:bg-indigo-500"
+              className="rounded-lg bg-indigo-600 px-3 py-1.5 text-xs font-semibold text-white hover:bg-indigo-500 disabled:cursor-not-allowed disabled:bg-indigo-400"
             >
               حفظ الملاحظة
             </button>
@@ -314,7 +328,7 @@ export function ReaderShell({ accessId, bookTitle, initialProgressPercent, initi
 
       {annotationMessage ? <p className="text-xs text-indigo-600">{annotationMessage}</p> : null}
 
-      <div className="grid gap-4 xl:grid-cols-[minmax(0,1fr)_320px]">
+      <div className="grid gap-3 xl:grid-cols-[minmax(0,1fr)_300px]">
         <ReaderViewport
           source={source}
           locator={locator}
@@ -328,7 +342,7 @@ export function ReaderShell({ accessId, bookTitle, initialProgressPercent, initi
         />
 
         {isNotesPanelOpen ? (
-          <aside className="max-h-[82vh] overflow-auto rounded-xl border border-slate-200 bg-slate-50 p-3 dark:border-slate-700 dark:bg-slate-900">
+          <aside className="max-h-[86vh] overflow-auto rounded-xl border border-slate-200 bg-slate-50 p-3 dark:border-slate-700 dark:bg-slate-900">
             <h2 className="mb-2 text-sm font-bold text-slate-800 dark:text-slate-100">المراجع والملاحظات المحفوظة</h2>
             <div className="space-y-2">
               {bookmarks.map((bookmark) => (
