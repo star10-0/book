@@ -1,4 +1,5 @@
 import { NextResponse } from "next/server";
+import { Prisma } from "@prisma/client";
 import { API_ERROR_CODES, jsonError, parseJsonBody } from "@/lib/api-response";
 import { getCurrentUser } from "@/lib/auth-session";
 import { getClientIp } from "@/lib/observability/logger";
@@ -10,6 +11,10 @@ type AnnotationBody = {
   locator?: string;
   payload?: unknown;
 };
+
+function isReaderAnnotationTableMissing(error: unknown) {
+  return error instanceof Prisma.PrismaClientKnownRequestError && error.code === "P2021" && error.message.includes("ReaderAnnotation");
+}
 
 function sanitizePayload(type: "DRAWING" | "NOTE" | "BOOKMARK", payload: unknown) {
   if (type === "NOTE") {
@@ -116,25 +121,33 @@ export async function GET(_: Request, context: { params: Promise<{ accessId: str
     return jsonError(API_ERROR_CODES.forbidden, "الوصول غير متاح أو منتهي الصلاحية.", 403);
   }
 
-  const annotations = await prisma.readerAnnotation.findMany({
-    where: {
-      userId: user.id,
-      bookId,
-    },
-    orderBy: {
-      updatedAt: "desc",
-    },
-    select: {
-      id: true,
-      type: true,
-      locator: true,
-      payload: true,
-      updatedAt: true,
-      createdAt: true,
-    },
-  });
+  try {
+    const annotations = await prisma.readerAnnotation.findMany({
+      where: {
+        userId: user.id,
+        bookId,
+      },
+      orderBy: {
+        updatedAt: "desc",
+      },
+      select: {
+        id: true,
+        type: true,
+        locator: true,
+        payload: true,
+        updatedAt: true,
+        createdAt: true,
+      },
+    });
 
-  return NextResponse.json({ annotations });
+    return NextResponse.json({ annotations });
+  } catch (error) {
+    if (isReaderAnnotationTableMissing(error)) {
+      return jsonError(API_ERROR_CODES.server_error, "ميزة الملاحظات غير مهيأة في قاعدة البيانات حالياً.", 503);
+    }
+
+    throw error;
+  }
 }
 
 export async function POST(request: Request, context: { params: Promise<{ accessId: string }> }) {
@@ -182,61 +195,10 @@ export async function POST(request: Request, context: { params: Promise<{ access
     return jsonError(API_ERROR_CODES.forbidden, "الوصول غير متاح أو منتهي الصلاحية.", 403);
   }
 
-  const annotation =
-    type === "NOTE"
-      ? await prisma.readerAnnotation.create({
-          data: {
-            userId: user.id,
-            bookId,
-            type,
-            locator,
-            payload: sanitizedPayload,
-          },
-          select: {
-            id: true,
-            type: true,
-            locator: true,
-            payload: true,
-            updatedAt: true,
-            createdAt: true,
-          },
-        })
-      : await prisma.$transaction(async (tx) => {
-          const existing = await tx.readerAnnotation.findFirst({
-            where: {
-              userId: user.id,
-              bookId,
-              type,
-              locator,
-            },
-            orderBy: {
-              updatedAt: "desc",
-            },
-            select: {
-              id: true,
-            },
-          });
-
-          if (existing) {
-            return await tx.readerAnnotation.update({
-              where: {
-                id: existing.id,
-              },
-              data: {
-                payload: sanitizedPayload,
-              },
-              select: {
-                id: true,
-                type: true,
-                locator: true,
-                payload: true,
-                updatedAt: true,
-                createdAt: true,
-              },
-            });
-          }
-
-          return await tx.readerAnnotation.create({
+  try {
+    const annotation =
+      type === "NOTE"
+        ? await prisma.readerAnnotation.create({
             data: {
               userId: user.id,
               bookId,
@@ -252,10 +214,69 @@ export async function POST(request: Request, context: { params: Promise<{ access
               updatedAt: true,
               createdAt: true,
             },
-          });
-        });
+          })
+        : await prisma.$transaction(async (tx) => {
+            const existing = await tx.readerAnnotation.findFirst({
+              where: {
+                userId: user.id,
+                bookId,
+                type,
+                locator,
+              },
+              orderBy: {
+                updatedAt: "desc",
+              },
+              select: {
+                id: true,
+              },
+            });
 
-  return NextResponse.json({ annotation }, { status: 201 });
+            if (existing) {
+              return await tx.readerAnnotation.update({
+                where: {
+                  id: existing.id,
+                },
+                data: {
+                  payload: sanitizedPayload,
+                },
+                select: {
+                  id: true,
+                  type: true,
+                  locator: true,
+                  payload: true,
+                  updatedAt: true,
+                  createdAt: true,
+                },
+              });
+            }
+
+            return await tx.readerAnnotation.create({
+              data: {
+                userId: user.id,
+                bookId,
+                type,
+                locator,
+                payload: sanitizedPayload,
+              },
+              select: {
+                id: true,
+                type: true,
+                locator: true,
+                payload: true,
+                updatedAt: true,
+                createdAt: true,
+              },
+            });
+          });
+
+    return NextResponse.json({ annotation }, { status: 201 });
+  } catch (error) {
+    if (isReaderAnnotationTableMissing(error)) {
+      return jsonError(API_ERROR_CODES.server_error, "ميزة الملاحظات غير مهيأة في قاعدة البيانات حالياً.", 503);
+    }
+
+    throw error;
+  }
 }
 
 export async function DELETE(request: Request, context: { params: Promise<{ accessId: string }> }) {
@@ -286,13 +307,22 @@ export async function DELETE(request: Request, context: { params: Promise<{ acce
     return jsonError(API_ERROR_CODES.invalid_request, "معرف التعليق مطلوب.", 400);
   }
 
-  const deleted = await prisma.readerAnnotation.deleteMany({
-    where: {
-      id: annotationId,
-      userId: user.id,
-      bookId,
-    },
-  });
+  let deleted;
+  try {
+    deleted = await prisma.readerAnnotation.deleteMany({
+      where: {
+        id: annotationId,
+        userId: user.id,
+        bookId,
+      },
+    });
+  } catch (error) {
+    if (isReaderAnnotationTableMissing(error)) {
+      return jsonError(API_ERROR_CODES.server_error, "ميزة الملاحظات غير مهيأة في قاعدة البيانات حالياً.", 503);
+    }
+
+    throw error;
+  }
 
   if (!deleted.count) {
     return jsonError(API_ERROR_CODES.not_found, "لم يتم العثور على التعليق.", 404);

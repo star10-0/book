@@ -73,6 +73,24 @@ export function ReaderShell({ accessId, bookTitle, initialProgressPercent, initi
     return strokes;
   }, [annotations, locator]);
 
+  const resolveProgressFromLocator = useCallback(
+    (nextLocator: string) => {
+      if (!source) {
+        return progressPercent;
+      }
+
+      if (source.kind === "PDF" && typeof source.pageCount === "number" && source.pageCount > 0) {
+        const pageMatch = /page:(\d+)/.exec(nextLocator);
+        const page = pageMatch ? Number.parseInt(pageMatch[1], 10) : 1;
+        const safePage = Number.isNaN(page) ? 1 : Math.min(source.pageCount, Math.max(1, page));
+        return normalizeProgress((safePage / source.pageCount) * 100);
+      }
+
+      return progressPercent;
+    },
+    [progressPercent, source],
+  );
+
   const persistProgress = useCallback(
     async (nextProgress: number, nextLocator: string) => {
       const progressKey = `${nextProgress}|${nextLocator}`;
@@ -162,10 +180,20 @@ export function ReaderShell({ accessId, bookTitle, initialProgressPercent, initi
 
         const data = (await response.json()) as { annotation: ReaderAnnotation };
         setAnnotations((current) => {
-          const withoutSameId = current.filter((annotation) => annotation.id !== data.annotation.id);
+          const withoutSameId = current.filter((annotation) => {
+            if (annotation.id === data.annotation.id) {
+              return false;
+            }
+
+            if (data.annotation.type === "NOTE") {
+              return true;
+            }
+
+            return !(annotation.type === data.annotation.type && annotation.locator === data.annotation.locator);
+          });
           return [data.annotation, ...withoutSameId];
         });
-        setAnnotationMessage(type === "DRAWING" ? "تم حفظ الرسم." : "تم حفظ التعليق.");
+        setAnnotationMessage(type === "DRAWING" ? "تم حفظ الرسم." : type === "BOOKMARK" ? "تم حفظ المرجع." : "تم حفظ الملاحظة.");
         await loadAnnotations();
       } catch {
         setAnnotationMessage("تعذر حفظ التعليق.");
@@ -250,14 +278,16 @@ export function ReaderShell({ accessId, bookTitle, initialProgressPercent, initi
   );
 
   return (
-    <section className="space-y-3 rounded-2xl bg-white p-3 shadow-sm ring-1 ring-slate-200 dark:bg-slate-950 dark:ring-slate-800 lg:p-4">
+    <section className="space-y-2 rounded-2xl bg-white p-2 shadow-sm ring-1 ring-slate-200 dark:bg-slate-950 dark:ring-slate-800 lg:p-3">
       <header className="space-y-0.5">
         <Link href={returnHref} className="inline-flex text-xs font-semibold text-indigo-700 hover:text-indigo-600">
           العودة إلى مكتبتي
         </Link>
-        <p className="text-xs font-medium text-indigo-600">قارئ الكتاب</p>
-        <h1 className="text-xl font-bold text-slate-900 dark:text-slate-100">{bookTitle}</h1>
-        <p className="text-sm text-slate-500 dark:text-slate-400">
+        <div className="flex flex-wrap items-center gap-2">
+          <p className="text-xs font-medium text-indigo-600">قارئ الكتاب</p>
+          <h1 className="text-lg font-bold text-slate-900 dark:text-slate-100">{bookTitle}</h1>
+        </div>
+        <p className="text-xs text-slate-500 dark:text-slate-400">
           {readerEngine ? `المحرّك: ${readerEngine.displayName}` : "لا يوجد ملف قراءة مدعوم لهذا الكتاب."}
         </p>
         {source && source.kind !== "TEXT" && source.isEncrypted ? (
@@ -267,25 +297,27 @@ export function ReaderShell({ accessId, bookTitle, initialProgressPercent, initi
         ) : null}
       </header>
 
-      <ReaderToolbar
-        progressText={progressText}
-        locator={locator}
-        theme={theme}
-        isSaving={isSaving}
-        saveError={error}
-        canNavigate={Boolean(controls)}
-        annotationMode={annotationMode}
-        notesCount={notes.length}
-        bookmarksCount={bookmarks.length}
-        onNext={() => controls?.next()}
-        onPrevious={() => controls?.previous()}
-        onThemeChange={setTheme}
-        onAnnotationModeChange={setAnnotationMode}
-        onAddBookmark={() => void createAnnotation("BOOKMARK", locator, { label: "" })}
-        onOpenNotesPanel={() => setIsNotesPanelOpen((current) => !current)}
-        onOpenNoteComposer={() => setIsNoteComposerOpen((current) => !current)}
-        onClearCurrentLayer={handleClearCurrentDrawing}
-      />
+      <div className="sticky top-2 z-10">
+        <ReaderToolbar
+          progressText={progressText}
+          locator={locator}
+          theme={theme}
+          isSaving={isSaving}
+          saveError={error}
+          canNavigate={Boolean(controls)}
+          annotationMode={annotationMode}
+          notesCount={notes.length}
+          bookmarksCount={bookmarks.length}
+          onNext={() => controls?.next()}
+          onPrevious={() => controls?.previous()}
+          onThemeChange={setTheme}
+          onAnnotationModeChange={setAnnotationMode}
+          onAddBookmark={() => void createAnnotation("BOOKMARK", locator, { label: "" })}
+          onOpenNotesPanel={() => setIsNotesPanelOpen((current) => !current)}
+          onOpenNoteComposer={() => setIsNoteComposerOpen((current) => !current)}
+          onClearCurrentLayer={handleClearCurrentDrawing}
+        />
+      </div>
 
       {isNoteComposerOpen ? (
         <div className="rounded-xl border border-slate-200 bg-slate-50 p-3 dark:border-slate-700 dark:bg-slate-900">
@@ -347,7 +379,14 @@ export function ReaderShell({ accessId, bookTitle, initialProgressPercent, initi
             <div className="space-y-2">
               {bookmarks.map((bookmark) => (
                 <div key={bookmark.id} className="rounded-lg border border-amber-200 bg-amber-50 px-3 py-2 text-xs text-amber-900">
-                  <button type="button" onClick={() => setLocator(bookmark.locator)} className="w-full text-right hover:underline">
+                  <button
+                    type="button"
+                    onClick={() => {
+                      setLocator(bookmark.locator);
+                      setProgressPercent(resolveProgressFromLocator(bookmark.locator));
+                    }}
+                    className="w-full text-right hover:underline"
+                  >
                     علامة عند {bookmark.locator}
                   </button>
                   <div className="mt-2 flex justify-end">
@@ -366,7 +405,14 @@ export function ReaderShell({ accessId, bookTitle, initialProgressPercent, initi
                   key={note.id}
                   className="rounded-lg border border-indigo-200 bg-white px-3 py-2 text-right text-xs text-slate-700 dark:border-slate-700 dark:bg-slate-950 dark:text-slate-200"
                 >
-                  <button type="button" onClick={() => setLocator(note.locator)} className="w-full text-right hover:underline">
+                  <button
+                    type="button"
+                    onClick={() => {
+                      setLocator(note.locator);
+                      setProgressPercent(resolveProgressFromLocator(note.locator));
+                    }}
+                    className="w-full text-right hover:underline"
+                  >
                     <p className="font-semibold text-indigo-700 dark:text-indigo-300">{note.locator}</p>
                     <p className="mt-1 max-h-16 overflow-hidden">{typeof (note.payload as { text?: unknown })?.text === "string" ? (note.payload as { text: string }).text : "ملاحظة"}</p>
                   </button>
