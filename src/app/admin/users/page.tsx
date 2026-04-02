@@ -1,13 +1,31 @@
+import { UserRole } from "@prisma/client";
 import { AdminPageCard, AdminPageHeader } from "@/components/admin/admin-page";
 import { AdminTable } from "@/components/admin/admin-table";
+import { prisma } from "@/lib/prisma";
 
-const users = [
-  { id: "usr_31", name: "هالة محمد", email: "hala@example.com", role: "قارئ", status: "نشط" },
-  { id: "usr_32", name: "مدير المنصة", email: "admin@example.com", role: "مشرف", status: "نشط" },
-  { id: "usr_33", name: "ليث صالح", email: "laith@example.com", role: "قارئ", status: "معلق" },
-];
+function roleLabel(role: UserRole) {
+  if (role === "ADMIN") return "مشرف";
+  if (role === "CREATOR") return "منشئ";
+  return "قارئ";
+}
 
-export default function AdminUsersPage() {
+function statusLabel(isActive: boolean) {
+  return isActive ? "نشط" : "معلق";
+}
+
+export default async function AdminUsersPage() {
+  const users = await prisma.user.findMany({
+    select: {
+      id: true,
+      fullName: true,
+      email: true,
+      role: true,
+      isActive: true,
+    },
+    orderBy: { createdAt: "desc" },
+    take: 100,
+  });
+
   return (
     <AdminPageCard>
       <AdminPageHeader title="إدارة المستخدمين" description="عرض المستخدمين وأدوارهم وحالة الحسابات." />
@@ -15,11 +33,12 @@ export default function AdminUsersPage() {
         caption="جدول المستخدمين"
         rows={users}
         getRowKey={(row) => row.id}
+        emptyMessage="لا يوجد مستخدمون حالياً."
         columns={[
-          { key: "name", title: "الاسم", render: (row) => row.name },
+          { key: "name", title: "الاسم", render: (row) => row.fullName?.trim() || "—" },
           { key: "email", title: "البريد الإلكتروني", render: (row) => row.email },
-          { key: "role", title: "الدور", render: (row) => row.role },
-          { key: "status", title: "الحالة", render: (row) => row.status },
+          { key: "role", title: "الدور", render: (row) => roleLabel(row.role) },
+          { key: "status", title: "الحالة", render: (row) => statusLabel(row.isActive) },
         ]}
       />
     </AdminPageCard>
