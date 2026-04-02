@@ -13,6 +13,7 @@ const translations = {
     brandSub: "Amjad",
     home: "الرئيسية",
     books: "الكتب",
+    curriculum: "المنهاج",
     about: "عن المنصة",
     help: "المساعدة",
     contact: "تواصل معنا",
@@ -32,6 +33,7 @@ const translations = {
     brandSub: "Amjad",
     home: "Home",
     books: "Books",
+    curriculum: "Curriculum",
     about: "About",
     help: "Help",
     contact: "Contact",
@@ -57,6 +59,7 @@ export async function SiteHeader() {
   const primaryLinks = [
     { href: "/", label: t.home },
     { href: "/books", label: t.books },
+    { href: "/curriculum", label: t.curriculum },
     { href: "/about", label: t.about },
     { href: "/help", label: t.help },
     { href: "/contact", label: t.contact },
