@@ -1,9 +1,12 @@
 import Link from "next/link";
+import { cookies } from "next/headers";
 import { signOutAction } from "@/app/auth/actions";
 import { SiteDrawerNav } from "@/components/site-drawer-nav";
 import { LanguageSwitcher } from "@/components/language-switcher";
+import { CartLink } from "@/components/cart-link";
 import { getCurrentUser } from "@/lib/auth-session";
 import { getStoreLocale } from "@/lib/locale";
+import { CART_COOKIE_NAME, getCartItemsCount, parseCartCookie } from "@/lib/cart";
 
 const translations = {
   ar: {
@@ -47,8 +50,9 @@ const translations = {
 } as const;
 
 export async function SiteHeader() {
-  const [user, locale] = await Promise.all([getCurrentUser(), getStoreLocale()]);
+  const [user, locale, cookieStore] = await Promise.all([getCurrentUser(), getStoreLocale(), cookies()]);
   const t = translations[locale];
+  const cartCount = getCartItemsCount(parseCartCookie(cookieStore.get(CART_COOKIE_NAME)?.value));
 
   const primaryLinks = [
     { href: "/", label: t.home },
@@ -103,9 +107,7 @@ export async function SiteHeader() {
           <div className="flex items-center gap-0.5 lg:justify-end">
             <LanguageSwitcher locale={locale} />
 
-            <Link href="/cart" className="store-btn-secondary h-7.5 px-2 text-xs sm:h-8 sm:px-2.5">
-              {t.cart}
-            </Link>
+            <CartLink href="/cart" className="store-btn-secondary h-7.5 px-2 text-xs sm:h-8 sm:px-2.5" label={t.cart} initialCount={cartCount} />
 
             {user ? (
               <Link href="/account" className="store-btn-primary h-7.5 px-2 text-xs sm:h-8 sm:px-2.5">
