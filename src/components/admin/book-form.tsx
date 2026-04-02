@@ -197,6 +197,7 @@ export function BookForm({ mode, initialValues, authors, categories, hideAuthorF
             ]}
           />
           <p className="text-xs text-slate-500">عند التفعيل: يتم تعطيل أي وصول عام للمحتوى ويظل الوصول عبر الشراء/الإيجار فقط.</p>
+          {state.fieldErrors?.paidOnlyMode ? <p className="text-sm font-medium text-rose-700">{state.fieldErrors.paidOnlyMode}</p> : null}
         </div>
 
         <div className="space-y-2">
@@ -209,6 +210,7 @@ export function BookForm({ mode, initialValues, authors, categories, hideAuthorF
               { value: "enabled", label: "نعم" },
             ]}
           />
+          {state.fieldErrors?.allowReadingOnSite ? <p className="text-sm font-medium text-rose-700">{state.fieldErrors.allowReadingOnSite}</p> : null}
         </div>
 
         <div className="space-y-2">
@@ -221,6 +223,7 @@ export function BookForm({ mode, initialValues, authors, categories, hideAuthorF
               { value: "enabled", label: "نعم" },
             ]}
           />
+          {state.fieldErrors?.allowDownloading ? <p className="text-sm font-medium text-rose-700">{state.fieldErrors.allowDownloading}</p> : null}
         </div>
 
         <div className="space-y-2">
@@ -234,6 +237,7 @@ export function BookForm({ mode, initialValues, authors, categories, hideAuthorF
             ]}
           />
           <p className="text-xs text-slate-500">عند التفعيل: يظهر للزوار نموذج قراءة (عينة) من المحتوى النصي فقط.</p>
+          {state.fieldErrors?.previewOnly ? <p className="text-sm font-medium text-rose-700">{state.fieldErrors.previewOnly}</p> : null}
         </div>
 
         <div className="md:col-span-2 space-y-2">
