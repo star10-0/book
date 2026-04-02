@@ -47,6 +47,12 @@ function extractBookmarkLabel(payload: unknown) {
   return typeof (payload as { label?: unknown })?.label === "string" ? (payload as { label: string }).label : "";
 }
 
+function clampZoom(zoom: number) {
+  return Math.max(50, Math.min(200, zoom));
+}
+
+const ZOOM_STEP = 10;
+
 export function ReaderShell({ accessId, bookTitle, initialProgressPercent, initialLocator, source, returnHref }: ReaderShellProps) {
   const [progressPercent, setProgressPercent] = useState(normalizeProgress(initialProgressPercent));
   const [locator, setLocator] = useState(initialLocator ?? "page:1");
@@ -63,6 +69,9 @@ export function ReaderShell({ accessId, bookTitle, initialProgressPercent, initi
   const [editingDraft, setEditingDraft] = useState("");
   const [annotationMessage, setAnnotationMessage] = useState<string | null>(null);
   const [isAnnotationSaving, setIsAnnotationSaving] = useState(false);
+  const [zoomPercent, setZoomPercent] = useState(100);
+  const [isFocusMode, setIsFocusMode] = useState(false);
+  const readerRootRef = useRef<HTMLElement | null>(null);
   const lastSavedRef = useRef<string>(`${normalizeProgress(initialProgressPercent)}|${initialLocator ?? "page:1"}`);
 
   const readerEngine = useMemo(() => getReaderEngine(source), [source]);
@@ -140,7 +149,10 @@ export function ReaderShell({ accessId, bookTitle, initialProgressPercent, initi
 
   const loadAnnotations = useCallback(async () => {
     try {
-      const response = await fetch(`/api/reader-annotations/${accessId}`);
+      const response = await fetch(`/api/reader-annotations/${accessId}`, {
+        cache: "no-store",
+        credentials: "same-origin",
+      });
       if (!response.ok) {
         return;
       }
@@ -163,6 +175,17 @@ export function ReaderShell({ accessId, bookTitle, initialProgressPercent, initi
 
     return () => window.clearTimeout(timeoutId);
   }, [locator, persistProgress, progressPercent]);
+
+  useEffect(() => {
+    const onFullScreenChange = () => {
+      if (!document.fullscreenElement) {
+        setIsFocusMode(false);
+      }
+    };
+
+    document.addEventListener("fullscreenchange", onFullScreenChange);
+    return () => document.removeEventListener("fullscreenchange", onFullScreenChange);
+  }, []);
 
   const createAnnotation = useCallback(
     async (type: AnnotationType, annotationLocator: string, payload: unknown) => {
@@ -325,8 +348,9 @@ export function ReaderShell({ accessId, bookTitle, initialProgressPercent, initi
       setNoteDraft("");
       setActivePanel("contents");
       setIsPanelOpen(true);
+      await loadAnnotations();
     }
-  }, [createAnnotation, locator, noteDraft]);
+  }, [createAnnotation, loadAnnotations, locator, noteDraft]);
 
   const saveEditedNote = useCallback(async () => {
     if (!editingNoteId || !editingDraft.trim()) {
@@ -337,35 +361,78 @@ export function ReaderShell({ accessId, bookTitle, initialProgressPercent, initi
     if (success) {
       setEditingNoteId(null);
       setEditingDraft("");
+      await loadAnnotations();
     }
-  }, [editingDraft, editingNoteId, updateAnnotation]);
+  }, [editingDraft, editingNoteId, loadAnnotations, updateAnnotation]);
+
+  const addBookmarkAtCurrentLocator = useCallback(async () => {
+    await createAnnotation("BOOKMARK", locator, { label: `مرجع عند ${locator}` });
+  }, [createAnnotation, locator]);
+
+  const toggleFocusMode = useCallback(async () => {
+    if (document.fullscreenElement) {
+      await document.exitFullscreen();
+      setIsFocusMode(false);
+      return;
+    }
+
+    const target = readerRootRef.current;
+    if (target && target.requestFullscreen) {
+      try {
+        await target.requestFullscreen();
+      } catch {
+        setIsFocusMode((current) => !current);
+        return;
+      }
+    }
+
+    setIsFocusMode(true);
+  }, []);
 
   const panel = (
-    <aside className="flex h-full flex-col overflow-hidden rounded-2xl border border-slate-200 bg-white dark:border-slate-700 dark:bg-slate-900">
-      <div className="flex items-center justify-between border-b border-slate-200 px-3 py-2 dark:border-slate-700">
-        <h2 className="text-sm font-bold text-slate-800 dark:text-slate-100">الأدوات</h2>
+    <aside
+      className={`flex h-full flex-col overflow-hidden rounded-2xl border ${
+        theme === "dark" ? "border-slate-700 bg-slate-900" : "border-slate-200 bg-white"
+      }`}
+    >
+      <div className={`flex items-center justify-between border-b px-3 py-2 ${theme === "dark" ? "border-slate-700" : "border-slate-200"}`}>
+        <h2 className={`text-sm font-bold ${theme === "dark" ? "text-slate-100" : "text-slate-800"}`}>الأدوات</h2>
         <button
           type="button"
           onClick={() => setIsPanelOpen(false)}
-          className="rounded-md px-2 py-1 text-xs text-slate-500 hover:bg-slate-100 dark:text-slate-300 dark:hover:bg-slate-800 lg:hidden"
+          className={`rounded-md px-2 py-1 text-xs lg:hidden ${
+            theme === "dark" ? "text-slate-300 hover:bg-slate-800" : "text-slate-500 hover:bg-slate-100"
+          }`}
         >
           إغلاق
         </button>
       </div>
 
-      <div className="border-b border-slate-200 p-2 dark:border-slate-700">
+      <div className={`border-b p-2 ${theme === "dark" ? "border-slate-700" : "border-slate-200"}`}>
         <div className="grid grid-cols-2 gap-2 text-xs">
           <button
             type="button"
             onClick={() => setActivePanel("contents")}
-            className={`rounded-lg px-3 py-2 font-semibold ${activePanel === "contents" ? "bg-indigo-600 text-white" : "bg-slate-100 text-slate-700 dark:bg-slate-800 dark:text-slate-200"}`}
+            className={`rounded-lg px-3 py-2 font-semibold ${
+              activePanel === "contents"
+                ? "bg-indigo-600 text-white"
+                : theme === "dark"
+                  ? "bg-slate-800 text-slate-200"
+                  : "bg-slate-100 text-slate-700"
+            }`}
           >
             المراجع والملاحظات
           </button>
           <button
             type="button"
             onClick={() => setActivePanel("compose")}
-            className={`rounded-lg px-3 py-2 font-semibold ${activePanel === "compose" ? "bg-indigo-600 text-white" : "bg-slate-100 text-slate-700 dark:bg-slate-800 dark:text-slate-200"}`}
+            className={`rounded-lg px-3 py-2 font-semibold ${
+              activePanel === "compose"
+                ? "bg-indigo-600 text-white"
+                : theme === "dark"
+                  ? "bg-slate-800 text-slate-200"
+                  : "bg-slate-100 text-slate-700"
+            }`}
           >
             إضافة ملاحظة
           </button>
@@ -375,15 +442,23 @@ export function ReaderShell({ accessId, bookTitle, initialProgressPercent, initi
       <div className="flex-1 overflow-y-auto p-3">
         {activePanel === "compose" ? (
           <div className="space-y-3">
-            <p className="text-xs text-slate-600 dark:text-slate-300">ملاحظة مرتبطة بالموضع الحالي: <span className="font-semibold text-indigo-700 dark:text-indigo-300">{locator}</span></p>
-            <label htmlFor="reader-note" className="block text-xs font-semibold text-slate-700 dark:text-slate-200">الملاحظة</label>
+            <p className={`text-xs ${theme === "dark" ? "text-slate-300" : "text-slate-600"}`}>
+              ملاحظة مرتبطة بالموضع الحالي: <span className="font-semibold text-indigo-600">{locator}</span>
+            </p>
+            <label htmlFor="reader-note" className={`block text-xs font-semibold ${theme === "dark" ? "text-slate-100" : "text-slate-700"}`}>
+              الملاحظة
+            </label>
             <textarea
               id="reader-note"
               value={noteDraft}
               onChange={(event) => setNoteDraft(event.target.value)}
               rows={7}
               placeholder="اكتب ملاحظتك هنا..."
-              className="w-full rounded-xl border border-slate-300 bg-white px-3 py-2 text-sm leading-7 text-slate-900 outline-none focus:border-indigo-500 focus-visible:ring-2 focus-visible:ring-indigo-200 dark:border-slate-600 dark:bg-slate-950 dark:text-slate-100"
+              className={`w-full rounded-xl border px-3 py-2 text-sm leading-7 outline-none focus:border-indigo-500 focus-visible:ring-2 focus-visible:ring-indigo-200 ${
+                theme === "dark"
+                  ? "border-slate-600 bg-slate-950 text-slate-100"
+                  : "border-slate-300 bg-white text-slate-900"
+              }`}
             />
             <div className="flex gap-2">
               <button
@@ -400,7 +475,9 @@ export function ReaderShell({ accessId, bookTitle, initialProgressPercent, initi
                   setNoteDraft("");
                   setActivePanel("contents");
                 }}
-                className="rounded-lg border border-slate-300 px-3 py-2 text-xs font-semibold text-slate-700 dark:border-slate-600 dark:text-slate-200"
+                className={`rounded-lg border px-3 py-2 text-xs font-semibold ${
+                  theme === "dark" ? "border-slate-600 text-slate-200" : "border-slate-300 text-slate-700"
+                }`}
               >
                 إلغاء
               </button>
@@ -410,12 +487,12 @@ export function ReaderShell({ accessId, bookTitle, initialProgressPercent, initi
           <div className="space-y-4">
             <section className="space-y-2">
               <div className="flex items-center justify-between">
-                <h3 className="text-xs font-bold text-slate-700 dark:text-slate-200">المراجع ({bookmarks.length})</h3>
+                <h3 className={`text-xs font-bold ${theme === "dark" ? "text-slate-200" : "text-slate-700"}`}>المراجع ({bookmarks.length})</h3>
                 <button
                   type="button"
                   disabled={isAnnotationSaving}
-                  onClick={() => void createAnnotation("BOOKMARK", locator, { label: `مرجع عند ${locator}` })}
-                  className="rounded-md bg-amber-100 px-2 py-1 text-[11px] font-semibold text-amber-900 hover:bg-amber-200 dark:bg-amber-900/40 dark:text-amber-200"
+                  onClick={() => void addBookmarkAtCurrentLocator()}
+                  className="rounded-md bg-amber-100 px-2 py-1 text-[11px] font-semibold text-amber-900 hover:bg-amber-200 disabled:opacity-60"
                 >
                   حفظ الموضع الحالي
                 </button>
@@ -425,16 +502,16 @@ export function ReaderShell({ accessId, bookTitle, initialProgressPercent, initi
                   {bookmarks.map((bookmark) => {
                     const label = extractBookmarkLabel(bookmark.payload);
                     return (
-                      <div key={bookmark.id} className="rounded-lg border border-amber-200 bg-amber-50 p-2 text-xs dark:border-amber-800 dark:bg-amber-950/30">
-                        <button type="button" onClick={() => jumpToLocator(bookmark.locator)} className="w-full text-right font-semibold text-amber-900 hover:underline dark:text-amber-200">
+                      <div key={bookmark.id} className="rounded-lg border border-amber-200 bg-amber-50 p-2 text-xs">
+                        <button type="button" onClick={() => jumpToLocator(bookmark.locator)} className="w-full text-right font-semibold text-amber-900 hover:underline">
                           {label || `مرجع عند ${bookmark.locator}`}
                         </button>
-                        <p className="mt-1 text-[11px] text-amber-700 dark:text-amber-300">{bookmark.locator}</p>
+                        <p className="mt-1 text-[11px] text-amber-700">{bookmark.locator}</p>
                         <div className="mt-2 flex justify-end">
                           <button
                             type="button"
                             onClick={() => void deleteAnnotation(bookmark.id)}
-                            className="rounded-md border border-amber-300 px-2 py-1 text-[11px] font-semibold text-amber-900 hover:bg-amber-100 dark:border-amber-700 dark:text-amber-200"
+                            className="rounded-md border border-amber-300 px-2 py-1 text-[11px] font-semibold text-amber-900 hover:bg-amber-100"
                           >
                             حذف
                           </button>
@@ -444,12 +521,23 @@ export function ReaderShell({ accessId, bookTitle, initialProgressPercent, initi
                   })}
                 </div>
               ) : (
-                <p className="text-xs text-slate-500 dark:text-slate-400">لا توجد مراجع محفوظة.</p>
+                <p className={`text-xs ${theme === "dark" ? "text-slate-400" : "text-slate-500"}`}>لا توجد مراجع محفوظة.</p>
               )}
             </section>
 
             <section className="space-y-2">
-              <h3 className="text-xs font-bold text-slate-700 dark:text-slate-200">الملاحظات ({notes.length})</h3>
+              <div className="flex items-center justify-between">
+                <h3 className={`text-xs font-bold ${theme === "dark" ? "text-slate-200" : "text-slate-700"}`}>الملاحظات ({notes.length})</h3>
+                <button
+                  type="button"
+                  onClick={() => void loadAnnotations()}
+                  className={`rounded-md px-2 py-1 text-[11px] font-semibold ${
+                    theme === "dark" ? "bg-slate-800 text-slate-200" : "bg-slate-100 text-slate-700"
+                  }`}
+                >
+                  تحديث
+                </button>
+              </div>
               {notes.length ? (
                 <div className="space-y-2">
                   {notes.map((note) => {
@@ -457,11 +545,16 @@ export function ReaderShell({ accessId, bookTitle, initialProgressPercent, initi
                     const isEditing = editingNoteId === note.id;
 
                     return (
-                      <article key={note.id} className="rounded-lg border border-indigo-200 bg-white p-2 text-xs dark:border-slate-700 dark:bg-slate-950">
+                      <article
+                        key={note.id}
+                        className={`rounded-lg border p-2 text-xs ${
+                          theme === "dark" ? "border-slate-700 bg-slate-950" : "border-indigo-200 bg-white"
+                        }`}
+                      >
                         <button
                           type="button"
                           onClick={() => jumpToLocator(note.locator)}
-                          className="text-right font-semibold text-indigo-700 hover:underline dark:text-indigo-300"
+                          className="text-right font-semibold text-indigo-700 hover:underline"
                         >
                           {note.locator}
                         </button>
@@ -472,7 +565,11 @@ export function ReaderShell({ accessId, bookTitle, initialProgressPercent, initi
                               value={editingDraft}
                               onChange={(event) => setEditingDraft(event.target.value)}
                               rows={5}
-                              className="w-full rounded-lg border border-slate-300 bg-white px-2 py-1.5 text-sm leading-6 text-slate-900 focus:border-indigo-500 focus-visible:ring-2 focus-visible:ring-indigo-200 dark:border-slate-600 dark:bg-slate-900 dark:text-slate-100"
+                              className={`w-full rounded-lg border px-2 py-1.5 text-sm leading-6 focus:border-indigo-500 focus-visible:ring-2 focus-visible:ring-indigo-200 ${
+                                theme === "dark"
+                                  ? "border-slate-600 bg-slate-900 text-slate-100"
+                                  : "border-slate-300 bg-white text-slate-900"
+                              }`}
                             />
                             <div className="flex gap-2">
                               <button
@@ -489,7 +586,9 @@ export function ReaderShell({ accessId, bookTitle, initialProgressPercent, initi
                                   setEditingNoteId(null);
                                   setEditingDraft("");
                                 }}
-                                className="rounded-md border border-slate-300 px-2 py-1 text-[11px] font-semibold text-slate-700 dark:border-slate-600 dark:text-slate-200"
+                                className={`rounded-md border px-2 py-1 text-[11px] font-semibold ${
+                                  theme === "dark" ? "border-slate-600 text-slate-200" : "border-slate-300 text-slate-700"
+                                }`}
                               >
                                 إلغاء
                               </button>
@@ -497,7 +596,7 @@ export function ReaderShell({ accessId, bookTitle, initialProgressPercent, initi
                           </div>
                         ) : (
                           <>
-                            <p className="mt-1 whitespace-pre-wrap text-slate-700 dark:text-slate-200">{noteText || "ملاحظة بدون نص."}</p>
+                            <p className={`mt-1 whitespace-pre-wrap ${theme === "dark" ? "text-slate-100" : "text-slate-700"}`}>{noteText || "ملاحظة بدون نص."}</p>
                             <div className="mt-2 flex flex-wrap justify-end gap-2">
                               <button
                                 type="button"
@@ -505,14 +604,18 @@ export function ReaderShell({ accessId, bookTitle, initialProgressPercent, initi
                                   setEditingNoteId(note.id);
                                   setEditingDraft(noteText);
                                 }}
-                                className="rounded-md border border-indigo-200 px-2 py-1 text-[11px] font-semibold text-indigo-700 hover:bg-indigo-50 dark:border-indigo-700 dark:text-indigo-300"
+                                className="rounded-md border border-indigo-200 px-2 py-1 text-[11px] font-semibold text-indigo-700 hover:bg-indigo-50"
                               >
                                 تعديل
                               </button>
                               <button
                                 type="button"
                                 onClick={() => void deleteAnnotation(note.id)}
-                                className="rounded-md border border-slate-300 px-2 py-1 text-[11px] font-semibold text-slate-700 hover:bg-slate-100 dark:border-slate-600 dark:text-slate-200 dark:hover:bg-slate-800"
+                                className={`rounded-md border px-2 py-1 text-[11px] font-semibold ${
+                                  theme === "dark"
+                                    ? "border-slate-600 text-slate-200 hover:bg-slate-800"
+                                    : "border-slate-300 text-slate-700 hover:bg-slate-100"
+                                }`}
                               >
                                 حذف
                               </button>
@@ -524,7 +627,7 @@ export function ReaderShell({ accessId, bookTitle, initialProgressPercent, initi
                   })}
                 </div>
               ) : (
-                <p className="text-xs text-slate-500 dark:text-slate-400">لا توجد ملاحظات محفوظة.</p>
+                <p className={`text-xs ${theme === "dark" ? "text-slate-400" : "text-slate-500"}`}>لا توجد ملاحظات محفوظة.</p>
               )}
             </section>
           </div>
@@ -534,27 +637,32 @@ export function ReaderShell({ accessId, bookTitle, initialProgressPercent, initi
   );
 
   return (
-    <section className={`rounded-2xl border p-2 shadow-sm dark:bg-slate-950 lg:p-3 ${theme === "dark" ? "border-slate-700 bg-slate-900" : "border-slate-200 bg-slate-50"}`}>
-      <header className="mb-2 flex flex-wrap items-center gap-2 rounded-xl border border-slate-200 bg-white px-3 py-2 text-xs dark:border-slate-700 dark:bg-slate-900">
-        <Link href={returnHref} className="font-semibold text-indigo-700 hover:text-indigo-600 dark:text-indigo-300">
+    <section
+      ref={readerRootRef}
+      className={`rounded-2xl border p-2 shadow-sm lg:p-2.5 ${
+        theme === "dark" ? "border-slate-700 bg-slate-950 text-slate-100" : "border-slate-200 bg-slate-50 text-slate-900"
+      } ${isFocusMode ? "fixed inset-0 z-40 m-0 rounded-none" : ""}`}
+    >
+      <header
+        className={`mb-2 flex flex-wrap items-center gap-1.5 rounded-xl border px-2 py-1.5 text-xs ${
+          theme === "dark" ? "border-slate-700 bg-slate-900" : "border-slate-200 bg-white"
+        }`}
+      >
+        <Link href={returnHref} className="font-semibold text-indigo-700 hover:text-indigo-600">
           العودة إلى مكتبتي
         </Link>
-        <span className="text-slate-400">•</span>
-        <h1 className="min-w-0 flex-1 truncate text-sm font-bold text-slate-900 dark:text-slate-100">{bookTitle}</h1>
-        <p className="rounded-md bg-slate-100 px-2 py-1 font-semibold text-slate-700 dark:bg-slate-800 dark:text-slate-200">{progressText}</p>
-        <p className="rounded-md bg-slate-100 px-2 py-1 text-slate-600 dark:bg-slate-800 dark:text-slate-300">{locator}</p>
-        <button
-          type="button"
-          onClick={() => setTheme(theme === "light" ? "dark" : "light")}
-          className="rounded-md border border-slate-300 px-2 py-1 font-semibold text-slate-700 hover:bg-slate-100 dark:border-slate-600 dark:text-slate-200 dark:hover:bg-slate-800"
-        >
-          {theme === "light" ? "الوضع الداكن" : "الوضع الفاتح"}
-        </button>
+        <span className={theme === "dark" ? "text-slate-600" : "text-slate-400"}>•</span>
+        <h1 className={`min-w-0 flex-1 truncate text-sm font-bold ${theme === "dark" ? "text-slate-100" : "text-slate-900"}`}>{bookTitle}</h1>
+
         <button
           type="button"
           onClick={() => controls?.previous()}
           disabled={!controls}
-          className="rounded-md border border-slate-300 px-2 py-1 font-semibold text-slate-700 hover:bg-slate-100 disabled:cursor-not-allowed disabled:opacity-60 dark:border-slate-600 dark:text-slate-200 dark:hover:bg-slate-800"
+          className={`rounded-md border px-2 py-1 font-semibold disabled:cursor-not-allowed disabled:opacity-60 ${
+            theme === "dark"
+              ? "border-slate-600 text-slate-200 hover:bg-slate-800"
+              : "border-slate-300 text-slate-700 hover:bg-slate-100"
+          }`}
         >
           السابقة
         </button>
@@ -566,71 +674,152 @@ export function ReaderShell({ accessId, bookTitle, initialProgressPercent, initi
         >
           التالية
         </button>
+
+        <div className={`inline-flex items-center rounded-md border p-0.5 ${theme === "dark" ? "border-slate-600" : "border-slate-300"}`} role="radiogroup" aria-label="مظهر القارئ">
+          <button
+            type="button"
+            role="radio"
+            aria-checked={theme === "light"}
+            onClick={() => setTheme("light")}
+            className={`rounded px-2 py-1 text-[11px] font-semibold ${theme === "light" ? "bg-slate-900 text-white" : theme === "dark" ? "text-slate-300" : "text-slate-600"}`}
+          >
+            فاتح
+          </button>
+          <button
+            type="button"
+            role="radio"
+            aria-checked={theme === "dark"}
+            onClick={() => setTheme("dark")}
+            className={`rounded px-2 py-1 text-[11px] font-semibold ${theme === "dark" ? "bg-slate-100 text-slate-900" : theme === "light" ? "text-slate-600" : "text-slate-300"}`}
+          >
+            داكن
+          </button>
+        </div>
+
+        <div className={`inline-flex items-center rounded-md border ${theme === "dark" ? "border-slate-600" : "border-slate-300"}`}>
+          <button
+            type="button"
+            onClick={() => setZoomPercent((current) => clampZoom(current - ZOOM_STEP))}
+            className={`px-2 py-1 font-semibold ${theme === "dark" ? "text-slate-100 hover:bg-slate-800" : "text-slate-700 hover:bg-slate-100"}`}
+            aria-label="تصغير"
+          >
+            −
+          </button>
+          <span className={`min-w-14 px-2 text-center text-[11px] font-semibold ${theme === "dark" ? "text-slate-200" : "text-slate-700"}`}>{zoomPercent}%</span>
+          <button
+            type="button"
+            onClick={() => setZoomPercent((current) => clampZoom(current + ZOOM_STEP))}
+            className={`px-2 py-1 font-semibold ${theme === "dark" ? "text-slate-100 hover:bg-slate-800" : "text-slate-700 hover:bg-slate-100"}`}
+            aria-label="تكبير"
+          >
+            +
+          </button>
+        </div>
+        <p className={`rounded-md px-2 py-1 text-[11px] font-semibold ${theme === "dark" ? "bg-slate-800 text-slate-200" : "bg-slate-100 text-slate-700"}`}>{progressText}</p>
+        <p className={`rounded-md px-2 py-1 text-[11px] ${theme === "dark" ? "bg-slate-800 text-slate-300" : "bg-slate-100 text-slate-600"}`}>{locator}</p>
+
+        <button
+          type="button"
+          onClick={() => void toggleFocusMode()}
+          className={`rounded-md border px-2 py-1 font-semibold ${
+            theme === "dark" ? "border-slate-600 text-slate-200 hover:bg-slate-800" : "border-slate-300 text-slate-700 hover:bg-slate-100"
+          }`}
+        >
+          {isFocusMode ? "إنهاء وضع التركيز" : "وضع التركيز"}
+        </button>
+
+        <button
+          type="button"
+          onClick={() => {
+            setActivePanel("contents");
+            setIsPanelOpen(true);
+          }}
+          className={`rounded-md px-2 py-1 font-semibold lg:hidden ${
+            theme === "dark" ? "bg-slate-800 text-slate-100" : "bg-slate-100 text-slate-700"
+          }`}
+        >
+          المراجع والملاحظات
+        </button>
       </header>
 
-      <div className="grid gap-2 lg:grid-cols-[60px_minmax(0,1fr)_320px]">
-        <nav className="hidden h-[calc(100vh-8.5rem)] rounded-xl border border-slate-200 bg-white p-2 dark:border-slate-700 dark:bg-slate-900 lg:flex lg:flex-col lg:items-center lg:gap-2">
-          <button
-            type="button"
-            onClick={() => {
-              setActivePanel("contents");
-              setIsPanelOpen(true);
-            }}
-            className="w-full rounded-lg bg-slate-100 px-2 py-2 text-[11px] font-semibold text-slate-700 hover:bg-slate-200 dark:bg-slate-800 dark:text-slate-200"
+      <div className={`grid gap-2 ${isFocusMode ? "lg:grid-cols-[minmax(0,1fr)_320px]" : "lg:grid-cols-[52px_minmax(0,1fr)_320px]"}`}>
+        {!isFocusMode ? (
+          <nav
+            className={`hidden h-[calc(100vh-7rem)] rounded-xl border p-2 lg:flex lg:flex-col lg:items-center lg:gap-2 ${
+              theme === "dark" ? "border-slate-700 bg-slate-900" : "border-slate-200 bg-white"
+            }`}
           >
-            المراجع
-          </button>
-          <button
-            type="button"
-            onClick={() => {
-              setActivePanel("compose");
-              setIsPanelOpen(true);
-            }}
-            className="w-full rounded-lg bg-slate-100 px-2 py-2 text-[11px] font-semibold text-slate-700 hover:bg-slate-200 dark:bg-slate-800 dark:text-slate-200"
-          >
-            ملاحظة
-          </button>
-          {isPdf ? (
-            <>
-              <button
-                type="button"
-                onClick={() => setAnnotationMode("navigate")}
-                className={`w-full rounded-lg px-2 py-2 text-[11px] font-semibold ${annotationMode === "navigate" ? "bg-emerald-600 text-white" : "bg-slate-100 text-slate-700 dark:bg-slate-800 dark:text-slate-200"}`}
-              >
-                قراءة
-              </button>
-              <button
-                type="button"
-                onClick={() => setAnnotationMode("draw")}
-                className={`w-full rounded-lg px-2 py-2 text-[11px] font-semibold ${annotationMode === "draw" ? "bg-indigo-600 text-white" : "bg-slate-100 text-slate-700 dark:bg-slate-800 dark:text-slate-200"}`}
-              >
-                رسم
-              </button>
-              <button
-                type="button"
-                onClick={() => setAnnotationMode("eraser")}
-                className={`w-full rounded-lg px-2 py-2 text-[11px] font-semibold ${annotationMode === "eraser" ? "bg-rose-600 text-white" : "bg-slate-100 text-slate-700 dark:bg-slate-800 dark:text-slate-200"}`}
-              >
-                محو
-              </button>
-              <button
-                type="button"
-                onClick={handleClearCurrentDrawing}
-                className="w-full rounded-lg bg-rose-50 px-2 py-2 text-[11px] font-semibold text-rose-700 hover:bg-rose-100 dark:bg-rose-950/40 dark:text-rose-300"
-              >
-                مسح
-              </button>
-            </>
-          ) : null}
-        </nav>
+            <button
+              type="button"
+              onClick={() => {
+                setActivePanel("contents");
+                setIsPanelOpen(true);
+              }}
+              className={`w-full rounded-lg px-2 py-2 text-[11px] font-semibold ${
+                theme === "dark" ? "bg-slate-800 text-slate-200" : "bg-slate-100 text-slate-700"
+              }`}
+            >
+              المراجع
+            </button>
+            <button
+              type="button"
+              onClick={() => {
+                setActivePanel("compose");
+                setIsPanelOpen(true);
+              }}
+              className={`w-full rounded-lg px-2 py-2 text-[11px] font-semibold ${
+                theme === "dark" ? "bg-slate-800 text-slate-200" : "bg-slate-100 text-slate-700"
+              }`}
+            >
+              ملاحظة
+            </button>
+            <button
+              type="button"
+              onClick={() => void addBookmarkAtCurrentLocator()}
+              className="w-full rounded-lg bg-amber-100 px-2 py-2 text-[11px] font-semibold text-amber-900"
+            >
+              مرجع
+            </button>
+            {isPdf ? (
+              <>
+                <button
+                  type="button"
+                  onClick={() => setAnnotationMode("navigate")}
+                  className={`w-full rounded-lg px-2 py-2 text-[11px] font-semibold ${annotationMode === "navigate" ? "bg-emerald-600 text-white" : theme === "dark" ? "bg-slate-800 text-slate-200" : "bg-slate-100 text-slate-700"}`}
+                >
+                  قراءة
+                </button>
+                <button
+                  type="button"
+                  onClick={() => setAnnotationMode("draw")}
+                  className={`w-full rounded-lg px-2 py-2 text-[11px] font-semibold ${annotationMode === "draw" ? "bg-indigo-600 text-white" : theme === "dark" ? "bg-slate-800 text-slate-200" : "bg-slate-100 text-slate-700"}`}
+                >
+                  رسم
+                </button>
+                <button
+                  type="button"
+                  onClick={() => setAnnotationMode("eraser")}
+                  className={`w-full rounded-lg px-2 py-2 text-[11px] font-semibold ${annotationMode === "eraser" ? "bg-rose-600 text-white" : theme === "dark" ? "bg-slate-800 text-slate-200" : "bg-slate-100 text-slate-700"}`}
+                >
+                  محو
+                </button>
+                <button type="button" onClick={handleClearCurrentDrawing} className="w-full rounded-lg bg-rose-50 px-2 py-2 text-[11px] font-semibold text-rose-700">
+                  مسح
+                </button>
+              </>
+            ) : null}
+          </nav>
+        ) : null}
 
-        <div className="min-w-0 rounded-xl border border-slate-200 bg-white p-1 dark:border-slate-700 dark:bg-slate-900">
+        <div className={`min-w-0 overflow-hidden rounded-xl border ${theme === "dark" ? "border-slate-700 bg-slate-900" : "border-slate-200 bg-white"}`}>
           <ReaderViewport
             source={source}
             locator={locator}
             theme={theme}
             drawingMode={isPdf ? annotationMode : "navigate"}
             drawingStrokes={currentDrawing}
+            zoomPercent={zoomPercent}
+            focusMode={isFocusMode}
             onLocationChange={handleLocationChange}
             onControlsReady={setControls}
             onAddStroke={handleAddStroke}
@@ -638,30 +827,7 @@ export function ReaderShell({ accessId, bookTitle, initialProgressPercent, initi
           />
         </div>
 
-        <div className="hidden h-[calc(100vh-8.5rem)] lg:block">{panel}</div>
-      </div>
-
-      <div className="mt-2 flex items-center justify-between gap-2 rounded-xl border border-slate-200 bg-white px-3 py-2 text-xs dark:border-slate-700 dark:bg-slate-900 lg:hidden">
-        <button
-          type="button"
-          onClick={() => {
-            setActivePanel("contents");
-            setIsPanelOpen(true);
-          }}
-          className="rounded-md bg-slate-100 px-2 py-1 font-semibold text-slate-700 dark:bg-slate-800 dark:text-slate-200"
-        >
-          المراجع والملاحظات
-        </button>
-        <button
-          type="button"
-          onClick={() => {
-            setActivePanel("compose");
-            setIsPanelOpen(true);
-          }}
-          className="rounded-md bg-indigo-600 px-2 py-1 font-semibold text-white"
-        >
-          إضافة ملاحظة
-        </button>
+        <div className={`hidden h-[calc(100vh-7rem)] lg:block ${isFocusMode ? "max-h-[calc(100vh-5rem)]" : ""}`}>{panel}</div>
       </div>
 
       {isPdf ? (
@@ -669,36 +835,32 @@ export function ReaderShell({ accessId, bookTitle, initialProgressPercent, initi
           <button
             type="button"
             onClick={() => setAnnotationMode("navigate")}
-            className={`rounded-md px-2 py-1 text-xs font-semibold ${annotationMode === "navigate" ? "bg-emerald-600 text-white" : "bg-slate-100 text-slate-700 dark:bg-slate-800 dark:text-slate-200"}`}
+            className={`rounded-md px-2 py-1 text-xs font-semibold ${annotationMode === "navigate" ? "bg-emerald-600 text-white" : theme === "dark" ? "bg-slate-800 text-slate-200" : "bg-slate-100 text-slate-700"}`}
           >
             قراءة
           </button>
           <button
             type="button"
             onClick={() => setAnnotationMode("draw")}
-            className={`rounded-md px-2 py-1 text-xs font-semibold ${annotationMode === "draw" ? "bg-indigo-600 text-white" : "bg-slate-100 text-slate-700 dark:bg-slate-800 dark:text-slate-200"}`}
+            className={`rounded-md px-2 py-1 text-xs font-semibold ${annotationMode === "draw" ? "bg-indigo-600 text-white" : theme === "dark" ? "bg-slate-800 text-slate-200" : "bg-slate-100 text-slate-700"}`}
           >
             رسم
           </button>
           <button
             type="button"
             onClick={() => setAnnotationMode("eraser")}
-            className={`rounded-md px-2 py-1 text-xs font-semibold ${annotationMode === "eraser" ? "bg-rose-600 text-white" : "bg-slate-100 text-slate-700 dark:bg-slate-800 dark:text-slate-200"}`}
+            className={`rounded-md px-2 py-1 text-xs font-semibold ${annotationMode === "eraser" ? "bg-rose-600 text-white" : theme === "dark" ? "bg-slate-800 text-slate-200" : "bg-slate-100 text-slate-700"}`}
           >
             محو
           </button>
-          <button
-            type="button"
-            onClick={handleClearCurrentDrawing}
-            className="rounded-md bg-rose-50 px-2 py-1 text-xs font-semibold text-rose-700 dark:bg-rose-950/40 dark:text-rose-300"
-          >
+          <button type="button" onClick={handleClearCurrentDrawing} className="rounded-md bg-rose-50 px-2 py-1 text-xs font-semibold text-rose-700">
             مسح طبقة الصفحة
           </button>
         </div>
       ) : null}
 
       {annotationMessage ? <p className="mt-2 text-xs text-indigo-600">{annotationMessage}</p> : null}
-      {isSaving ? <p className="mt-1 text-xs text-slate-500 dark:text-slate-400">جارٍ حفظ التقدم...</p> : null}
+      {isSaving ? <p className={`mt-1 text-xs ${theme === "dark" ? "text-slate-400" : "text-slate-500"}`}>جارٍ حفظ التقدم...</p> : null}
       {error ? <p className="mt-1 text-xs text-rose-600">{error}</p> : null}
 
       {isPanelOpen ? (
@@ -709,7 +871,7 @@ export function ReaderShell({ accessId, bookTitle, initialProgressPercent, initi
         </div>
       ) : null}
 
-      <p className="sr-only">{readerEngine ? `المحرّك: ${readerEngine.displayName}` : ""}</p>
+      <div className="sr-only">{readerEngine ? `المحرّك: ${readerEngine.displayName}` : ""}</div>
     </section>
   );
 }
