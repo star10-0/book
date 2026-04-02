@@ -8,6 +8,10 @@ export function isCreatorOrAdminRole(role: UserRole) {
   return role === UserRole.CREATOR || isAdminRole(role);
 }
 
+export function isCurriculumManagerRole(role: UserRole) {
+  return isAdminRole(role);
+}
+
 export function canManageCreatorBook(input: {
   role: UserRole;
   actorUserId: string;
