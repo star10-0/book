@@ -45,4 +45,9 @@ a {
   .store-surface {
     @apply rounded-3xl bg-white p-5 shadow-sm ring-1 ring-slate-200 sm:p-6;
   }
+
+  .store-header-tab {
+    @apply relative inline-flex h-5.5 items-center rounded-md px-1.5 text-xs font-medium text-slate-700 transition-colors duration-200 hover:text-slate-900 focus-visible:outline-none focus-visible:ring-2 focus-visible:ring-indigo-400 sm:h-6 sm:px-2;
+    @apply after:pointer-events-none after:absolute after:bottom-[2px] after:left-1/2 after:h-px after:w-[calc(100%-0.75rem)] after:-translate-x-1/2 after:scale-x-0 after:bg-current after:opacity-90 after:transition-transform after:duration-200 after:ease-out hover:after:scale-x-100 focus-visible:after:scale-x-100 sm:after:w-[calc(100%-1rem)];
+  }
 }

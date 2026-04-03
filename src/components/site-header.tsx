@@ -144,10 +144,7 @@ export async function SiteHeader() {
           </li>
           {primaryLinks.map((link) => (
             <li key={link.href}>
-              <Link
-                href={link.href}
-                className="inline-flex h-5.5 items-center rounded-md px-1.5 text-xs font-medium text-slate-700 hover:bg-white hover:text-slate-900 focus-visible:outline-none focus-visible:ring-2 focus-visible:ring-indigo-400 sm:h-6 sm:px-2"
-              >
+              <Link href={link.href} className="store-header-tab">
                 {link.label}
               </Link>
             </li>
@@ -157,10 +154,7 @@ export async function SiteHeader() {
 
           {accountNavigation.map((link) => (
             <li key={link.href}>
-              <Link
-                href={link.href}
-                className="inline-flex h-5.5 items-center rounded-md px-1.5 text-xs font-medium text-slate-700 hover:bg-white hover:text-slate-900 focus-visible:outline-none focus-visible:ring-2 focus-visible:ring-indigo-400 sm:h-6 sm:px-2"
-              >
+              <Link href={link.href} className="store-header-tab">
                 {link.label}
               </Link>
             </li>
