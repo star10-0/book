@@ -51,14 +51,14 @@
 5. Reset an existing admin password safely (without creating a new admin):
 
    ```bash
-   RESET_ADMIN_EMAIL=your-admin-email@example.com \
-   RESET_ADMIN_PASSWORD='replace-with-strong-password' \
+   ADMIN_RESET_EMAIL=your-admin-email@example.com \
+   ADMIN_RESET_PASSWORD='replace-with-strong-password' \
    npm run prisma:reset-admin-password
    ```
 
    Notes:
-   - `RESET_ADMIN_EMAIL` and `RESET_ADMIN_PASSWORD` are required.
-   - `RESET_ADMIN_PASSWORD` must be at least 12 characters.
+   - `ADMIN_RESET_EMAIL` and `ADMIN_RESET_PASSWORD` are required.
+   - `ADMIN_RESET_PASSWORD` must be at least 12 characters.
    - The command fails if no user exists for the email.
    - The command fails if the user is not an `ADMIN`.
    - Existing sessions are invalidated by incrementing `sessionVersion`.
