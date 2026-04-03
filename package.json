@@ -21,7 +21,8 @@
     "test": "tsx --test src/**/*.test.ts",
     "pretypecheck": "prisma generate",
     "prisma:migrate:deploy": "prisma migrate deploy",
-    "start:prod": "npm run start"
+    "start:prod": "npm run start",
+    "prisma:reset-admin-password": "tsx prisma/reset-admin-password.ts"
   },
   "dependencies": {
     "@prisma/client": "6.19.2",

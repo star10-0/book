@@ -48,6 +48,21 @@
    - `prisma:seed` no longer creates a privileged user automatically.
    - Quick wiring check (script + entrypoint): run `npm run prisma:bootstrap-admin` without env vars; it should fail fast with `Missing required environment variable: INITIAL_ADMIN_EMAIL`, which confirms the command is wired and executable.
 
+5. Reset an existing admin password safely (without creating a new admin):
+
+   ```bash
+   RESET_ADMIN_EMAIL=your-admin-email@example.com \
+   RESET_ADMIN_PASSWORD='replace-with-strong-password' \
+   npm run prisma:reset-admin-password
+   ```
+
+   Notes:
+   - `RESET_ADMIN_EMAIL` and `RESET_ADMIN_PASSWORD` are required.
+   - `RESET_ADMIN_PASSWORD` must be at least 12 characters.
+   - The command fails if no user exists for the email.
+   - The command fails if the user is not an `ADMIN`.
+   - Existing sessions are invalidated by incrementing `sessionVersion`.
+
 ---
 
 ## Sprint 3: Production Launch Readiness (Docker/VPS)
