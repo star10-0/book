@@ -1,6 +1,7 @@
 import { createHmac, timingSafeEqual } from "node:crypto";
 import { cookies } from "next/headers";
 import { redirect } from "next/navigation";
+import { DEVICE_POLICY_TERMS_VERSION } from "@/lib/policy";
 import { isAdminRole, isCreatorOrAdminRole } from "@/lib/authz";
 import { assertServerEnv } from "@/lib/env";
 import { prisma } from "@/lib/prisma";
@@ -133,6 +134,8 @@ export async function getCurrentUser() {
       role: true,
       isActive: true,
       sessionVersion: true,
+      acceptedTermsVersion: true,
+      requirePasswordReset: true,
       creatorProfile: {
         select: {
           slug: true,
@@ -155,11 +158,13 @@ export async function getCurrentUser() {
     email: user.email,
     name: user.fullName,
     role: user.role,
+    acceptedTermsVersion: user.acceptedTermsVersion,
+    requirePasswordReset: user.requirePasswordReset,
     creatorProfile: user.creatorProfile,
   };
 }
 
-export async function requireUser(options?: { callbackUrl?: string }) {
+export async function requireUser(options?: { callbackUrl?: string; allowUnacceptedPolicy?: boolean }) {
   const user = await getCurrentUser();
 
   if (!user) {
@@ -167,6 +172,16 @@ export async function requireUser(options?: { callbackUrl?: string }) {
     redirect(`/login${callback}`);
   }
 
+  if (!options?.allowUnacceptedPolicy && user.acceptedTermsVersion !== DEVICE_POLICY_TERMS_VERSION) {
+    const callback = options?.callbackUrl ? `?callbackUrl=${encodeURIComponent(options.callbackUrl)}` : "";
+    redirect(`/policy${callback}`);
+  }
+
+
+  if (!options?.allowUnacceptedPolicy && user.requirePasswordReset) {
+    const callback = options?.callbackUrl ? `&callbackUrl=${encodeURIComponent(options.callbackUrl)}` : "";
+    redirect(`/account/profile?forcePasswordReset=1${callback}`);
+  }
   return user;
 }
 
