@@ -48,6 +48,21 @@
    - `prisma:seed` no longer creates a privileged user automatically.
    - Quick wiring check (script + entrypoint): run `npm run prisma:bootstrap-admin` without env vars; it should fail fast with `Missing required environment variable: INITIAL_ADMIN_EMAIL`, which confirms the command is wired and executable.
 
+5. Reset an existing admin password safely (without creating a new admin):
+
+   ```bash
+   ADMIN_RESET_EMAIL=your-admin-email@example.com \
+   ADMIN_RESET_PASSWORD='replace-with-strong-password' \
+   npm run prisma:reset-admin-password
+   ```
+
+   Notes:
+   - `ADMIN_RESET_EMAIL` and `ADMIN_RESET_PASSWORD` are required.
+   - `ADMIN_RESET_PASSWORD` must be at least 12 characters.
+   - The command fails if no user exists for the email.
+   - The command fails if the user is not an `ADMIN`.
+   - Existing sessions are invalidated by incrementing `sessionVersion`.
+
 ---
 
 ## Sprint 3: Production Launch Readiness (Docker/VPS)
@@ -66,7 +81,7 @@ This repository includes a production-first Docker/VPS deployment flow with expl
 ### Build/start contract
 
 - Build image contents: `npm run build`
-- Run app server only: `npm run start`
+- Run app server (migration-first): `npm run start`
 - Run migrations only: `npm run prisma:migrate:deploy`
 
 > Production startup order is migration-first, app-second. Do **not** use `prisma migrate dev` in production.
@@ -110,7 +125,7 @@ Select at least one provider via `PAYMENT_LIVE_PROVIDERS` and fully configure on
 **Syriatel Cash (if enabled/selected)**
 - `SYRIATEL_CASH_API_BASE_URL` (API SYRIA base endpoint, for example `https://apisyria.com/api/v1`; verification uses this base endpoint directly with query params `resource=syriatel`, `action=find_tx`, `tx`, `gsm`)
 - `SYRIATEL_CASH_API_KEY`
-- `SYRIATEL_CASH_DESTINATION_ACCOUNT` (linked Syriatel gsm or cash code recognized by API SYRIA)
+
 
 
 Use `.env.production.example` as the source of truth.
@@ -165,7 +180,7 @@ To quickly detect deployment drift versus local/main code:
    git log --oneline --decorate --max-count=20 HEAD..origin/main
    ```
 
-`/api/version` reports the commit SHA/branch when your platform exposes them (for example Vercel, Railway, Render), and also reports payment mode/provider selection to speed up checkout troubleshooting. It also reports `syriatelIntegration=manual_transfer_find_tx_v1` to confirm the new Syriatel contract is active.
+`/api/version` reports the commit SHA/branch when your platform exposes them (for example Vercel, Railway, Render), and also reports payment mode/provider selection to speed up checkout troubleshooting.
 
 ---
 
@@ -228,7 +243,7 @@ To quickly detect deployment drift versus local/main code:
 docker compose -f docker-compose.app.yml --env-file .env.production up -d --build
 ```
 
-This runs `migrate` first, then starts `app`.
+This runs migrations first, then starts `app` (same behavior as `npm run start`).
 
 ### Production monitoring deployment (Compose / VPS)
 
@@ -258,9 +273,8 @@ Key UIs:
 
 Full setup details, alerts, and runbooks are documented in `monitoring/README.md` and `monitoring/runbooks/OPERATIONS.md`.
 
-### Redeploy to latest Syriatel implementation (manual-transfer + API SYRIA `find_tx`)
 
-Use this when production appears to run older Syriatel code or reports missing legacy Syriatel env keys.
+Use this when production appears to run older Syriatel code or reports missing current Syriatel env keys.
 
 1. Update deployment source to latest `main` commit:
 
@@ -301,8 +315,6 @@ Use this when production appears to run older Syriatel code or reports missing l
 5. Smoke-check checkout Syriatel flow:
    - Open checkout page.
    - Select `Syriatel Cash`.
-   - Confirm instructions mention manual transfer + entering transaction number + verify via API SYRIA `find_tx` request (`resource=syriatel`, `action=find_tx`, `tx`, `gsm`).
-   - Create payment and confirm no `PAYMENT_PROVIDER_ENV_MISSING` error for legacy Syriatel keys.
 
 ---
 

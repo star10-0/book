@@ -1,6 +1,5 @@
 import Link from "next/link";
 import { notFound } from "next/navigation";
-import { SiteHeader } from "@/components/site-header";
 import { CheckoutCreateOrderCard } from "@/components/checkout-create-order-card";
 import { requireUser } from "@/lib/auth-session";
 import { isOfferCurrentlyAvailable } from "@/lib/orders/create-order";
@@ -45,7 +44,6 @@ export default async function CheckoutSelectionPage({ searchParams }: CheckoutSe
 
   return (
     <main>
-      <SiteHeader />
       <div className="mx-auto max-w-2xl">
         <div className="mb-4 flex items-center justify-between gap-3">
           <h2 className="text-lg font-semibold text-slate-900">خطوة المراجعة قبل إنشاء الطلب</h2>

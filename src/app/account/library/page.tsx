@@ -1,6 +1,5 @@
 import Link from "next/link";
 import { AccessGrantType } from "@prisma/client";
-import { SiteHeader } from "@/components/site-header";
 import { requireUser } from "@/lib/auth-session";
 import { formatArabicDate } from "@/lib/formatters/intl";
 import { prisma } from "@/lib/prisma";
@@ -54,11 +53,8 @@ export default async function AccountLibraryPage() {
 
   return (
     <main>
-      <SiteHeader />
       <section className="space-y-6">
         <header className="space-y-2">
-          <h1 className="text-2xl font-bold text-slate-900">مكتبتي</h1>
-          <p className="text-sm text-slate-600">الكتب المملوكة والكتب المستأجرة حالياً لحسابك.</p>
         </header>
 
         <div className="grid gap-4 lg:grid-cols-2">

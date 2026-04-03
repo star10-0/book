@@ -6,6 +6,7 @@ import { redirect } from "next/navigation";
 import { requireCreator, requireUser } from "@/lib/auth-session";
 import { prisma } from "@/lib/prisma";
 import {
+  buildAccessSettingsFromPolicy,
   BOOK_SLUG_PATTERN,
 } from "@/lib/services/book-form";
 import type { SharedBookFormValues } from "@/lib/services/book-form";
@@ -304,7 +305,10 @@ export async function updateStudioBookAction(bookId: string, _prevState: StudioB
 
   return {
     success: "تم حفظ بيانات الكتاب والعروض بنجاح.",
-    values,
+    values: {
+      ...values,
+      ...buildAccessSettingsFromPolicy(validation.data.contentAccessPolicy),
+    },
   };
 }
 

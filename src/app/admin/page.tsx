@@ -1,12 +1,30 @@
+import { BookStatus, PaymentAttemptStatus } from "@prisma/client";
 import { AdminPageCard, AdminPageHeader } from "@/components/admin/admin-page";
+import { prisma } from "@/lib/prisma";
 import Link from "next/link";
 
-export default function AdminDashboardPage() {
+export default async function AdminDashboardPage() {
+  const startOfToday = new Date();
+  startOfToday.setHours(0, 0, 0, 0);
+
+  const [booksCount, publishedBooksCount, todayOrdersCount, pendingReviewPaymentsCount] = await Promise.all([
+    prisma.book.count(),
+    prisma.book.count({ where: { status: BookStatus.PUBLISHED } }),
+    prisma.order.count({ where: { createdAt: { gte: startOfToday } } }),
+    prisma.paymentAttempt.count({
+      where: {
+        status: {
+          in: [PaymentAttemptStatus.PENDING, PaymentAttemptStatus.SUBMITTED, PaymentAttemptStatus.VERIFYING],
+        },
+      },
+    }),
+  ]);
+
   const metrics = [
-    { label: "إجمالي الكتب", value: "128" },
-    { label: "كتب منشورة", value: "94" },
-    { label: "طلبات اليوم", value: "17" },
-    { label: "مدفوعات قيد المراجعة", value: "6" },
+    { label: "إجمالي الكتب", value: booksCount.toLocaleString("ar-SY") },
+    { label: "كتب منشورة", value: publishedBooksCount.toLocaleString("ar-SY") },
+    { label: "طلبات اليوم", value: todayOrdersCount.toLocaleString("ar-SY") },
+    { label: "مدفوعات قيد المراجعة", value: pendingReviewPaymentsCount.toLocaleString("ar-SY") },
   ];
 
   const adminSections = [

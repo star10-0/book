@@ -10,6 +10,8 @@ type CheckoutOffer = Pick<BookOffer, "id" | "type" | "priceCents" | "currency" |
 type OrderSummaryCardProps = {
   bookId: string;
   bookTitle: string;
+  bookSlug: string;
+  isLoggedIn: boolean;
   offers: CheckoutOffer[];
 };
 
@@ -18,10 +20,19 @@ const offerLabelByType: Record<OfferType, string> = {
   RENTAL: "استئجار رقمي",
 };
 
-export function OrderSummaryCard({ bookId, bookTitle, offers }: OrderSummaryCardProps) {
+export function OrderSummaryCard({ bookId, bookTitle, bookSlug, isLoggedIn, offers }: OrderSummaryCardProps) {
   const [selectedOfferId, setSelectedOfferId] = useState<string>(offers[0]?.id ?? "");
 
   const selectedOffer = useMemo(() => offers.find((offer) => offer.id === selectedOfferId) ?? null, [offers, selectedOfferId]);
+  const purchaseOffer = offers.find((offer) => offer.type === "PURCHASE");
+  const rentalOffer = offers.find((offer) => offer.type === "RENTAL");
+  const selectedOfferDescription = selectedOffer
+    ? selectedOffer.type === "PURCHASE"
+      ? "امتلاك دائم ضمن مكتبتك الرقمية"
+      : selectedOffer.rentalDays
+        ? `وصول كامل لمدة ${selectedOffer.rentalDays} يومًا`
+        : "وصول كامل خلال فترة الإيجار"
+    : "اختر عرضًا للمتابعة";
 
   if (offers.length === 0) {
     return (
@@ -34,12 +45,25 @@ export function OrderSummaryCard({ bookId, bookTitle, offers }: OrderSummaryCard
   }
 
   const checkoutHref = selectedOffer ? `/checkout?bookId=${bookId}&offerId=${selectedOffer.id}` : "#";
+  const loginHref = `/login?callbackUrl=${encodeURIComponent(`/books/${bookSlug}`)}`;
   const ctaLabel =
     selectedOffer?.type === "PURCHASE" ? "شراء الكتاب الآن" : selectedOffer?.type === "RENTAL" ? "استئجار الكتاب الآن" : "متابعة إلى صفحة الإتمام";
 
   return (
-    <section aria-label="ملخص الطلب" className="space-y-4 rounded-2xl bg-slate-50 p-4 ring-1 ring-slate-200">
-      <h2 className="text-lg font-bold text-slate-900">ملخص الطلب</h2>
+    <section aria-label="ملخص الطلب" className="space-y-4 rounded-2xl bg-slate-50 p-4 ring-1 ring-slate-200 sm:p-5">
+      <div className="space-y-1">
+        <h2 className="text-lg font-bold text-slate-900">ملخص الطلب</h2>
+        <p className="text-xs text-slate-600">اختر العرض الأنسب لك ثم انتقل مباشرة إلى إتمام الطلب.</p>
+      </div>
+
+      <div className="rounded-xl border border-slate-200 bg-white p-3 text-xs leading-6 text-slate-700">
+        <p className="font-semibold text-slate-900">خيارات الوصول المتاحة</p>
+        <ul className="mt-1.5 space-y-1">
+          {purchaseOffer ? <li>• شراء رقمي: امتلاك دائم داخل مكتبتك.</li> : null}
+          {rentalOffer ? <li>• استئجار رقمي: وصول كامل حسب مدة الإيجار.</li> : null}
+          <li>• تتم مراجعة تفاصيل الطلب قبل التأكيد النهائي في صفحة الإتمام.</li>
+        </ul>
+      </div>
 
       <div className="space-y-2">
         <label htmlFor="offer" className="block text-sm font-semibold text-slate-800">
@@ -70,6 +94,10 @@ export function OrderSummaryCard({ bookId, bookTitle, offers }: OrderSummaryCard
           <dt className="text-slate-600">نوع العرض</dt>
           <dd className="font-semibold text-slate-900">{selectedOffer ? offerLabelByType[selectedOffer.type] : "-"}</dd>
         </div>
+        <div className="flex items-start justify-between gap-3">
+          <dt className="text-slate-600">الوصول</dt>
+          <dd className="max-w-[65%] text-left font-semibold text-slate-900">{selectedOfferDescription}</dd>
+        </div>
         <div className="flex items-center justify-between gap-3">
           <dt className="text-slate-600">الإجمالي</dt>
           <dd className="font-bold text-indigo-700">
@@ -78,13 +106,28 @@ export function OrderSummaryCard({ bookId, bookTitle, offers }: OrderSummaryCard
         </div>
       </dl>
 
-      <Link
-        href={checkoutHref}
-        aria-disabled={!selectedOffer}
-        className="inline-flex w-full items-center justify-center rounded-xl bg-indigo-600 px-4 py-3 text-sm font-semibold text-white transition hover:bg-indigo-500 focus-visible:outline-none focus-visible:ring-2 focus-visible:ring-indigo-500 focus-visible:ring-offset-2 aria-disabled:pointer-events-none aria-disabled:bg-slate-300"
-      >
-        {ctaLabel}
-      </Link>
+      {isLoggedIn ? (
+        <div className="space-y-2">
+          <Link
+            href={checkoutHref}
+            aria-disabled={!selectedOffer}
+            className="inline-flex w-full items-center justify-center rounded-xl bg-indigo-600 px-4 py-3 text-sm font-semibold text-white shadow-sm transition hover:bg-indigo-500 focus-visible:outline-none focus-visible:ring-2 focus-visible:ring-indigo-500 focus-visible:ring-offset-2 aria-disabled:pointer-events-none aria-disabled:bg-slate-300"
+          >
+            {ctaLabel}
+          </Link>
+          <p className="text-xs text-slate-600">بعد الإتمام، سيظهر الكتاب تلقائيًا داخل مكتبتك الرقمية.</p>
+        </div>
+      ) : (
+        <div className="space-y-2">
+          <Link
+            href={loginHref}
+            className="inline-flex w-full items-center justify-center rounded-xl bg-indigo-600 px-4 py-3 text-sm font-semibold text-white transition hover:bg-indigo-500 focus-visible:outline-none focus-visible:ring-2 focus-visible:ring-indigo-500 focus-visible:ring-offset-2"
+          >
+            سجّل الدخول لإتمام الشراء
+          </Link>
+          <p className="text-xs text-slate-600">يمكنك تصفّح التفاصيل بحرية، وتسجيل الدخول فقط عند المتابعة لإتمام الطلب، ثم ستجد الكتاب مباشرة في مكتبتك الرقمية.</p>
+        </div>
+      )}
     </section>
   );
 }

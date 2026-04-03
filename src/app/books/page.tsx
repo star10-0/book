@@ -1,8 +1,7 @@
 import type { Metadata } from "next";
 import type { Prisma } from "@prisma/client";
-import { SiteHeader } from "@/components/site-header";
 import { SiteFooter } from "@/components/site-footer";
-import { BooksFilters, BooksGrid, RecommendedBooksSection } from "@/components/storefront";
+import { BooksFilters, BooksGrid, RecommendedBooksSection, SearchHighlightResult } from "@/components/storefront";
 import { getCurrentUser } from "@/lib/auth-session";
 import { prisma } from "@/lib/prisma";
 
@@ -15,7 +14,7 @@ type BooksSearchParams = {
 
 export const metadata: Metadata = {
   title: "الكتب",
-  description: "تصفح الكتب الرقمية المتاحة للشراء أو الاستئجار مع فلاتر بحث سهلة وسريعة.",
+  description: "اكتشف كتب Amjad عبر البحث والفلاتر بحرية، ثم سجّل الدخول فقط عند تنفيذ إجراءات محمية.",
 };
 
 function normalizeOfferType(value?: string): "all" | "buy" | "rent" {
@@ -149,6 +148,18 @@ export default async function BooksPage({
       },
       include: {
         author: { select: { nameAr: true } },
+        category: { select: { nameAr: true } },
+        offers: {
+          where: { isActive: true },
+          orderBy: { priceCents: "asc" },
+          select: {
+            id: true,
+            type: true,
+            priceCents: true,
+            currency: true,
+            rentalDays: true,
+          },
+        },
         reviews: { select: { rating: true } },
       },
       take: 12,
@@ -187,6 +198,52 @@ export default async function BooksPage({
     return 0;
   });
 
+  const normalizedSearch = search.toLocaleLowerCase("ar");
+  const searchScoredBooks = sortedBooks.map((book) => {
+    if (!search) {
+      return { book, score: 0 };
+    }
+
+    const title = book.titleAr.toLocaleLowerCase("ar");
+    const author = book.author.nameAr.toLocaleLowerCase("ar");
+    const categoryName = book.category.nameAr.toLocaleLowerCase("ar");
+
+    let score = 0;
+    if (title === normalizedSearch) {
+      score += 100;
+    } else if (title.startsWith(normalizedSearch)) {
+      score += 80;
+    } else if (title.includes(normalizedSearch)) {
+      score += 60;
+    }
+
+    if (author.includes(normalizedSearch)) {
+      score += 30;
+    }
+
+    if (categoryName.includes(normalizedSearch)) {
+      score += 10;
+    }
+
+    return { book, score };
+  });
+
+  const highlightedResult = search
+    ? [...searchScoredBooks]
+        .sort((a, b) => b.score - a.score)
+        .map((item) => item.book)
+        .find(Boolean) ?? null
+    : null;
+
+  const relatedFromResults =
+    highlightedResult !== null
+      ? sortedBooks.filter(
+          (book) =>
+            book.id !== highlightedResult.id &&
+            (book.categoryId === highlightedResult.categoryId || book.authorId === highlightedResult.authorId),
+        )
+      : [];
+
   const recommended = [...topRatedBooks]
     .map((book) => {
       const reviewsCount = book.reviews.length;
@@ -212,48 +269,111 @@ export default async function BooksPage({
       title: book.titleAr,
       author: book.author.nameAr,
       coverImageUrl: book.coverImageUrl,
+      category: book.category.nameAr,
+      offers: book.offers,
+      publisher:
+        book.metadata && typeof book.metadata === "object" && !Array.isArray(book.metadata) && typeof book.metadata.publisher === "string"
+          ? book.metadata.publisher
+          : null,
+      isLoggedIn: Boolean(user),
       reason:
         book.reviewsCount > 0
           ? `تقييم ${book.averageRating.toFixed(1)} من ${book.reviewsCount} مراجعة`
           : `اختيار حديث ضمن المنصة #${index + 1}`,
     }));
 
+  const searchRecommendations = highlightedResult
+    ? relatedFromResults.slice(0, 3).map((book, index) => ({
+        id: book.id,
+        slug: book.slug,
+        title: book.titleAr,
+        author: book.author.nameAr,
+        coverImageUrl: book.coverImageUrl,
+        category: book.category.nameAr,
+        offers: book.offers,
+        publisher:
+          book.metadata && typeof book.metadata === "object" && !Array.isArray(book.metadata) && typeof book.metadata.publisher === "string"
+            ? book.metadata.publisher
+            : null,
+        isLoggedIn: Boolean(user),
+        reason:
+          book.categoryId === highlightedResult.categoryId
+            ? "مشابه لهذا الكتاب ضمن نفس التصنيف"
+            : `لنفس الكاتب • اختيار #${index + 1}`,
+      }))
+    : [];
+
+  const gridBooks = highlightedResult ? sortedBooks.filter((book) => book.id !== highlightedResult.id) : sortedBooks;
+  const highlightedMetadata =
+    highlightedResult?.metadata && typeof highlightedResult.metadata === "object" && !Array.isArray(highlightedResult.metadata)
+      ? (highlightedResult.metadata as Record<string, unknown>)
+      : null;
+  const highlightedPublisher = typeof highlightedMetadata?.publisher === "string" ? highlightedMetadata.publisher : null;
+
   return (
     <main>
-      <SiteHeader />
-      <section className="mb-6 rounded-2xl bg-white p-6 shadow-sm ring-1 ring-slate-200 sm:p-8">
-        <h1 className="text-3xl font-bold text-slate-900">مكتبة الكتب</h1>
-        <p className="mt-2 text-sm leading-8 text-slate-600 sm:text-base">
-          ابحث بالعنوان أو اسم الكاتب، واستخدم الفلاتر الذكية للشراء أو الاستئجار مع ترتيب يناسبك.
-        </p>
-      </section>
+      <div className="space-y-5 sm:space-y-6">
 
-      <div className="space-y-6">
-        <BooksFilters
-          categories={categories}
-          search={search}
-          category={category}
-          offerType={offerType}
-          sort={sort}
-        />
+        {highlightedResult ? (
+          <SearchHighlightResult
+            book={{
+              id: highlightedResult.id,
+              slug: highlightedResult.slug,
+              title: highlightedResult.titleAr,
+              author: highlightedResult.author.nameAr,
+              category: highlightedResult.category.nameAr,
+              coverImageUrl: highlightedResult.coverImageUrl,
+              offers: highlightedResult.offers,
+              averageRating: highlightedResult.averageRating,
+              reviewsCount: highlightedResult.reviewsCount,
+              isWishlisted: wishlistIds.has(highlightedResult.id),
+              isLoggedIn: Boolean(user),
+              description: highlightedResult.descriptionAr,
+              publisher: highlightedPublisher,
+            }}
+            relatedCount={searchRecommendations.length}
+          />
+        ) : null}
 
-        <RecommendedBooksSection books={recommended} />
+        <div className="grid gap-6 xl:grid-cols-[minmax(0,1fr)_320px] xl:items-start 2xl:grid-cols-[minmax(0,1fr)_340px]">
+          <div className="order-2 space-y-6 xl:order-1">
+            <section className="space-y-6 rounded-2xl border border-slate-200/80 bg-gradient-to-b from-white to-slate-50/60 p-4 sm:p-5">
+              <RecommendedBooksSection books={highlightedResult ? searchRecommendations : recommended} />
+            </section>
 
-        <BooksGrid
-          books={sortedBooks.map((book) => ({
-            id: book.id,
-            slug: book.slug,
-            title: book.titleAr,
-            author: book.author.nameAr,
-            category: book.category.nameAr,
-            coverImageUrl: book.coverImageUrl,
-            offers: book.offers,
-            averageRating: book.averageRating,
-            reviewsCount: book.reviewsCount,
-            isWishlisted: wishlistIds.has(book.id),
-          }))}
-          hasActiveFilters={Boolean(search) || category !== "all" || offerType !== "all"}
-        />
+            <BooksGrid
+              books={gridBooks.map((book) => ({
+                id: book.id,
+                slug: book.slug,
+                title: book.titleAr,
+                author: book.author.nameAr,
+                category: book.category.nameAr,
+                publisher:
+                  book.metadata && typeof book.metadata === "object" && !Array.isArray(book.metadata) && typeof book.metadata.publisher === "string"
+                    ? book.metadata.publisher
+                    : null,
+                coverImageUrl: book.coverImageUrl,
+                offers: book.offers,
+                averageRating: book.averageRating,
+                reviewsCount: book.reviewsCount,
+                isWishlisted: wishlistIds.has(book.id),
+                isLoggedIn: Boolean(user),
+              }))}
+              hasActiveFilters={Boolean(search) || category !== "all" || offerType !== "all"}
+            />
+          </div>
+
+          <div className="order-1 xl:order-2 xl:sticky xl:top-24">
+            <BooksFilters
+              categories={categories}
+              search={search}
+              category={category}
+              offerType={offerType}
+              sort={sort}
+              resultsCount={sortedBooks.length}
+            />
+          </div>
+        </div>
       </div>
       <SiteFooter />
     </main>

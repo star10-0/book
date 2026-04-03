@@ -156,7 +156,6 @@ export default async function StudioDashboardPage() {
     <div className="space-y-4" dir="rtl">
       <section className="rounded-2xl border border-slate-200 bg-white p-5 shadow-sm">
         <h2 className="text-lg font-bold text-slate-900">مرحبًا بك في لوحة الكاتب</h2>
-        <p className="mt-2 text-sm text-slate-600">يمكنك الآن إدارة كتبك الرقمية، متابعة المبيعات والإيجارات، ومراقبة جاهزية المحتوى.</p>
         <div className="mt-3 rounded-xl border border-indigo-200 bg-indigo-50 p-3 text-xs text-indigo-900">
           المسار المقترح: 1) أضف كتابًا (البيانات + التسعير) 2) افتح صفحة التعديل لإضافة المحتوى 3) انشر عند الجاهزية.
         </div>

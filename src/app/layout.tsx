@@ -1,5 +1,7 @@
 import type { Metadata, Viewport } from "next";
 import { ServiceWorkerRegister } from "@/components/pwa/sw-register";
+import { SiteHeader } from "@/components/site-header";
+import { getStoreDirection, getStoreLocale } from "@/lib/locale";
 import { getAppBaseUrl } from "@/lib/env";
 import { APP_DESCRIPTION, APP_NAME } from "@/lib/constants/app";
 import "./globals.css";
@@ -56,14 +58,17 @@ export const viewport: Viewport = {
   colorScheme: "light",
 };
 
-export default function RootLayout({
+export default async function RootLayout({
   children,
 }: Readonly<{
   children: React.ReactNode;
 }>) {
+  const locale = await getStoreLocale();
+  const dir = getStoreDirection(locale);
+
   return (
-    <html lang="ar" dir="rtl">
-      <body className="font-sans bg-slate-50 text-slate-900">
+    <html lang={locale} dir={dir}>
+      <body className="min-h-screen font-sans bg-slate-50 text-slate-900">
         <a
           href="#main-content"
           className="sr-only focus:not-sr-only focus:fixed focus:right-4 focus:top-4 focus:z-50 focus:rounded-lg focus:bg-slate-900 focus:px-4 focus:py-2 focus:text-sm focus:font-semibold focus:text-white"
@@ -71,8 +76,13 @@ export default function RootLayout({
           الانتقال إلى المحتوى الرئيسي
         </a>
         <ServiceWorkerRegister />
-        <div className="mx-auto min-h-screen max-w-6xl px-4 py-6 sm:px-6 sm:py-8 lg:px-8">
-          <div id="main-content">{children}</div>
+        <div className="store-page-shell min-h-screen">
+          <div className="store-container flex min-h-screen flex-col pb-5 pt-2 sm:pb-7 sm:pt-3 lg:pt-4">
+            <SiteHeader />
+            <div id="main-content" className="flex-1">
+              {children}
+            </div>
+          </div>
         </div>
 
         <script

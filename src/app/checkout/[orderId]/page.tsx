@@ -1,6 +1,5 @@
 import Link from "next/link";
 import { notFound } from "next/navigation";
-import { SiteHeader } from "@/components/site-header";
 import { OrderDetailsCard } from "@/components/order-details";
 import { OrderPaymentPanel } from "@/components/order-payment-panel";
 import { requireUser } from "@/lib/auth-session";
@@ -44,33 +43,28 @@ export default async function CheckoutPage({ params }: CheckoutPageProps) {
   const selectedLiveProviders = parseSelectedLiveProviders().selectedProviders;
 
   return (
-    <main>
-      <SiteHeader />
-      <div className="mb-4 flex flex-wrap items-center justify-between gap-2">
-        <h1 className="text-2xl font-bold text-slate-900">إتمام الطلب</h1>
-        <div className="flex flex-wrap gap-4 text-sm font-semibold">
-          <Link href={`/orders/${order.id}/summary`} className="text-indigo-700 hover:text-indigo-600">
-            ملخص الطلب
-          </Link>
-          <Link href="/account/orders" className="text-indigo-700 hover:text-indigo-600">
-            العودة إلى طلباتي
-          </Link>
+    <main className="space-y-5">
+      <div className="rounded-3xl border border-slate-200 bg-white p-5 shadow-sm sm:p-6">
+        <div className="flex flex-wrap items-start justify-between gap-4">
+          <div>
+            <p className="text-xs font-semibold text-indigo-600">Checkout</p>
+            <h1 className="mt-1 text-2xl font-black text-slate-900 sm:text-3xl">إتمام الطلب</h1>
+            <p className="mt-2 max-w-2xl text-sm text-slate-600">
+              صفحة دفع مركّزة لإكمال طلبك بخطوات واضحة: اختر المزود، نفّذ التحويل، ثم أكمل التحقق.
+            </p>
+          </div>
+          <div className="flex flex-wrap gap-3 text-sm font-semibold">
+            <Link href={`/orders/${order.id}/summary`} className="rounded-xl border border-slate-200 px-3 py-2 text-slate-700 hover:bg-slate-50">
+              ملخص الطلب
+            </Link>
+            <Link href="/account/orders" className="rounded-xl border border-slate-200 px-3 py-2 text-slate-700 hover:bg-slate-50">
+              العودة إلى طلباتي
+            </Link>
+          </div>
         </div>
       </div>
 
-      <div className="grid gap-5 lg:grid-cols-[minmax(0,1fr)_minmax(0,1fr)] lg:items-start">
-        <OrderDetailsCard
-          orderId={order.id}
-          status={order.status}
-          currency={order.currency}
-          subtotalCents={order.subtotalCents}
-          totalCents={order.totalCents}
-          discountCents={order.discountCents}
-          promoCode={order.promoCode?.code}
-          createdAt={order.createdAt}
-          items={order.items}
-        />
-
+      <div className="grid gap-5 xl:grid-cols-[minmax(0,1.45fr)_minmax(340px,0.95fr)] xl:items-start">
         <OrderPaymentPanel
           orderId={order.id}
           isPayable={order.status === "PENDING"}
@@ -84,6 +78,20 @@ export default async function CheckoutPage({ params }: CheckoutPageProps) {
           syriatelCashDestinationAccount={syriatelCashDestinationAccount}
           enabledLiveProviders={selectedLiveProviders}
         />
+
+        <div className="xl:sticky xl:top-24">
+          <OrderDetailsCard
+            orderId={order.id}
+            status={order.status}
+            currency={order.currency}
+            subtotalCents={order.subtotalCents}
+            totalCents={order.totalCents}
+            discountCents={order.discountCents}
+            promoCode={order.promoCode?.code}
+            createdAt={order.createdAt}
+            items={order.items}
+          />
+        </div>
       </div>
     </main>
   );

@@ -1,101 +1,170 @@
 import Link from "next/link";
+import { cookies } from "next/headers";
 import { signOutAction } from "@/app/auth/actions";
+import { SiteDrawerNav } from "@/components/site-drawer-nav";
+import { LanguageSwitcher } from "@/components/language-switcher";
+import { CartLink } from "@/components/cart-link";
 import { getCurrentUser } from "@/lib/auth-session";
+import { getStoreLocale } from "@/lib/locale";
+import { CART_COOKIE_NAME, getCartItemsCount, parseCartCookie } from "@/lib/cart";
 
-const primaryLinks = [
-  { href: "/", label: "الرئيسية" },
-  { href: "/books", label: "الكتب" },
-  { href: "/about", label: "عن المنصة" },
-  { href: "/help", label: "المساعدة" },
-  { href: "/contact", label: "تواصل معنا" },
-];
-
-const accountLinks = [
-  { href: "/account", label: "الحساب" },
-  { href: "/account/profile", label: "الملف الشخصي" },
-  { href: "/account/orders", label: "طلباتي" },
-  { href: "/account/library", label: "مكتبتي" },
-  { href: "/account/rentals", label: "إعاراتي" },
-];
+const translations = {
+  ar: {
+    brandSub: "Amjad",
+    home: "الرئيسية",
+    books: "الكتب",
+    curriculum: "المنهاج",
+    about: "عن المنصة",
+    help: "المساعدة",
+    contact: "تواصل معنا",
+    account: "الحساب",
+    library: "مكتبتي",
+    rentals: "إعاراتي",
+    studio: "لوحة الكاتب",
+    searchPlaceholder: "ابحث عن كتاب، كاتب، أو تصنيف...",
+    searchAria: "البحث في الكتب",
+    searchCta: "بحث",
+    all: "الكل",
+    cart: "السلة",
+    myAccount: "حسابي",
+    signIn: "تسجيل الدخول",
+  },
+  en: {
+    brandSub: "Amjad",
+    home: "Home",
+    books: "Books",
+    curriculum: "Curriculum",
+    about: "About",
+    help: "Help",
+    contact: "Contact",
+    account: "Account",
+    library: "My Library",
+    rentals: "My Rentals",
+    studio: "Creator Studio",
+    searchPlaceholder: "Search by title, author, or category...",
+    searchAria: "Search books",
+    searchCta: "Search",
+    all: "All",
+    cart: "Cart",
+    myAccount: "My Account",
+    signIn: "Sign In",
+  },
+} as const;
 
 export async function SiteHeader() {
-  const user = await getCurrentUser();
+  const [user, locale, cookieStore] = await Promise.all([getCurrentUser(), getStoreLocale(), cookies()]);
+  const t = translations[locale];
+  const cartCount = getCartItemsCount(parseCartCookie(cookieStore.get(CART_COOKIE_NAME)?.value));
+
+  const primaryLinks = [
+    { href: "/", label: t.home },
+    { href: "/books", label: t.books },
+    { href: "/curriculum", label: t.curriculum },
+    { href: "/about", label: t.about },
+    { href: "/help", label: t.help },
+    { href: "/contact", label: t.contact },
+  ];
+
+  const accountLinks = [
+    { href: "/account", label: t.account },
+    { href: "/account/library", label: t.library },
+    { href: "/account/rentals", label: t.rentals },
+  ];
+
+  const accountNavigation = user ? [...accountLinks, { href: "/studio", label: t.studio }] : [];
+  const canAccessStudio = user?.role === "CREATOR" || user?.role === "ADMIN";
+  const canAccessAdmin = user?.role === "ADMIN";
 
   return (
-    <header className="mb-8 rounded-2xl bg-white/95 p-4 shadow-sm ring-1 ring-slate-200 backdrop-blur sm:p-5">
-      <div className="flex flex-wrap items-center justify-between gap-3 border-b border-slate-200 pb-4">
-        <Link href="/" className="rounded-lg px-2 py-1 focus-visible:outline-none focus-visible:ring-2 focus-visible:ring-indigo-400">
-          <p className="text-lg font-extrabold tracking-tight text-slate-900">Book</p>
-          <p className="text-xs text-slate-500">مكتبة رقمية عربية</p>
-        </Link>
+    <header className="sticky top-1 z-40 mb-1 overflow-visible rounded-2xl bg-white shadow-sm ring-1 ring-slate-200 sm:mb-1.5">
+      <div className="px-2.5 py-1 sm:px-3.5 sm:py-1">
+        <div className="grid items-start gap-0.5 lg:grid-cols-[auto_minmax(0,1fr)_auto] lg:items-center lg:gap-1.5">
+          <div className="flex w-fit flex-col items-end">
+            <Link
+              href="/"
+              className="rounded-lg px-1 py-0.5 focus-visible:outline-none focus-visible:ring-2 focus-visible:ring-indigo-400"
+            >
+              <p className="text-[1.45rem] font-black leading-none tracking-tight text-slate-900 sm:text-[1.6rem]">أمجد</p>
+              <p className="mt-0.5 text-[10px] font-semibold uppercase tracking-[0.16em] text-indigo-600">{t.brandSub}</p>
+            </Link>
+          </div>
 
-        {user ? (
-          <div className="flex w-full flex-wrap items-center justify-between gap-2 sm:w-auto sm:justify-start sm:gap-3">
-            <p className="text-sm font-medium text-slate-700">{user.name ?? user.email}</p>
-            <form action={signOutAction}>
+          <form action="/books" method="get" className="order-last w-full lg:order-none">
+            <div className="flex overflow-hidden rounded-lg border border-slate-300 bg-white shadow-sm ring-1 ring-transparent transition focus-within:border-indigo-500 focus-within:ring-indigo-100 lg:border-indigo-200/80 lg:shadow">
+              <input
+                type="search"
+                name="q"
+                placeholder={t.searchPlaceholder}
+                className="h-8 w-full border-0 px-2.5 text-sm text-slate-900 outline-none placeholder:text-slate-400 sm:h-9"
+                aria-label={t.searchAria}
+              />
               <button
                 type="submit"
-                className="min-h-10 rounded-lg border border-slate-300 px-3 py-2 text-sm font-semibold text-slate-700 hover:bg-slate-100 focus-visible:outline-none focus-visible:ring-2 focus-visible:ring-slate-400"
+                className="h-8 bg-indigo-600 px-3 text-xs font-semibold text-white transition hover:bg-indigo-500 focus-visible:outline-none focus-visible:ring-2 focus-visible:ring-indigo-300 sm:h-9 sm:px-3.5"
               >
-                تسجيل الخروج
+                {t.searchCta}
               </button>
-            </form>
+            </div>
+          </form>
+
+          <div className="flex items-center gap-0.5 lg:justify-end">
+            <LanguageSwitcher locale={locale} />
+
+            <CartLink href="/cart" className="store-btn-secondary h-7.5 px-2 text-xs sm:h-8 sm:px-2.5" label={t.cart} initialCount={cartCount} />
+
+            {user ? (
+              <Link href="/account" className="store-btn-primary h-7.5 px-2 text-xs sm:h-8 sm:px-2.5">
+                {t.myAccount}
+              </Link>
+            ) : (
+              <Link href="/login" className="store-btn-secondary h-7.5 px-2 text-xs sm:h-8 sm:px-2.5">
+                {t.signIn}
+              </Link>
+            )}
           </div>
-        ) : (
-          <div className="flex w-full flex-wrap items-center justify-between gap-2 sm:w-auto sm:justify-start">
-            <Link
-              href="/login"
-              className="min-h-10 rounded-lg border border-slate-300 px-3 py-2 text-sm font-semibold text-slate-700 hover:bg-slate-100 focus-visible:outline-none focus-visible:ring-2 focus-visible:ring-slate-400"
-            >
-              تسجيل الدخول
-            </Link>
-            <Link
-              href="/register"
-              className="min-h-10 rounded-lg bg-indigo-600 px-3 py-2 text-sm font-semibold text-white hover:bg-indigo-500 focus-visible:outline-none focus-visible:ring-2 focus-visible:ring-indigo-300"
-            >
-              إنشاء حساب
-            </Link>
-          </div>
-        )}
+        </div>
+
       </div>
 
-      <nav aria-label="التنقل الرئيسي" className="mt-4 overflow-x-auto pb-1">
-        <ul className="flex min-w-max flex-wrap items-center gap-2">
+      <nav aria-label="التنقل الرئيسي" className="border-t border-slate-200 bg-slate-50/90 px-2.5 py-px sm:px-3.5">
+        <ul className="flex min-w-0 flex-wrap items-center gap-0.5 overflow-x-auto py-px">
+          <li>
+            <SiteDrawerNav
+              locale={locale}
+              primaryLinks={primaryLinks}
+              accountLinks={accountNavigation}
+              userSignedIn={Boolean(user)}
+              canAccessStudio={canAccessStudio}
+              canAccessAdmin={canAccessAdmin}
+              logoutAction={signOutAction}
+              triggerLabel={t.all}
+              triggerClassName="inline-flex h-5.5 items-center gap-1 rounded-md border border-slate-300 bg-white px-1.5 text-xs font-medium text-slate-700 transition hover:bg-slate-100 hover:text-slate-900 focus-visible:outline-none focus-visible:ring-2 focus-visible:ring-indigo-400 sm:h-6 sm:px-2"
+              triggerIconClassName="text-[0.9rem] leading-none"
+            />
+          </li>
           {primaryLinks.map((link) => (
             <li key={link.href}>
               <Link
                 href={link.href}
-                className="inline-flex min-h-10 items-center rounded-md px-3 py-1.5 text-sm font-medium text-slate-700 hover:bg-slate-100 focus-visible:outline-none focus-visible:ring-2 focus-visible:ring-indigo-400"
+                className="inline-flex h-5.5 items-center rounded-md px-1.5 text-xs font-medium text-slate-700 hover:bg-white hover:text-slate-900 focus-visible:outline-none focus-visible:ring-2 focus-visible:ring-indigo-400 sm:h-6 sm:px-2"
               >
                 {link.label}
               </Link>
             </li>
           ))}
 
-          {user ? <li aria-hidden className="mx-1 h-4 w-px bg-slate-300" /> : null}
+          {accountNavigation.length > 0 ? <li aria-hidden className="mx-0.5 h-4 w-px bg-slate-300" /> : null}
 
-          {user
-            ? [
-                ...accountLinks,
-                ...(user.role === "CREATOR" || user.role === "ADMIN"
-                  ? [
-                      { href: "/studio", label: "لوحة الكاتب" },
-                      { href: "/studio/books/new", label: "أضف كتابًا" },
-                      { href: "/studio/profile", label: "ملف الكاتب" },
-                    ]
-                  : [{ href: "/studio", label: "لوحة الكاتب" }]),
-                ...(user.role === "ADMIN" ? [{ href: "/admin", label: "الإدارة" }] : []),
-              ].map((link) => (
-                <li key={link.href}>
-                  <Link
-                    href={link.href}
-                    className="inline-flex min-h-10 items-center rounded-md px-3 py-1.5 text-sm font-medium text-slate-700 hover:bg-slate-100 focus-visible:outline-none focus-visible:ring-2 focus-visible:ring-indigo-400"
-                  >
-                    {link.label}
-                  </Link>
-                </li>
-              ))
-            : null}
+          {accountNavigation.map((link) => (
+            <li key={link.href}>
+              <Link
+                href={link.href}
+                className="inline-flex h-5.5 items-center rounded-md px-1.5 text-xs font-medium text-slate-700 hover:bg-white hover:text-slate-900 focus-visible:outline-none focus-visible:ring-2 focus-visible:ring-indigo-400 sm:h-6 sm:px-2"
+              >
+                {link.label}
+              </Link>
+            </li>
+          ))}
         </ul>
       </nav>
     </header>
