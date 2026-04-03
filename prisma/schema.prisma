@@ -87,6 +87,30 @@ enum PaymentAttemptStatus {
   FAILED
 }
 
+
+
+enum AdminAuditAction {
+  USER_BANNED
+  USER_UNBANNED
+  USER_FORCE_LOGOUT_ALL
+  USER_FORCE_PASSWORD_RESET
+  TRUSTED_DEVICE_REVOKED
+  PAYMENT_RETRY_VERIFY
+  PAYMENT_RECONCILE_BY_TX
+  PAYMENT_FORCE_GRANT_ACCESS
+  PAYMENT_TX_LOCK_RELEASED
+}
+
+enum UserSecurityEventType {
+  LOGIN_SUCCESS
+  LOGIN_BLOCKED_UNTRUSTED_DEVICE
+  TRUSTED_DEVICE_REGISTERED
+  TRUSTED_DEVICE_REVOKED
+  POLICY_ACCEPTED
+  PASSWORD_RESET_REQUIRED
+  FORCE_LOGOUT_ALL
+}
+
 enum AccessGrantType {
   PURCHASE
   RENTAL
@@ -147,11 +171,21 @@ model User {
   creatorPromoCodes PromoCode[]       @relation("PromoCodeCreator")
   createdPromoCodes PromoCode[]       @relation("PromoCodeCreatedBy")
   curriculumLevelBookLinks CurriculumLevelBook[] @relation("CurriculumLevelBookAddedByAdmin")
+  trustedDevices      UserTrustedDevice[]
+  securityEvents      UserSecurityEvent[]
+  adminAuditLogs      AdminAuditLog[]      @relation("AdminAuditActor")
+  targetedAuditLogs   AdminAuditLog[]      @relation("AdminAuditTargetUser")
+  acceptedDevicePolicyAt DateTime?
+  acceptedTermsVersion String?
+  requirePasswordReset Boolean           @default(false)
+  lastSeenAt           DateTime?
   createdAt         DateTime          @default(now())
   updatedAt         DateTime          @updatedAt
 
   @@index([role])
   @@index([organizationId])
+  @@index([acceptedTermsVersion])
+  @@index([lastSeenAt])
 }
 
 model Organization {
@@ -447,6 +481,7 @@ model PaymentAttempt {
   payment           Payment              @relation(fields: [paymentId], references: [id], onDelete: Cascade)
   user              User                 @relation(fields: [userId], references: [id], onDelete: Restrict)
   order             Order                @relation(fields: [orderId], references: [id], onDelete: Restrict)
+  adminAuditLogs    AdminAuditLog[]
 
   @@unique([provider, providerReference])
   @@index([paymentId, createdAt])
@@ -532,6 +567,62 @@ model AccessGrant {
   @@index([userId, status, expiresAt])
   @@index([bookId])
   @@index([orderItemId])
+}
+
+
+
+model UserTrustedDevice {
+  id              String   @id @default(cuid())
+  userId          String
+  tokenHash       String
+  label           String?
+  userAgent       String?
+  ipAddress       String?
+  firstSeenAt     DateTime @default(now())
+  lastSeenAt      DateTime @default(now())
+  isTrusted       Boolean  @default(true)
+  isPrimary       Boolean  @default(false)
+  revokedAt       DateTime?
+  createdAt       DateTime @default(now())
+  updatedAt       DateTime @updatedAt
+  user            User     @relation(fields: [userId], references: [id], onDelete: Cascade)
+
+  @@unique([userId, tokenHash])
+  @@index([userId, revokedAt])
+  @@index([userId, isPrimary])
+}
+
+model UserSecurityEvent {
+  id          String                @id @default(cuid())
+  userId      String
+  type        UserSecurityEventType
+  ipAddress   String?
+  userAgent   String?
+  metadata    Json?
+  createdAt   DateTime              @default(now())
+  user        User                  @relation(fields: [userId], references: [id], onDelete: Cascade)
+
+  @@index([userId, createdAt])
+  @@index([type, createdAt])
+}
+
+model AdminAuditLog {
+  id               String           @id @default(cuid())
+  actorAdminId     String
+  targetUserId     String?
+  paymentAttemptId String?
+  action           AdminAuditAction
+  reason           String?
+  metadata         Json?
+  createdAt        DateTime         @default(now())
+  actorAdmin       User             @relation("AdminAuditActor", fields: [actorAdminId], references: [id], onDelete: Restrict)
+  targetUser       User?            @relation("AdminAuditTargetUser", fields: [targetUserId], references: [id], onDelete: SetNull)
+  paymentAttempt   PaymentAttempt?  @relation(fields: [paymentAttemptId], references: [id], onDelete: SetNull)
+
+  @@index([actorAdminId, createdAt])
+  @@index([targetUserId, createdAt])
+  @@index([paymentAttemptId, createdAt])
+  @@index([action, createdAt])
 }
 
 model ReadingProgress {

@@ -1,12 +1,15 @@
 "use server";
 
 import { UserRole } from "@prisma/client";
+import { headers } from "next/headers";
 import { redirect } from "next/navigation";
 import { hashPassword, verifyPassword } from "@/lib/auth-password";
 import { endUserSession, getCurrentUser, startUserSession } from "@/lib/auth-session";
+import { DEVICE_POLICY_TERMS_VERSION } from "@/lib/policy";
 import { prisma } from "@/lib/prisma";
 import { checkRateLimit } from "@/lib/security/rate-limit";
 import { invalidateUserSessions, updatePasswordAndInvalidateSessions } from "@/lib/session-invalidation";
+import { enforceTrustedDeviceOnLogin } from "@/lib/trusted-device";
 
 export type AuthFormState = {
   error?: string;
@@ -84,6 +87,7 @@ export async function signInAction(_prevState: AuthFormState, formData: FormData
         id: true,
         passwordHash: true,
         isActive: true,
+        acceptedTermsVersion: true,
       },
     });
 
@@ -95,6 +99,20 @@ export async function signInAction(_prevState: AuthFormState, formData: FormData
 
     if (!isValidPassword) {
       return { error: "بيانات الدخول غير صحيحة أو الحساب غير مفعل." };
+    }
+
+    const requestHeaders = await headers();
+    const trustedDevice = await enforceTrustedDeviceOnLogin({
+      userId: user.id,
+      userAgent: requestHeaders.get("user-agent"),
+      ipAddress: requestHeaders.get("x-forwarded-for")?.split(",")[0]?.trim() || requestHeaders.get("x-real-ip"),
+    });
+
+    if (!trustedDevice.allowed) {
+      return {
+        error:
+          "تم رفض تسجيل الدخول من جهاز غير موثوق. الحساب مخصص لجهاز موثوق واحد، راجع الدعم أو اطلب من الإدارة مراجعة الجلسات.",
+      };
     }
 
     await startUserSession(user.id);
@@ -174,6 +192,40 @@ export async function signUpAction(_prevState: AuthFormState, formData: FormData
   redirect("/account");
 }
 
+
+export async function acceptDevicePolicyAction(formData: FormData) {
+  const callbackUrl = resolveSafeCallbackUrl(readField(formData, "callbackUrl") || "/account");
+  const accepted = readField(formData, "acceptedPolicy") === "on";
+
+  if (!accepted) {
+    return;
+  }
+
+  const currentUser = await getCurrentUser();
+
+  if (!currentUser) {
+    return;
+  }
+
+  await prisma.user.update({
+    where: { id: currentUser.id },
+    data: {
+      acceptedTermsVersion: DEVICE_POLICY_TERMS_VERSION,
+      acceptedDevicePolicyAt: new Date(),
+    },
+  });
+
+  await prisma.userSecurityEvent.create({
+    data: {
+      userId: currentUser.id,
+      type: "POLICY_ACCEPTED",
+      metadata: { version: DEVICE_POLICY_TERMS_VERSION },
+    },
+  });
+
+  redirect(callbackUrl);
+}
+
 export async function signOutAction() {
   await endUserSession();
   redirect("/");
@@ -242,6 +294,7 @@ export async function changePasswordAction(
   }
 
   await updatePasswordAndInvalidateSessions(user.id, newPassword);
+  await prisma.user.update({ where: { id: user.id }, data: { requirePasswordReset: false } });
   await startUserSession(user.id);
 
   return { success: "تم تحديث كلمة المرور وإنهاء الجلسات الأخرى بنجاح." };
