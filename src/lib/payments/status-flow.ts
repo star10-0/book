@@ -5,7 +5,7 @@ const PAYMENT_ATTEMPT_TRANSITIONS: Record<PaymentAttemptStatus, readonly Payment
   SUBMITTED: ["VERIFYING", "FAILED"],
   VERIFYING: ["PAID", "FAILED"],
   PAID: [],
-  FAILED: [],
+  FAILED: ["VERIFYING"],
 };
 
 const PAYMENT_TRANSITIONS: Record<PaymentStatus, readonly PaymentStatus[]> = {

@@ -31,6 +31,9 @@ This folder defines a modular payment architecture where route handlers call the
 - Payment finalization refuses unsafe downgrades (for example `SUCCEEDED -> FAILED`).
 - Provider reference mismatch between attempt/payment is treated as integrity conflict.
 - Lifecycle claim step prevents concurrent verification workers from finalizing the same attempt twice.
+- `transactionReference` is no longer treated as permanently reserved on first submit; it is blocked only when already settled as `PAID` in a conflicting order.
+- Recovery path is supported through `reconcilePaymentByTransactionReference(...)` and re-verification of failed attempts (`FAILED -> VERIFYING`) for the same logical user/order flow.
+- Real duplicates remain blocked when a transaction reference is already reconciled as successful elsewhere, while recoverable/stuck attempts can be retried safely.
 
 > Sham Cash live mode currently uses manual transfer by user + transaction-number verification (`find_tx`).
 > Syriatel Cash live mode now uses manual transfer by user + transaction-number verification (`find_tx`).
