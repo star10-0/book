@@ -72,34 +72,11 @@ a {
     outline-offset: 2px;
   }
 
-  .store-header-tab::after {
-    pointer-events: none;
-    position: absolute;
-    inset-inline-start: 50%;
-    inset-block-end: 2px;
-    height: 1px;
-    width: calc(100% - 0.75rem);
-    transform: translateX(-50%) scaleX(0);
-    transform-origin: center;
-    background-color: currentColor;
-    opacity: 0.85;
-    content: "";
-    transition: transform 180ms ease-out;
-  }
-
-  .store-header-tab:hover::after,
-  .store-header-tab:focus-visible::after {
-    transform: translateX(-50%) scaleX(1);
-  }
-
   @media (min-width: 640px) {
     .store-header-tab {
       min-height: 1.5rem;
       padding-inline: 0.5rem;
     }
 
-    .store-header-tab::after {
-      width: calc(100% - 1rem);
-    }
   }
 }
