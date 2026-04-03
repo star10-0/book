@@ -88,8 +88,16 @@ export async function POST(request: Request) {
       return jsonNoStore({ message: "مرجع مزود الدفع لا يطابق سجل العملية." }, { status: 409 });
     }
 
+    if (isPaymentError(error, PAYMENT_ERROR_CODES.transactionReferenceAlreadyPaidElsewhere)) {
+      return jsonNoStore({ message: "رقم العملية مرتبط بالفعل بدفعة ناجحة لطلب آخر." }, { status: 409 });
+    }
+
+    if (isPaymentError(error, PAYMENT_ERROR_CODES.transactionReferenceCurrentlyVerifying)) {
+      return jsonNoStore({ message: "رقم العملية قيد التحقق حالياً في محاولة أخرى." }, { status: 409 });
+    }
+
     if (isPaymentError(error, PAYMENT_ERROR_CODES.duplicateTransactionReference)) {
-      return jsonNoStore({ message: "رقم العملية مستخدم مسبقاً في سجل دفعة أخرى." }, { status: 409 });
+      return jsonNoStore({ message: "تم اكتشاف تعارض في رقم العملية." }, { status: 409 });
     }
 
     if (error instanceof GatewayConfigurationError) {

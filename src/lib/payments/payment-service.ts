@@ -32,6 +32,13 @@ export interface SubmitPaymentProofInput {
   proofNote?: string;
 }
 
+type AttemptWithRelations = Prisma.PaymentAttemptGetPayload<{
+  include: {
+    payment: true;
+    order: true;
+  };
+}>;
+
 export async function createPaymentForOrder(input: CreatePaymentForOrderInput) {
   const gateway = resolvePaymentGateway(input.provider);
 
@@ -215,12 +222,30 @@ export async function submitPaymentProof(input: SubmitPaymentProofInput) {
     paymentError(PAYMENT_ERROR_CODES.paymentProofImmutable);
   }
 
-  const conflictingAttempt = await findConflictingTransactionReference({
+  const relatedAttempts = await findAttemptsByTransactionReference({
     transactionReferenceCanonical: canonicalTransactionReference,
     excludeAttemptId: attempt.id,
   });
-  if (conflictingAttempt) {
-    paymentError(PAYMENT_ERROR_CODES.duplicateTransactionReference);
+
+  const txUsage = classifyTransactionReferenceUsage({
+    currentAttempt: {
+      id: attempt.id,
+      userId: attempt.userId,
+      orderId: attempt.orderId,
+    },
+    relatedAttempts,
+  });
+
+  if (txUsage.decision === "reject_paid_elsewhere") {
+    paymentError(PAYMENT_ERROR_CODES.transactionReferenceAlreadyPaidElsewhere);
+  }
+
+  if (txUsage.decision === "reject_currently_verifying") {
+    paymentError(PAYMENT_ERROR_CODES.transactionReferenceCurrentlyVerifying);
+  }
+
+  if (txUsage.decision === "reuse_recoverable_attempt") {
+    return prisma.paymentAttempt.findUniqueOrThrow({ where: { id: txUsage.recoverableAttemptId } });
   }
 
   const existingPayload =
@@ -264,7 +289,7 @@ export async function verifyPayment(input: VerifyPaymentInput) {
     paymentError(PAYMENT_ERROR_CODES.attemptNotFound);
   }
 
-  if (attempt.status === "PAID" || attempt.status === "FAILED") {
+  if (attempt.status === "PAID") {
     return attempt;
   }
 
@@ -272,10 +297,13 @@ export async function verifyPayment(input: VerifyPaymentInput) {
     paymentError(PAYMENT_ERROR_CODES.orderNotPayable);
   }
 
+  const transactionReference = extractTransactionReference(attempt.requestPayload);
+  if (attempt.status === "FAILED" && !transactionReference) {
+    return attempt;
+  }
+
   const verifyingStatus: PaymentAttemptStatus = "VERIFYING";
   ensurePaymentStatusTransition(attempt.status, verifyingStatus);
-
-  const transactionReference = extractTransactionReference(attempt.requestPayload);
 
   if (!attempt.providerReference) {
     paymentError(PAYMENT_ERROR_CODES.missingProviderReference);
@@ -288,13 +316,26 @@ export async function verifyPayment(input: VerifyPaymentInput) {
   const providerReference = attempt.providerReference;
 
   if (transactionReference) {
-    const conflictingAttempt = await findConflictingTransactionReference({
+    const relatedAttempts = await findAttemptsByTransactionReference({
       transactionReferenceCanonical: transactionReference.toLowerCase(),
       excludeAttemptId: attempt.id,
-      restrictToTerminalPaidAttempts: true,
     });
-    if (conflictingAttempt) {
-      paymentError(PAYMENT_ERROR_CODES.duplicateTransactionReference);
+
+    const txUsage = classifyTransactionReferenceUsage({
+      currentAttempt: {
+        id: attempt.id,
+        userId: attempt.userId,
+        orderId: attempt.orderId,
+      },
+      relatedAttempts,
+    });
+
+    if (txUsage.decision === "reject_paid_elsewhere") {
+      paymentError(PAYMENT_ERROR_CODES.transactionReferenceAlreadyPaidElsewhere);
+    }
+
+    if (txUsage.decision === "reject_currently_verifying") {
+      paymentError(PAYMENT_ERROR_CODES.transactionReferenceCurrentlyVerifying);
     }
   }
 
@@ -454,6 +495,60 @@ export async function verifyPaymentByProviderReference(input: { provider: Paymen
     userId: attempt.userId,
   });
 }
+
+export async function reconcilePaymentByTransactionReference(input: {
+  userId: string;
+  transactionReference: string;
+  attemptId?: string;
+  mockOutcome?: "paid" | "failed";
+}) {
+  const canonicalTransactionReference = input.transactionReference.trim().toLowerCase();
+  if (!canonicalTransactionReference) {
+    paymentError(PAYMENT_ERROR_CODES.invalidPaymentProofInput);
+  }
+
+  const relatedAttempts = await findAttemptsByTransactionReference({
+    transactionReferenceCanonical: canonicalTransactionReference,
+  });
+
+  if (relatedAttempts.length === 0) {
+    paymentError(PAYMENT_ERROR_CODES.transactionReferenceNotFound);
+  }
+
+  const candidate = pickReconciliationCandidate({
+    attempts: relatedAttempts,
+    userId: input.userId,
+    preferredAttemptId: input.attemptId?.trim() || undefined,
+  });
+
+  if (!candidate) {
+    paymentError(PAYMENT_ERROR_CODES.transactionReferenceNotFound);
+  }
+
+  const txUsage = classifyTransactionReferenceUsage({
+    currentAttempt: {
+      id: candidate.id,
+      userId: candidate.userId,
+      orderId: candidate.orderId,
+    },
+    relatedAttempts: relatedAttempts.filter((attempt) => attempt.id !== candidate.id),
+  });
+
+  if (txUsage.decision === "reject_paid_elsewhere") {
+    paymentError(PAYMENT_ERROR_CODES.transactionReferenceAlreadyPaidElsewhere);
+  }
+
+  if (txUsage.decision === "reject_currently_verifying") {
+    paymentError(PAYMENT_ERROR_CODES.transactionReferenceCurrentlyVerifying);
+  }
+
+  return verifyPayment({
+    attemptId: candidate.id,
+    userId: candidate.userId,
+    mockOutcome: input.mockOutcome,
+  });
+}
+
 function extractTransactionReference(payload: Prisma.JsonValue | null): string | undefined {
   if (!payload || typeof payload !== "object" || Array.isArray(payload)) {
     return undefined;
@@ -501,26 +596,90 @@ function buildPaymentUpdateData(input: {
   };
 }
 
-async function findConflictingTransactionReference(input: {
+async function findAttemptsByTransactionReference(input: {
   transactionReferenceCanonical: string;
-  excludeAttemptId: string;
-  restrictToTerminalPaidAttempts?: boolean;
+  excludeAttemptId?: string;
 }) {
-  const statusFilterSql = input.restrictToTerminalPaidAttempts
-    ? Prisma.sql`AND "status" = 'PAID'`
-    : Prisma.empty;
+  const excludeSql = input.excludeAttemptId ? Prisma.sql`AND "id" <> ${input.excludeAttemptId}` : Prisma.empty;
 
   const rows = await prisma.$queryRaw<Array<{ id: string }>>(Prisma.sql`
     SELECT "id"
     FROM "PaymentAttempt"
     WHERE lower(coalesce("requestPayload"->>'transactionReference', '')) = ${input.transactionReferenceCanonical}
-      AND "id" <> ${input.excludeAttemptId}
-      ${statusFilterSql}
-    LIMIT 1
+      ${excludeSql}
+    ORDER BY "createdAt" DESC
   `);
 
-  return rows[0];
+  if (rows.length === 0) {
+    return [];
+  }
+
+  return prisma.paymentAttempt.findMany({
+    where: { id: { in: rows.map((row) => row.id) } },
+    include: {
+      payment: true,
+      order: true,
+    },
+    orderBy: { createdAt: "desc" },
+  });
 }
+
+type TransactionReferenceDecision =
+  | { decision: "allow" }
+  | { decision: "reject_paid_elsewhere" }
+  | { decision: "reject_currently_verifying" }
+  | { decision: "reuse_recoverable_attempt"; recoverableAttemptId: string };
+
+function classifyTransactionReferenceUsage(input: {
+  currentAttempt: { id: string; userId: string; orderId: string };
+  relatedAttempts: Array<Pick<AttemptWithRelations, "id" | "status" | "userId" | "orderId">>;
+}): TransactionReferenceDecision {
+  for (const attempt of input.relatedAttempts) {
+    if (attempt.status === "PAID" && attempt.orderId !== input.currentAttempt.orderId) {
+      return { decision: "reject_paid_elsewhere" };
+    }
+  }
+
+  for (const attempt of input.relatedAttempts) {
+    const sameLogicalFlow = attempt.userId === input.currentAttempt.userId && attempt.orderId === input.currentAttempt.orderId;
+    if (attempt.status === "VERIFYING" && !sameLogicalFlow) {
+      return { decision: "reject_currently_verifying" };
+    }
+  }
+
+  const recoverableAttempt = input.relatedAttempts.find((attempt) => {
+    const sameLogicalFlow = attempt.userId === input.currentAttempt.userId && attempt.orderId === input.currentAttempt.orderId;
+    return sameLogicalFlow && attempt.status !== "PAID";
+  });
+
+  if (recoverableAttempt) {
+    return { decision: "reuse_recoverable_attempt", recoverableAttemptId: recoverableAttempt.id };
+  }
+
+  return { decision: "allow" };
+}
+
+function pickReconciliationCandidate(input: {
+  attempts: AttemptWithRelations[];
+  userId: string;
+  preferredAttemptId?: string;
+}) {
+  if (input.preferredAttemptId) {
+    const preferred = input.attempts.find(
+      (attempt) => attempt.id === input.preferredAttemptId && attempt.userId === input.userId,
+    );
+    if (preferred) {
+      return preferred;
+    }
+  }
+
+  return input.attempts.find((attempt) => attempt.userId === input.userId && attempt.status !== "PAID");
+}
+
+export const __paymentServiceInternals = {
+  classifyTransactionReferenceUsage,
+  pickReconciliationCandidate,
+};
 
 async function ensureProviderReferenceIntegrity(input: {
   tx: Prisma.TransactionClient;

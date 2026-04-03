@@ -81,8 +81,16 @@ export async function POST(request: Request) {
       return jsonNoStore({ message: "تم تثبيت مرجع الدفع لهذه المحاولة مسبقًا ولا يمكن تعديله." }, { status: 409 });
     }
 
+    if (isPaymentError(error, PAYMENT_ERROR_CODES.transactionReferenceAlreadyPaidElsewhere)) {
+      return jsonNoStore({ message: "رقم العملية مرتبط بدفعة ناجحة لطلب آخر ولا يمكن إعادة استخدامه." }, { status: 409 });
+    }
+
+    if (isPaymentError(error, PAYMENT_ERROR_CODES.transactionReferenceCurrentlyVerifying)) {
+      return jsonNoStore({ message: "رقم العملية قيد التحقق حالياً في محاولة أخرى. أعد المحاولة بعد لحظات." }, { status: 409 });
+    }
+
     if (isPaymentError(error, PAYMENT_ERROR_CODES.duplicateTransactionReference)) {
-      return jsonNoStore({ message: "رقم العملية مستخدم مسبقاً في محاولة دفع أخرى." }, { status: 409 });
+      return jsonNoStore({ message: "تم اكتشاف تعارض في رقم العملية." }, { status: 409 });
     }
 
     if (isPaymentError(error, PAYMENT_ERROR_CODES.missingProviderReference)) {
