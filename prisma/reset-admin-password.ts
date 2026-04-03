@@ -14,11 +14,11 @@ const requiredEnv = (key: string): string => {
 };
 
 const resetAdminPassword = async () => {
-  const email = requiredEnv('RESET_ADMIN_EMAIL').toLowerCase();
-  const password = requiredEnv('RESET_ADMIN_PASSWORD');
+  const email = requiredEnv('ADMIN_RESET_EMAIL').toLowerCase();
+  const password = requiredEnv('ADMIN_RESET_PASSWORD');
 
   if (password.length < 12) {
-    throw new Error('RESET_ADMIN_PASSWORD must be at least 12 characters long.');
+    throw new Error('ADMIN_RESET_PASSWORD must be at least 12 characters long.');
   }
 
   const existingUser = await prisma.user.findUnique({
