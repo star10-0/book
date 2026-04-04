@@ -85,6 +85,15 @@ function incidentLabelText(label: PaymentIncidentLabel | null) {
   return "recoverable_stuck_attempt";
 }
 
+function recommendedPaymentAction(input: { incident: PaymentIncidentLabel | null; status: PaymentAttemptStatus }) {
+  if (input.incident === "tx_conflict") return "طابق مرجع العملية عبر reconcile-by-tx قبل أي منح وصول.";
+  if (input.incident === "grant_missing") return "نفّذ force grant access بعد التحقق من حالة الدفع النهائية.";
+  if (input.incident === "provider_mismatch") return "أوقف المعالجة وراجع providerRef بين payment وattempt.";
+  if (input.incident === "recoverable_stuck_attempt") return "استخدم recover stuck attempt ثم أعد التحقق.";
+  if (input.status === "FAILED") return "راجع إثبات الدفع أو أعد إنشاء محاولة جديدة للمستخدم.";
+  return "تابع المسار الحالي مع تسجيل سبب الإجراء في سجل التدقيق.";
+}
+
 export default async function AdminPaymentsPage({ searchParams }: AdminPaymentsPageProps) {
   const params = searchParams ? await searchParams : {};
   const scope = parseScope(params.scope);
@@ -172,6 +181,23 @@ export default async function AdminPaymentsPage({ searchParams }: AdminPaymentsP
                 providerReferenceMatchesPayment: !row.payment.providerRef || row.payment.providerRef === row.providerReference,
               });
               return <span className="text-xs font-medium">{incidentLabelText(incident)}</span>;
+            },
+          },
+          {
+            key: "recommended",
+            title: "الإجراء الموصى",
+            render: (row) => {
+              const hasAccessGrant = (accessCountsByAttemptId.get(row.id) ?? 0) > 0;
+              const incident = classifyPaymentIncident({
+                attemptStatus: row.status,
+                paymentStatus: row.payment.status,
+                orderStatus: row.order.status,
+                hasAccessGrant,
+                failureReason: row.failureReason,
+                hasTransactionReference: Boolean((row.requestPayload as { transactionReference?: string } | null)?.transactionReference),
+                providerReferenceMatchesPayment: !row.payment.providerRef || row.payment.providerRef === row.providerReference,
+              });
+              return <span className="text-xs">{recommendedPaymentAction({ incident, status: row.status })}</span>;
             },
           },
           {

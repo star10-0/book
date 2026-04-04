@@ -2,6 +2,7 @@ import { BookStatus, PaymentAttemptStatus, Prisma } from "@prisma/client";
 import { suspiciousSecurityEventTypes } from "@/lib/admin/security-signals";
 import { prisma } from "@/lib/prisma";
 import { getOrderIntegritySnapshot } from "@/lib/admin/order-integrity";
+import { getQueueAlertSummary, loadOperationalReviewQueues, type ReviewQueuesSnapshot } from "@/lib/admin/review-queues";
 
 export type DashboardSnapshot = {
   metrics: {
@@ -24,6 +25,10 @@ export type DashboardSnapshot = {
     suspiciousDeviceAttemptsToday: number;
     pendingBooksReview: number;
     integrityWarnings: number;
+    criticalPaymentsNeedingReview: number;
+    suspiciousAccountsOrDevices: number;
+    integrityAnomalies: number;
+    criticalRiskSignals: number;
   };
   recentAdminActions: Array<{
     id: string;
@@ -32,6 +37,13 @@ export type DashboardSnapshot = {
     actorEmail: string;
     reason: string | null;
   }>;
+  recentSecurityActions: Array<{
+    id: string;
+    type: string;
+    createdAt: Date;
+    userId: string;
+  }>;
+  reviewQueues: ReviewQueuesSnapshot;
 };
 
 type DashboardDeps = {
@@ -48,7 +60,14 @@ type DashboardDeps = {
     createdAt: Date;
     actorAdmin?: { email: string } | null;
   }>>;
+  securityEventsFindMany: (args: Prisma.UserSecurityEventFindManyArgs) => Promise<Array<{
+    id: string;
+    type: string;
+    userId: string;
+    createdAt: Date;
+  }>>;
   integrityWarningsCount: () => Promise<number>;
+  reviewQueuesLoader: (now: Date) => Promise<ReviewQueuesSnapshot>;
 };
 
 const defaultDeps: DashboardDeps = {
@@ -68,10 +87,12 @@ const defaultDeps: DashboardDeps = {
       actorAdmin?: { email: string } | null;
     }>;
   },
+  securityEventsFindMany: (args) => prisma.userSecurityEvent.findMany(args),
   integrityWarningsCount: async () => {
     const snapshot = await getOrderIntegritySnapshot(1);
     return Object.values(snapshot.totals).reduce((sum, value) => sum + value, 0);
   },
+  reviewQueuesLoader: (now) => loadOperationalReviewQueues(now),
 };
 
 export async function loadAdminDashboardSnapshot(now = new Date(), deps: DashboardDeps = defaultDeps): Promise<DashboardSnapshot> {
@@ -91,7 +112,9 @@ export async function loadAdminDashboardSnapshot(now = new Date(), deps: Dashboa
     suspiciousEventsTodayCount,
     auditLogsTodayCount,
     recentAdminActions,
+    recentSecurityActions,
     integrityWarningsCount,
+    reviewQueues,
   ] = await Promise.all([
     deps.userCount(),
     deps.userCount({ where: { isActive: false } }),
@@ -136,8 +159,27 @@ export async function loadAdminDashboardSnapshot(now = new Date(), deps: Dashboa
       orderBy: { createdAt: "desc" },
       take: 5,
     }),
+    deps.securityEventsFindMany({
+      where: {
+        createdAt: { gte: new Date(now.getTime() - 24 * 60 * 60 * 1000) },
+        type: {
+          in: suspiciousSecurityEventTypes,
+        },
+      },
+      select: {
+        id: true,
+        type: true,
+        userId: true,
+        createdAt: true,
+      },
+      orderBy: { createdAt: "desc" },
+      take: 5,
+    }),
     deps.integrityWarningsCount(),
+    deps.reviewQueuesLoader(now),
   ]);
+
+  const queueAlerts = getQueueAlertSummary(reviewQueues);
 
   return {
     metrics: {
@@ -160,6 +202,10 @@ export async function loadAdminDashboardSnapshot(now = new Date(), deps: Dashboa
       suspiciousDeviceAttemptsToday: suspiciousEventsTodayCount,
       pendingBooksReview: pendingBooksCount,
       integrityWarnings: integrityWarningsCount,
+      criticalPaymentsNeedingReview: queueAlerts.criticalPaymentsNeedingReview,
+      suspiciousAccountsOrDevices: queueAlerts.suspiciousAccountsOrDevices,
+      integrityAnomalies: queueAlerts.integrityAnomalies,
+      criticalRiskSignals: queueAlerts.criticalRiskSignals,
     },
     recentAdminActions: recentAdminActions.map((item) => ({
       id: item.id,
@@ -168,5 +214,12 @@ export async function loadAdminDashboardSnapshot(now = new Date(), deps: Dashboa
       actorEmail: item.actorAdmin?.email ?? "—",
       reason: item.reason,
     })),
+    recentSecurityActions: recentSecurityActions.map((item) => ({
+      id: item.id,
+      type: item.type,
+      userId: item.userId,
+      createdAt: item.createdAt,
+    })),
+    reviewQueues,
   };
 }

@@ -13,6 +13,15 @@ function orderStatusLabel(status: OrderStatus) {
   return "بانتظار التأكيد";
 }
 
+
+function recommendedIntegrityAction(kind: string) {
+  if (kind === "paid_order_missing_grants") return "استعادة منح الوصول للطلب المدفوع فوراً.";
+  if (kind === "payment_order_grant_state_mismatch") return "تحقق من التسوية بين payment/order ثم أعد الفحص.";
+  if (kind === "stale_rental_grant") return "شغّل تسوية الإيجارات المنتهية وإلغاء المنح المتأخرة.";
+  if (kind === "promo_redemption_mismatch") return "أعد ربط redemption بالدفعة المناسبة أو صحح الحالة.";
+  return "راجع السجل المرتبط ونفّذ إجراء التصحيح من أدوات الطلبات.";
+}
+
 export default async function AdminOrdersPage() {
   const [orders, integrity] = await Promise.all([
     prisma.order.findMany({
@@ -65,6 +74,7 @@ export default async function AdminOrdersPage() {
               <p className="font-semibold">{anomaly.kind}</p>
               <p>order: <span className="font-mono">{anomaly.orderId}</span> • user: <span className="font-mono">{anomaly.userId}</span></p>
               <p className="text-slate-600">{anomaly.details}</p>
+              <p className="mt-1 text-slate-700">إجراء موصى: {recommendedIntegrityAction(anomaly.kind)}</p>
               {anomaly.kind === "paid_order_missing_grants" ? (
                 <form action={recoverOrderAccessGrantAction} className="mt-2 flex gap-2">
                   <input type="hidden" name="orderId" value={anomaly.orderId} />

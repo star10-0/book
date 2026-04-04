@@ -47,7 +47,25 @@ test("loadAdminDashboardSnapshot aggregates KPI and alerts from deps", async () 
         actorAdmin: { email: "admin@example.com" },
       },
     ],
+    securityEventsFindMany: async () => [
+      {
+        id: "sec_1",
+        type: "SUSPICIOUS_ACCOUNT_ACTIVITY",
+        userId: "user_1",
+        createdAt: new Date("2026-04-04T09:00:00.000Z"),
+      },
+    ],
     integrityWarningsCount: async () => 4,
+    reviewQueuesLoader: async () => ({
+      paymentRecoveryQueue: [{ id: "p1", label: "p1", reason: "failed", recommendedAction: "recover" }],
+      suspiciousUsersQueue: [{ id: "u1", label: "u1", reason: "signals", recommendedAction: "restrict" }],
+      suspiciousDeviceAttemptsQueue: [{ id: "d1", label: "1.2.3.4", reason: "blocked", recommendedAction: "verify" }],
+      ordersRequiringInterventionQueue: [{ id: "o1", label: "o1", reason: "integrity", recommendedAction: "repair" }],
+      risk: {
+        severity: { info: 0, warning: 1, critical: 1 },
+        signals: [],
+      },
+    }),
   });
 
   assert.equal(snapshot.metrics.usersCount, counts.users);
@@ -59,6 +77,11 @@ test("loadAdminDashboardSnapshot aggregates KPI and alerts from deps", async () 
   assert.equal(snapshot.recentAdminActions.length, 1);
   assert.equal(snapshot.alerts.integrityWarnings, 4);
   assert.equal(snapshot.recentAdminActions[0]?.actorEmail, "admin@example.com");
+  assert.equal(snapshot.alerts.criticalPaymentsNeedingReview, 1);
+  assert.equal(snapshot.alerts.suspiciousAccountsOrDevices, 2);
+  assert.equal(snapshot.alerts.integrityAnomalies, 1);
+  assert.equal(snapshot.alerts.criticalRiskSignals, 1);
+  assert.equal(snapshot.recentSecurityActions.length, 1);
 });
 
 test("suspicious event helper isolates risky security events", () => {
