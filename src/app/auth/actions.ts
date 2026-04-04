@@ -5,7 +5,7 @@ import { headers } from "next/headers";
 import { redirect } from "next/navigation";
 import { hashPassword, verifyPassword } from "@/lib/auth-password";
 import { endUserSession, getCurrentUser, startUserSession } from "@/lib/auth-session";
-import { DEVICE_POLICY_TERMS_VERSION } from "@/lib/policy";
+import { buildPolicyAcceptanceUpdate } from "@/lib/policy";
 import { prisma } from "@/lib/prisma";
 import { checkRateLimit } from "@/lib/security/rate-limit";
 import { invalidateUserSessions, updatePasswordAndInvalidateSessions } from "@/lib/session-invalidation";
@@ -207,19 +207,18 @@ export async function acceptDevicePolicyAction(formData: FormData) {
     return;
   }
 
+  const acceptanceUpdate = buildPolicyAcceptanceUpdate();
+
   await prisma.user.update({
     where: { id: currentUser.id },
-    data: {
-      acceptedTermsVersion: DEVICE_POLICY_TERMS_VERSION,
-      acceptedDevicePolicyAt: new Date(),
-    },
+    data: acceptanceUpdate,
   });
 
   await prisma.userSecurityEvent.create({
     data: {
       userId: currentUser.id,
       type: "POLICY_ACCEPTED",
-      metadata: { version: DEVICE_POLICY_TERMS_VERSION },
+      metadata: { version: acceptanceUpdate.acceptedTermsVersion },
     },
   });
 
