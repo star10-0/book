@@ -1,4 +1,5 @@
 import Link from "next/link";
+import { SiteHeaderTabLink } from "@/components/site-header-tab-link";
 import { cookies } from "next/headers";
 import { signOutAction } from "@/app/auth/actions";
 import { SiteDrawerNav } from "@/components/site-drawer-nav";
@@ -144,9 +145,7 @@ export async function SiteHeader() {
           </li>
           {primaryLinks.map((link) => (
             <li key={link.href}>
-              <Link href={link.href} className="store-header-tab">
-                {link.label}
-              </Link>
+              <SiteHeaderTabLink href={link.href} label={link.label} />
             </li>
           ))}
 
@@ -154,9 +153,7 @@ export async function SiteHeader() {
 
           {accountNavigation.map((link) => (
             <li key={link.href}>
-              <Link href={link.href} className="store-header-tab">
-                {link.label}
-              </Link>
+              <SiteHeaderTabLink href={link.href} label={link.label} />
             </li>
           ))}
         </ul>
