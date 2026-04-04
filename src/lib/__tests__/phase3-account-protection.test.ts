@@ -9,7 +9,26 @@ test("policy acceptance persists terms version and timestamp", () => {
 
   assert.equal(typeof update.acceptedTermsVersion, "string");
   assert.equal(update.acceptedDevicePolicyAt.toISOString(), now.toISOString());
-  assert.equal(hasAcceptedCurrentDevicePolicy(update.acceptedTermsVersion), true);
+  assert.equal(hasAcceptedCurrentDevicePolicy(update), true);
+});
+
+test("policy acceptance requires both current terms version and acceptance timestamp", () => {
+  const now = new Date("2026-04-04T12:00:00.000Z");
+
+  assert.equal(
+    hasAcceptedCurrentDevicePolicy({
+      acceptedTermsVersion: "2026-04",
+      acceptedDevicePolicyAt: null,
+    }),
+    false,
+  );
+  assert.equal(
+    hasAcceptedCurrentDevicePolicy({
+      acceptedTermsVersion: "2026-03",
+      acceptedDevicePolicyAt: now,
+    }),
+    false,
+  );
 });
 
 test("admin user details page exposes trusted device controls and suspicious attempts", () => {

@@ -135,6 +135,7 @@ export async function getCurrentUser() {
       isActive: true,
       sessionVersion: true,
       acceptedTermsVersion: true,
+      acceptedDevicePolicyAt: true,
       requirePasswordReset: true,
       creatorProfile: {
         select: {
@@ -159,6 +160,7 @@ export async function getCurrentUser() {
     name: user.fullName,
     role: user.role,
     acceptedTermsVersion: user.acceptedTermsVersion,
+    acceptedDevicePolicyAt: user.acceptedDevicePolicyAt,
     requirePasswordReset: user.requirePasswordReset,
     creatorProfile: user.creatorProfile,
   };
@@ -172,7 +174,13 @@ export async function requireUser(options?: { callbackUrl?: string; allowUnaccep
     redirect(`/login${callback}`);
   }
 
-  if (!options?.allowUnacceptedPolicy && !hasAcceptedCurrentDevicePolicy(user.acceptedTermsVersion)) {
+  if (
+    !options?.allowUnacceptedPolicy &&
+    !hasAcceptedCurrentDevicePolicy({
+      acceptedTermsVersion: user.acceptedTermsVersion,
+      acceptedDevicePolicyAt: user.acceptedDevicePolicyAt,
+    })
+  ) {
     const callback = options?.callbackUrl ? `?callbackUrl=${encodeURIComponent(options.callbackUrl)}` : "";
     redirect(`/policy${callback}`);
   }

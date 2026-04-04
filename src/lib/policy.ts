@@ -10,6 +10,9 @@ export function buildPolicyAcceptanceUpdate(now = new Date()) {
   };
 }
 
-export function hasAcceptedCurrentDevicePolicy(acceptedTermsVersion?: string | null) {
-  return acceptedTermsVersion === DEVICE_POLICY_TERMS_VERSION;
+export function hasAcceptedCurrentDevicePolicy(input: {
+  acceptedTermsVersion?: string | null;
+  acceptedDevicePolicyAt?: Date | null;
+}) {
+  return input.acceptedTermsVersion === DEVICE_POLICY_TERMS_VERSION && Boolean(input.acceptedDevicePolicyAt);
 }
