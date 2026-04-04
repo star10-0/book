@@ -28,6 +28,7 @@ export default async function AdminDashboardPage() {
     { href: "/admin/users", title: "المستخدمون", description: "إدارة الحسابات، الحظر، وسياسات الوصول." },
     { href: "/admin/payments", title: "المدفوعات", description: "مراجعة محاولات الدفع والإجراءات التصحيحية." },
     { href: "/admin/orders", title: "الطلبات", description: "متابعة الطلبات والتسليم الرقمي للحالات التشغيلية." },
+    { href: "/admin/orders", title: "نزاهة الطلبات", description: "فحص/استعادة اتساق الطلبات والدفع والمنح." },
     { href: "/admin/books", title: "الكتب", description: "مراجعة المحتوى والنشر والتحديثات." },
     { href: "/admin/curriculum", title: "المنهاج", description: "تنظيم المسارات التعليمية وربط الكتب بالمستويات." },
     { href: "/admin/promo-codes", title: "أكواد الخصم", description: "تشغيل الحملات ومراقبة الاستهلاك." },
@@ -39,6 +40,7 @@ export default async function AdminDashboardPage() {
     { href: "/admin/payments", title: "كل المدفوعات", description: "مركز شامل لحالة محاولات الدفع." },
     { href: "/admin/payments?scope=needs-review", title: "مدفوعات تحتاج مراجعة", description: "حالات PENDING/SUBMITTED/VERIFYING." },
     { href: "/admin/payments?scope=issues", title: "مشكلات دفع حديثة", description: "محاولات فاشلة أو عالقة في التحقق." },
+    { href: "/admin/orders", title: "تحذيرات النزاهة", description: "حالات paid-without-grant وmismatch وpromo/rental." },
     { href: "/admin/books?status=PENDING_REVIEW", title: "صف مراجعة الكتب", description: "الوصول المباشر لمحتوى بانتظار الاعتماد." },
   ];
 
@@ -60,6 +62,12 @@ export default async function AdminDashboardPage() {
       value: dashboard.alerts.suspiciousDeviceAttemptsToday,
       href: "/admin/users?scope=suspicious",
       cta: "فتح الحسابات المرتبطة",
+    },
+    {
+      title: "تحذيرات نزاهة الطلبات/الوصول",
+      value: dashboard.alerts.integrityWarnings,
+      href: "/admin/orders",
+      cta: "فتح فحص النزاهة",
     },
     {
       title: "كتب بانتظار المراجعة",

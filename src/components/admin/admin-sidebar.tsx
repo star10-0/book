@@ -13,6 +13,7 @@ const navItems = [
   { href: "/admin/categories", label: "التصنيفات" },
   { href: "/admin/authors", label: "المؤلفون" },
   { href: "/admin/orders", label: "الطلبات" },
+  { href: "/admin/orders?focus=integrity", label: "نزاهة الطلبات", quick: true },
   { href: "/admin/payments", label: "المدفوعات" },
   { href: "/admin/promo-codes", label: "أكواد الخصم" },
   { href: "/admin/curriculum", label: "المنهاج" },

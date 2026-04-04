@@ -47,6 +47,7 @@ test("loadAdminDashboardSnapshot aggregates KPI and alerts from deps", async () 
         actorAdmin: { email: "admin@example.com" },
       },
     ],
+    integrityWarningsCount: async () => 4,
   });
 
   assert.equal(snapshot.metrics.usersCount, counts.users);
@@ -56,6 +57,7 @@ test("loadAdminDashboardSnapshot aggregates KPI and alerts from deps", async () 
   assert.equal(snapshot.alerts.suspiciousDeviceAttemptsToday, counts.suspicious);
   assert.equal(snapshot.metrics.auditLogsTodayCount, counts.auditsToday);
   assert.equal(snapshot.recentAdminActions.length, 1);
+  assert.equal(snapshot.alerts.integrityWarnings, 4);
   assert.equal(snapshot.recentAdminActions[0]?.actorEmail, "admin@example.com");
 });
 

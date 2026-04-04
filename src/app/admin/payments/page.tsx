@@ -12,6 +12,7 @@ import { formatArabicCurrency, formatArabicDate } from "@/lib/formatters/intl";
 import { paymentAttemptStatusLabels } from "@/lib/payments/status-flow";
 import { classifyPaymentIncident, type PaymentIncidentLabel } from "@/lib/admin/payment-admin";
 import { prisma } from "@/lib/prisma";
+import { getOrderIntegritySnapshot } from "@/lib/admin/order-integrity";
 
 function providerLabel(provider: PaymentProvider) {
   if (provider === "SHAM_CASH") return "Sham Cash";
@@ -88,7 +89,8 @@ export default async function AdminPaymentsPage({ searchParams }: AdminPaymentsP
   const params = searchParams ? await searchParams : {};
   const scope = parseScope(params.scope);
 
-  const attempts = await prisma.paymentAttempt.findMany({
+  const [attempts, integrity] = await Promise.all([
+    prisma.paymentAttempt.findMany({
     where: resolveScopeWhere(scope),
     include: {
       payment: { select: { id: true, status: true, providerRef: true } },
@@ -103,7 +105,9 @@ export default async function AdminPaymentsPage({ searchParams }: AdminPaymentsP
     },
     orderBy: { createdAt: "desc" },
     take: 100,
-  });
+  }),
+    getOrderIntegritySnapshot(1),
+  ]);
 
   const accessCountsByAttemptId = new Map(
     await Promise.all(
@@ -123,6 +127,10 @@ export default async function AdminPaymentsPage({ searchParams }: AdminPaymentsP
   return (
     <AdminPageCard>
       <AdminPageHeader title="إدارة المدفوعات" description={scopeDescription(scope)} />
+      <p className="rounded border border-amber-200 bg-amber-50 px-3 py-2 text-xs text-amber-900">
+        تحذيرات نزاهة مرتبطة بالطلبات/الوصول: {Object.values(integrity.totals).reduce((sum, value) => sum + value, 0).toLocaleString("ar-SY")}
+        {' '}— راجع صفحة الطلبات لمعالجة التفاصيل.
+      </p>
       <div className="flex flex-wrap gap-2 text-xs">
         <Link href="/admin/payments" className={`rounded border px-3 py-1.5 ${scope === "all" ? "bg-slate-900 text-white" : "bg-white text-slate-700"}`}>
           الكل
