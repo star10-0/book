@@ -6,6 +6,7 @@ import { requireUser } from "@/lib/auth-session";
 import { formatArabicDate } from "@/lib/formatters/intl";
 import { ReaderDocumentSource } from "@/lib/reader/types";
 import { prisma } from "@/lib/prisma";
+import { buildProtectedAssetUrl, buildWatermarkText } from "@/lib/security/content-protection";
 
 type ReaderPageProps = {
   params: Promise<{
@@ -129,19 +130,37 @@ export default async function ReaderPage({ params }: ReaderPageProps) {
   const epubFile = accessGrant.book.files.find((file) => file.kind === FileKind.EPUB);
   const textContent = accessGrant.book.textContent?.trim();
 
+  const watermarkText = buildWatermarkText({
+    email: user.email,
+    userId: user.id,
+    accessGrantId: accessGrant.id,
+  });
+
   const readerSource: ReaderDocumentSource | null = pdfFile
       ? {
           kind: "PDF",
-        publicUrl: `/api/books/assets/${pdfFile.id}`,
-        storageKey: pdfFile.storageKey,
-        isEncrypted: pdfFile.isEncrypted,
-        metadata: pdfFile.metadata,
-        pageCount: pdfFile.pdfPageCount,
+          publicUrl: buildProtectedAssetUrl({
+            fileId: pdfFile.id,
+            disposition: "inline",
+            userId: user.id,
+            accessGrantId: accessGrant.id,
+            watermarkText,
+          }),
+          storageKey: pdfFile.storageKey,
+          isEncrypted: pdfFile.isEncrypted,
+          metadata: pdfFile.metadata,
+          pageCount: pdfFile.pdfPageCount,
       }
     : epubFile
       ? {
           kind: "EPUB",
-          publicUrl: `/api/books/assets/${epubFile.id}`,
+          publicUrl: buildProtectedAssetUrl({
+            fileId: epubFile.id,
+            disposition: "inline",
+            userId: user.id,
+            accessGrantId: accessGrant.id,
+            watermarkText,
+          }),
           storageKey: epubFile.storageKey,
           isEncrypted: epubFile.isEncrypted,
           metadata: epubFile.metadata,

@@ -97,12 +97,18 @@ export function ReaderViewport({
 
       setEpubStatus("loading");
       try {
-        const fileId = source.publicUrl.split("/").filter(Boolean).at(-1);
+        const parsedUrl = new URL(source.publicUrl, window.location.origin);
+        const fileId = parsedUrl.pathname.split("/").filter(Boolean).at(-1);
         if (!fileId) {
           throw new Error("missing_epub_file_id");
         }
 
-        const response = await fetch(`/api/reader-epub/${fileId}/sections`, {
+        const token = parsedUrl.searchParams.get("t");
+        const sectionsUrl = token
+          ? `/api/reader-epub/${fileId}/sections?t=${encodeURIComponent(token)}`
+          : `/api/reader-epub/${fileId}/sections`;
+
+        const response = await fetch(sectionsUrl, {
           cache: "no-store",
           credentials: "same-origin",
         });

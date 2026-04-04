@@ -1,6 +1,7 @@
 import { createHash, randomBytes } from "node:crypto";
 import { cookies } from "next/headers";
 import { prisma } from "@/lib/prisma";
+import { maybeLogRepeatedBlockedDevicePattern } from "@/lib/security/suspicious-activity";
 
 export const TRUSTED_DEVICE_COOKIE = "book_device";
 const TRUSTED_DEVICE_MAX_AGE_SECONDS = 60 * 60 * 24 * 365;
@@ -91,6 +92,33 @@ export async function enforceTrustedDeviceOnLogin(input: {
       }),
     ]);
 
+    const recentLoginsWindow = new Date(Date.now() - 60 * 60 * 1000);
+    const distinctRecentIps = await prisma.userSecurityEvent.findMany({
+      where: {
+        userId: input.userId,
+        type: "LOGIN_SUCCESS",
+        createdAt: { gte: recentLoginsWindow },
+        ipAddress: { not: null },
+      },
+      select: { ipAddress: true },
+      take: 10,
+      orderBy: { createdAt: "desc" },
+    });
+
+    const uniqueIpCount = new Set(distinctRecentIps.map((item) => item.ipAddress).filter(Boolean)).size;
+
+    if (uniqueIpCount >= 3) {
+      await prisma.userSecurityEvent.create({
+        data: {
+          userId: input.userId,
+          type: "CONTENT_ACCESS_MULTIPLE_DEVICE_ANOMALY",
+          userAgent: input.userAgent ?? null,
+          ipAddress: input.ipAddress ?? null,
+          metadata: { signal: "multi_ip_login_velocity", uniqueIpCount, windowMinutes: 60 },
+        },
+      });
+    }
+
     return { allowed: true as const, matchedDeviceId: matched.id };
   }
 
@@ -133,6 +161,12 @@ export async function enforceTrustedDeviceOnLogin(input: {
       ipAddress: input.ipAddress ?? null,
       metadata: { activeTrustedDevices: devices.length },
     },
+  });
+
+  await maybeLogRepeatedBlockedDevicePattern({
+    userId: input.userId,
+    userAgent: input.userAgent,
+    ipAddress: input.ipAddress,
   });
 
   return { allowed: false as const };
