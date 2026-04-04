@@ -65,3 +65,32 @@ test("E) tx currently verifying in another logical flow is rejected to avoid rac
 test("F) failed attempt can transition back to VERIFYING for safe recovery and eventual granting", () => {
   assert.equal(canTransitionPaymentAttemptStatus("FAILED", "VERIFYING"), true);
 });
+
+test("G) reconcile candidate prefers explicit attempt id for same user", () => {
+  const attempts = [
+    { id: "a1", userId: "u1", orderId: "o1", status: "FAILED" },
+    { id: "a2", userId: "u1", orderId: "o1", status: "SUBMITTED" },
+  ] as Parameters<typeof __paymentServiceInternals.pickReconciliationCandidate>[0]["attempts"];
+
+  const candidate = __paymentServiceInternals.pickReconciliationCandidate({
+    attempts,
+    userId: "u1",
+    preferredAttemptId: "a2",
+  });
+
+  assert.equal(candidate?.id, "a2");
+});
+
+test("H) reconcile candidate ignores paid attempts to avoid double grant", () => {
+  const attempts = [
+    { id: "a1", userId: "u1", orderId: "o1", status: "PAID" },
+    { id: "a2", userId: "u1", orderId: "o2", status: "FAILED" },
+  ] as Parameters<typeof __paymentServiceInternals.pickReconciliationCandidate>[0]["attempts"];
+
+  const candidate = __paymentServiceInternals.pickReconciliationCandidate({
+    attempts,
+    userId: "u1",
+  });
+
+  assert.equal(candidate?.id, "a2");
+});

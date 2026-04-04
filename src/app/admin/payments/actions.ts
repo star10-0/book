@@ -8,6 +8,7 @@ import { grantAccessForPaidOrder } from "@/lib/access-grants";
 import {
   canReleaseTxLock,
   canRecoverPaymentAttempt,
+  classifyPaymentIncident,
   isAuditReasonValid,
   isPaymentOrderStateConsistent,
   shouldEnsureGrantForPaidState,
@@ -39,8 +40,10 @@ export async function retryVerifyPaymentAction(formData: FormData) {
   const reason = val(formData, "reason");
   if (!attemptId || !userId || !isAuditReasonValid(reason)) return;
 
-  await verifyPayment({ attemptId, userId });
-  await audit(admin.id, "PAYMENT_RETRY_VERIFY", attemptId, reason || "retry verify");
+  const result = await verifyPayment({ attemptId, userId });
+  await audit(admin.id, "PAYMENT_RETRY_VERIFY", attemptId, reason || "retry verify", {
+    resultStatus: result.status,
+  });
 
   revalidatePath("/admin/payments");
   revalidatePath(`/admin/payments/${attemptId}`);
@@ -55,8 +58,11 @@ export async function reconcileByTxAction(formData: FormData) {
 
   if (!attemptId || !userId || !transactionReference || !isAuditReasonValid(reason)) return;
 
-  await reconcilePaymentByTransactionReference({ attemptId, userId, transactionReference });
-  await audit(admin.id, "PAYMENT_RECONCILE_BY_TX", attemptId, reason || "reconcile by tx", { transactionReference });
+  const result = await reconcilePaymentByTransactionReference({ attemptId, userId, transactionReference });
+  await audit(admin.id, "PAYMENT_RECONCILE_BY_TX", attemptId, reason || "reconcile by tx", {
+    transactionReference,
+    resultStatus: result.status,
+  });
 
   revalidatePath("/admin/payments");
   revalidatePath(`/admin/payments/${attemptId}`);
@@ -69,9 +75,9 @@ export async function forceGrantPaymentAccessAction(formData: FormData) {
 
   if (!attemptId || !isAuditReasonValid(reason)) return;
 
-  await prisma.$transaction(async (tx) => {
+  const operationResult = await prisma.$transaction(async (tx) => {
     const attempt = await tx.paymentAttempt.findUnique({ where: { id: attemptId }, include: { order: true, payment: true } });
-    if (!attempt) return;
+    if (!attempt) return { changed: false, alreadyGranted: false, orderId: null as string | null, reason: "attempt_not_found" };
 
     const activeGrants = await tx.accessGrant.count({
       where: {
@@ -81,17 +87,18 @@ export async function forceGrantPaymentAccessAction(formData: FormData) {
       },
     });
 
-    if (shouldForceGrantAccess(activeGrants)) {
+    const alreadyGranted = !shouldForceGrantAccess(activeGrants);
+    if (!alreadyGranted) {
       await grantAccessForPaidOrder(tx, { orderId: attempt.orderId, userId: attempt.userId, grantedAt: new Date() });
     }
 
-    if (
-      !isPaymentOrderStateConsistent({
-        paymentStatus: "SUCCEEDED",
-        orderStatus: "PAID",
-      })
-    ) {
-      return;
+    const consistentInput = isPaymentOrderStateConsistent({
+      paymentStatus: attempt.payment.status,
+      orderStatus: attempt.order.status,
+    });
+
+    if (!consistentInput) {
+      return { changed: false, alreadyGranted, orderId: attempt.orderId, reason: "inconsistent_state" };
     }
 
     await tx.payment.update({
@@ -108,10 +115,22 @@ export async function forceGrantPaymentAccessAction(formData: FormData) {
       where: { id: attemptId },
       data: { status: "PAID", verifiedAt: attempt.verifiedAt ?? new Date(), failureReason: null },
     });
+
+    return { changed: true, alreadyGranted, orderId: attempt.orderId, reason: null as string | null };
   });
 
-  const attempt = await prisma.paymentAttempt.findUnique({ where: { id: attemptId }, select: { orderId: true } });
-  await audit(admin.id, "PAYMENT_FORCE_GRANT_ACCESS", attemptId, reason, { forced: true }, attempt?.orderId);
+  await audit(
+    admin.id,
+    "PAYMENT_FORCE_GRANT_ACCESS",
+    attemptId,
+    reason,
+    {
+      forced: operationResult?.changed ?? false,
+      alreadyGranted: operationResult?.alreadyGranted ?? false,
+      skippedReason: operationResult?.reason ?? null,
+    },
+    operationResult?.orderId ?? undefined,
+  );
   revalidatePath("/admin/payments");
   revalidatePath(`/admin/payments/${attemptId}`);
 }
@@ -201,7 +220,28 @@ export async function recoverStuckAttemptAction(formData: FormData) {
     });
   }
 
-  await audit(admin.id, "PAYMENT_RETRY_VERIFY", attemptId, reason, { recovery: true, transactionReference: transactionReference || null }, attempt.orderId);
+  const incidentLabel = classifyPaymentIncident({
+    attemptStatus: attempt.status,
+    paymentStatus: attempt.payment.status,
+    orderStatus: attempt.order.status,
+    hasAccessGrant: false,
+    failureReason: attempt.failureReason,
+    hasTransactionReference: Boolean(transactionReference),
+    providerReferenceMatchesPayment: !attempt.payment.providerRef || attempt.payment.providerRef === attempt.providerReference,
+  });
+
+  await audit(
+    admin.id,
+    "PAYMENT_RETRY_VERIFY",
+    attemptId,
+    reason,
+    {
+      recovery: true,
+      transactionReference: transactionReference || null,
+      incidentLabel,
+    },
+    attempt.orderId,
+  );
   revalidatePath("/admin/payments");
   revalidatePath(`/admin/payments/${attemptId}`);
 }
