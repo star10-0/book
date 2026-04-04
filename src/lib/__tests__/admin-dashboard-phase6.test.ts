@@ -15,6 +15,7 @@ test("loadAdminDashboardSnapshot aggregates KPI and alerts from deps", async () 
     needsReview: 5,
     issues: 2,
     suspicious: 6,
+    auditsToday: 14,
   };
 
   const snapshot = await loadAdminDashboardSnapshot(new Date("2026-04-04T10:00:00.000Z"), {
@@ -36,6 +37,7 @@ test("loadAdminDashboardSnapshot aggregates KPI and alerts from deps", async () 
       return counts.todayPayments;
     },
     userSecurityEventCount: async () => counts.suspicious,
+    adminAuditCount: async () => counts.auditsToday,
     adminAuditFindMany: async () => [
       {
         id: "audit_1",
@@ -52,6 +54,7 @@ test("loadAdminDashboardSnapshot aggregates KPI and alerts from deps", async () 
   assert.equal(snapshot.metrics.pendingBooksCount, counts.pendingBooks);
   assert.equal(snapshot.alerts.failedOrStuckPayments, counts.issues);
   assert.equal(snapshot.alerts.suspiciousDeviceAttemptsToday, counts.suspicious);
+  assert.equal(snapshot.metrics.auditLogsTodayCount, counts.auditsToday);
   assert.equal(snapshot.recentAdminActions.length, 1);
   assert.equal(snapshot.recentAdminActions[0]?.actorEmail, "admin@example.com");
 });
