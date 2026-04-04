@@ -33,7 +33,20 @@ export default async function AdminDashboardPage() {
         },
       },
     }),
-    prisma.userSecurityEvent.count({ where: { createdAt: { gte: startOfToday } } }),
+    prisma.userSecurityEvent.count({
+      where: {
+        createdAt: { gte: startOfToday },
+        type: {
+          in: [
+            "LOGIN_BLOCKED_UNTRUSTED_DEVICE",
+            "CONTENT_ACCESS_TOKEN_INVALID",
+            "CONTENT_ACCESS_REPLAY_AFTER_REVOCATION",
+            "CONTENT_ACCESS_MULTIPLE_DEVICE_ANOMALY",
+            "SUSPICIOUS_ACCOUNT_ACTIVITY",
+          ],
+        },
+      },
+    }),
   ]);
 
   const metrics = [
@@ -42,7 +55,7 @@ export default async function AdminDashboardPage() {
     { label: "كتب منشورة", value: publishedBooksCount.toLocaleString("ar-SY") },
     { label: "طلبات اليوم", value: todayOrdersCount.toLocaleString("ar-SY") },
     { label: "مدفوعات قيد المراجعة", value: pendingReviewPaymentsCount.toLocaleString("ar-SY") },
-    { label: "أحداث أمنية اليوم", value: unresolvedSecurityEvents.toLocaleString("ar-SY") },
+    { label: "مؤشرات أمنية مشبوهة اليوم", value: unresolvedSecurityEvents.toLocaleString("ar-SY") },
   ];
 
   const sections: HubSection[] = [

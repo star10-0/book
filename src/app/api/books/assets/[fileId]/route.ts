@@ -5,10 +5,12 @@ import { Readable } from "node:stream";
 import { AccessGrantStatus, FileKind, StorageProvider } from "@prisma/client";
 import { getCurrentUser } from "@/lib/auth-session";
 import { mapStorageProviderEnumToKey } from "@/lib/files/book-storage-service";
-import { canAccessProtectedAsset, resolveAssetDisposition } from "@/lib/files/protected-asset-policy";
+import { canAccessProtectedAsset, canReadPubliclyByPolicy, resolveAssetDisposition } from "@/lib/files/protected-asset-policy";
 import { createStorageProvider } from "@/lib/files/storage-provider";
 import { prisma } from "@/lib/prisma";
 import { jsonNoStore } from "@/lib/security";
+import { buildWatermarkText, verifyProtectedAssetToken } from "@/lib/security/content-protection";
+import { logUserSecurityEvent } from "@/lib/security/suspicious-activity";
 
 export const runtime = "nodejs";
 
@@ -60,8 +62,8 @@ async function resolveReadableLocalPath(storageKey: string) {
   return null;
 }
 
-async function hasActiveAccessGrant(userId: string, bookId: string, now: Date) {
-  const grant = await prisma.accessGrant.findFirst({
+async function resolveActiveGrant(userId: string, bookId: string, now: Date) {
+  return await prisma.accessGrant.findFirst({
     where: {
       userId,
       bookId,
@@ -69,10 +71,15 @@ async function hasActiveAccessGrant(userId: string, bookId: string, now: Date) {
       startsAt: { lte: now },
       OR: [{ expiresAt: null }, { expiresAt: { gt: now } }],
     },
-    select: { id: true },
+    select: {
+      id: true,
+      orderItem: {
+        select: {
+          orderId: true,
+        },
+      },
+    },
   });
-
-  return Boolean(grant);
 }
 
 export async function GET(request: Request, { params }: BookAssetRouteParams) {
@@ -107,7 +114,37 @@ export async function GET(request: Request, { params }: BookAssetRouteParams) {
 
   const user = await getCurrentUser();
   const now = new Date();
-  const canReadWithGrant = user ? await hasActiveAccessGrant(user.id, file.book.id, now) : false;
+  const activeGrant = user ? await resolveActiveGrant(user.id, file.book.id, now) : null;
+  const canReadWithGrant = Boolean(activeGrant);
+  const isPubliclyReadable = canReadPubliclyByPolicy(file.book.contentAccessPolicy);
+
+  if (!isPubliclyReadable) {
+    const tokenResult = verifyProtectedAssetToken({
+      token: url.searchParams.get("t"),
+      fileId,
+      disposition: requestedDisposition,
+      currentUserId: user?.id,
+    });
+
+    if (!tokenResult.valid) {
+      if (user) {
+        await logUserSecurityEvent({
+          userId: user.id,
+          type: "CONTENT_ACCESS_TOKEN_INVALID",
+          ipAddress: request.headers.get("x-forwarded-for")?.split(",")[0]?.trim() || request.headers.get("x-real-ip"),
+          userAgent: request.headers.get("user-agent"),
+          metadata: {
+            fileId,
+            reason: tokenResult.reason,
+            disposition: requestedDisposition,
+          },
+        });
+      }
+
+      return jsonNoStore({ message: "رابط الوصول للملف غير صالح أو منتهي الصلاحية." }, { status: 403 });
+    }
+  }
+
   const access = canAccessProtectedAsset({
     policy: file.book.contentAccessPolicy,
     hasActiveGrant: canReadWithGrant,
@@ -115,8 +152,28 @@ export async function GET(request: Request, { params }: BookAssetRouteParams) {
   });
 
   if (!access.allowed) {
+    if (user && !canReadWithGrant && !isPubliclyReadable) {
+      await logUserSecurityEvent({
+        userId: user.id,
+        type: "CONTENT_ACCESS_REPLAY_AFTER_REVOCATION",
+        ipAddress: request.headers.get("x-forwarded-for")?.split(",")[0]?.trim() || request.headers.get("x-real-ip"),
+        userAgent: request.headers.get("user-agent"),
+        metadata: {
+          fileId,
+          reason: access.reason,
+        },
+      });
+    }
+
     return jsonNoStore({ message: "غير مصرح بالوصول لهذا الملف." }, { status: 403 });
   }
+
+  const watermark = buildWatermarkText({
+    email: user?.email,
+    userId: user?.id,
+    accessGrantId: activeGrant?.id,
+    orderId: activeGrant?.orderItem?.orderId,
+  });
 
   if (file.storageProvider !== StorageProvider.LOCAL) {
     try {
@@ -137,7 +194,16 @@ export async function GET(request: Request, { params }: BookAssetRouteParams) {
         return jsonNoStore({ message: "تعذر إنشاء رابط الوصول للملف." }, { status: 500 });
       }
 
-      return Response.redirect(signedUrl, 302);
+      return new Response(null, {
+        status: 302,
+        headers: {
+          Location: signedUrl,
+          "Cache-Control": "private, no-store",
+          "X-Book-Watermark-Hook": watermark ?? "",
+          "X-Content-Type-Options": "nosniff",
+          "Referrer-Policy": "same-origin",
+        },
+      });
     } catch {
       return jsonNoStore({ message: "تعذر تجهيز الملف للقراءة حالياً." }, { status: 500 });
     }
@@ -164,6 +230,8 @@ export async function GET(request: Request, { params }: BookAssetRouteParams) {
       "Content-Disposition": `${access.disposition}; filename*=UTF-8''${encodeURIComponent(file.originalFileName ?? `${file.id}.${file.kind.toLowerCase()}`)}`,
       "Cache-Control": "private, no-store",
       "X-Content-Type-Options": "nosniff",
+      "Referrer-Policy": "same-origin",
+      "X-Book-Watermark-Hook": watermark ?? "",
     },
   });
 }

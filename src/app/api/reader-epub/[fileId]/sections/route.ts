@@ -8,10 +8,12 @@ import { promisify } from "node:util";
 import { AccessGrantStatus, FileKind, StorageProvider } from "@prisma/client";
 import { getCurrentUser } from "@/lib/auth-session";
 import { mapStorageProviderEnumToKey } from "@/lib/files/book-storage-service";
-import { canAccessProtectedAsset, resolveAssetDisposition } from "@/lib/files/protected-asset-policy";
+import { canAccessProtectedAsset, canReadPubliclyByPolicy, resolveAssetDisposition } from "@/lib/files/protected-asset-policy";
 import { createStorageProvider } from "@/lib/files/storage-provider";
 import { prisma } from "@/lib/prisma";
 import { jsonNoStore } from "@/lib/security";
+import { verifyProtectedAssetToken } from "@/lib/security/content-protection";
+import { logUserSecurityEvent } from "@/lib/security/suspicious-activity";
 
 export const runtime = "nodejs";
 
@@ -242,6 +244,30 @@ export async function GET(request: Request, { params }: ReaderEpubSectionsRouteP
   const user = await getCurrentUser();
   const now = new Date();
   const canReadWithGrant = user ? await hasActiveAccessGrant(user.id, file.book.id, now) : false;
+
+  if (!canReadPubliclyByPolicy(file.book.contentAccessPolicy)) {
+    const tokenResult = verifyProtectedAssetToken({
+      token: url.searchParams.get("t"),
+      fileId,
+      disposition: requestedDisposition,
+      currentUserId: user?.id,
+    });
+
+    if (!tokenResult.valid) {
+      if (user) {
+        await logUserSecurityEvent({
+          userId: user.id,
+          type: "CONTENT_ACCESS_TOKEN_INVALID",
+          ipAddress: request.headers.get("x-forwarded-for")?.split(",")[0]?.trim() || request.headers.get("x-real-ip"),
+          userAgent: request.headers.get("user-agent"),
+          metadata: { fileId, route: "reader-epub-sections", reason: tokenResult.reason },
+        });
+      }
+
+      return jsonNoStore({ message: "رابط الوصول للملف غير صالح أو منتهي الصلاحية." }, { status: 403 });
+    }
+  }
+
   const accessPolicy = canAccessProtectedAsset({
     policy: file.book.contentAccessPolicy,
     hasActiveGrant: canReadWithGrant,

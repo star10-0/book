@@ -29,6 +29,16 @@ export default async function AdminUserDetailsPage({ params }: PageProps) {
 
   if (!user) notFound();
 
+  const suspiciousEvents = user.securityEvents.filter((event) =>
+    [
+      "LOGIN_BLOCKED_UNTRUSTED_DEVICE",
+      "CONTENT_ACCESS_TOKEN_INVALID",
+      "CONTENT_ACCESS_REPLAY_AFTER_REVOCATION",
+      "CONTENT_ACCESS_MULTIPLE_DEVICE_ANOMALY",
+      "SUSPICIOUS_ACCOUNT_ACTIVITY",
+    ].includes(event.type),
+  );
+
   const paymentSummary = {
     pending: user.paymentAttempts.filter((item) => item.status === "PENDING" || item.status === "VERIFYING").length,
     succeeded: user.paymentAttempts.filter((item) => item.status === "PAID").length,
@@ -48,6 +58,7 @@ export default async function AdminUserDetailsPage({ params }: PageProps) {
           <p>الوصولات/المنح: {user._count.accessGrants.toLocaleString("ar-SY")}</p>
           <p>يتطلب إعادة تعيين كلمة المرور: {user.requirePasswordReset ? "نعم" : "لا"}</p>
           <p>نسخة الجلسة الحالية: {user.sessionVersion.toLocaleString("ar-SY")}</p>
+          <p>مؤشرات نشاط مشبوه (آخر 20): {suspiciousEvents.length.toLocaleString("ar-SY")}</p>
         </div>
         <div className="mt-4 flex flex-wrap gap-2 text-xs">
           <form action={user.isActive ? banUserAction : unbanUserAction}>
@@ -122,18 +133,13 @@ export default async function AdminUserDetailsPage({ params }: PageProps) {
           </section>
           <section className="space-y-2 text-sm">
             <h3 className="font-semibold">محاولات مشبوهة (أجهزة غير موثوقة)</h3>
-            {user.securityEvents
-              .filter((event) => event.type === "LOGIN_BLOCKED_UNTRUSTED_DEVICE")
-              .slice(0, 6)
-              .map((event) => (
+            {suspiciousEvents.slice(0, 8).map((event) => (
                 <p key={event.id} className="rounded border p-2">
                   {event.type} — {event.ipAddress || "IP غير متاح"} —{" "}
                   {formatArabicDate(event.createdAt, { dateStyle: "short", timeStyle: "short" })}
                 </p>
               ))}
-            {user.securityEvents.filter((event) => event.type === "LOGIN_BLOCKED_UNTRUSTED_DEVICE").length === 0 ? (
-              <p className="text-slate-600">لا توجد محاولات مشبوهة حديثة.</p>
-            ) : null}
+            {suspiciousEvents.length === 0 ? <p className="text-slate-600">لا توجد محاولات مشبوهة حديثة.</p> : null}
           </section>
           <section className="space-y-2 text-sm">
             <h3 className="font-semibold">آخر إجراءات المشرفين</h3>

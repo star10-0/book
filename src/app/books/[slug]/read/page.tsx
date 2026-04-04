@@ -4,6 +4,7 @@ import { PublicReaderShell } from "@/components/public-reader-shell";
 import { resolveBookContentAccess } from "@/lib/book-content-access";
 import { ReaderDocumentSource } from "@/lib/reader/types";
 import { prisma } from "@/lib/prisma";
+import { buildProtectedAssetUrl } from "@/lib/security/content-protection";
 
 type PublicReadPageProps = {
   params: Promise<{ slug: string }>;
@@ -66,7 +67,7 @@ export default async function PublicReadPage({ params }: PublicReadPageProps) {
     : contentAccess.readableFile?.kind === FileKind.PDF
       ? {
           kind: "PDF",
-          publicUrl: `/api/books/assets/${contentAccess.readableFile.id}`,
+          publicUrl: buildProtectedAssetUrl({ fileId: contentAccess.readableFile.id, disposition: "inline" }),
           storageKey: readableAsset?.storageKey ?? "",
           isEncrypted: readableAsset?.isEncrypted ?? false,
           metadata: readableAsset?.metadata,
@@ -75,7 +76,7 @@ export default async function PublicReadPage({ params }: PublicReadPageProps) {
       : contentAccess.readableFile?.kind === FileKind.EPUB
         ? {
             kind: "EPUB",
-            publicUrl: `/api/books/assets/${contentAccess.readableFile.id}`,
+            publicUrl: buildProtectedAssetUrl({ fileId: contentAccess.readableFile.id, disposition: "inline" }),
             storageKey: readableAsset?.storageKey ?? "",
             isEncrypted: readableAsset?.isEncrypted ?? false,
             metadata: readableAsset?.metadata,
