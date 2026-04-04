@@ -7,6 +7,7 @@ import {
   retryVerifyPaymentAction,
 } from "@/app/admin/payments/actions";
 import { AdminPageCard, AdminPageHeader } from "@/components/admin/admin-page";
+import { classifyPaymentIncident } from "@/lib/admin/payment-admin";
 import { formatArabicDate } from "@/lib/formatters/intl";
 import { prisma } from "@/lib/prisma";
 
@@ -40,6 +41,16 @@ export default async function AdminPaymentAttemptPage({ params }: PageProps) {
   });
 
   const txRef = (attempt.requestPayload as { transactionReference?: string } | null)?.transactionReference || "";
+  const providerReferenceMatchesPayment = !attempt.payment.providerRef || attempt.payment.providerRef === attempt.providerReference;
+  const incident = classifyPaymentIncident({
+    attemptStatus: attempt.status,
+    paymentStatus: attempt.payment.status,
+    orderStatus: attempt.order.status,
+    hasAccessGrant: accessExists > 0,
+    failureReason: attempt.failureReason,
+    hasTransactionReference: Boolean(txRef),
+    providerReferenceMatchesPayment,
+  });
 
   return (
     <div className="space-y-4" dir="rtl">
@@ -55,11 +66,13 @@ export default async function AdminPaymentAttemptPage({ params }: PageProps) {
           <p>tx: {txRef || "—"}</p>
           <p>providerReference: {attempt.providerReference || "—"}</p>
           <p>providerRef على Payment: {attempt.payment.providerRef || "—"}</p>
+          <p>incident: {incident ?? "—"}</p>
           <p>فشل: {attempt.failureReason || "—"}</p>
           <p>createdAt: {formatArabicDate(attempt.createdAt, { dateStyle: "short", timeStyle: "short" })}</p>
           <p>updatedAt: {formatArabicDate(attempt.updatedAt, { dateStyle: "short", timeStyle: "short" })}</p>
           <p>تم التحقق: {attempt.verifiedAt ? formatArabicDate(attempt.verifiedAt, { dateStyle: "short", timeStyle: "short" }) : "—"}</p>
           <p>وصول ممنوح: {accessExists > 0 ? "نعم" : "لا"}</p>
+          <p>providerRef متطابق: {providerReferenceMatchesPayment ? "نعم" : "لا"}</p>
         </div>
         <div className="mt-4 grid gap-2 sm:grid-cols-2">
           <form action={retryVerifyPaymentAction} className="rounded border p-3 text-xs"><input type="hidden" name="attemptId" value={attempt.id} /><input type="hidden" name="userId" value={attempt.userId} /><input name="reason" className="mb-2 w-full rounded border px-2 py-1" placeholder="سبب التدخل" required defaultValue="manual retry verify" /><button className="rounded border px-2 py-1">إعادة تحقق</button></form>

@@ -3,6 +3,7 @@ import test from "node:test";
 import {
   canRecoverPaymentAttempt,
   canReleaseTxLock,
+  classifyPaymentIncident,
   isAuditReasonValid,
   isPaymentOrderStateConsistent,
   shouldEnsureGrantForPaidState,
@@ -65,4 +66,37 @@ test("payment/order consistency guard catches impossible state combos", () => {
   assert.equal(isPaymentOrderStateConsistent({ paymentStatus: "SUCCEEDED", orderStatus: "PAID" }), true);
   assert.equal(isPaymentOrderStateConsistent({ paymentStatus: "SUCCEEDED", orderStatus: "PENDING" }), false);
   assert.equal(isPaymentOrderStateConsistent({ paymentStatus: "FAILED", orderStatus: "PAID" }), false);
+});
+
+test("incident classification labels grant missing and tx conflicts", () => {
+  assert.equal(
+    classifyPaymentIncident({
+      attemptStatus: "PAID",
+      paymentStatus: "SUCCEEDED",
+      orderStatus: "PAID",
+      hasAccessGrant: false,
+      hasTransactionReference: true,
+      providerReferenceMatchesPayment: true,
+      failureReason: null,
+    }),
+    "grant_missing",
+  );
+
+  assert.equal(
+    classifyPaymentIncident({
+      attemptStatus: "FAILED",
+      paymentStatus: "FAILED",
+      orderStatus: "PENDING",
+      hasAccessGrant: false,
+      hasTransactionReference: true,
+      providerReferenceMatchesPayment: true,
+      failureReason: "duplicate tx already used",
+    }),
+    "tx_conflict",
+  );
+});
+
+test("existing access grant prevents duplicate forced grant", () => {
+  assert.equal(shouldForceGrantAccess(1), false);
+  assert.equal(shouldForceGrantAccess(5), false);
 });
