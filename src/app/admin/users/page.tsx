@@ -10,6 +10,7 @@ import { AdminPageCard, AdminPageHeader } from "@/components/admin/admin-page";
 import { AdminTable } from "@/components/admin/admin-table";
 import { formatArabicDate } from "@/lib/formatters/intl";
 import { getAdminUsersList, parseUsersScope } from "@/lib/admin/users-directory";
+import { requireAdminScope } from "@/lib/auth-session";
 
 function roleLabel(role: UserRole) {
   if (role === "ADMIN") return "مشرف";
@@ -34,6 +35,7 @@ function scopeDescription(scope: ReturnType<typeof parseUsersScope>) {
 }
 
 export default async function AdminUsersPage({ searchParams }: AdminUsersPageProps) {
+  await requireAdminScope("SUPPORT_ADMIN", { callbackUrl: "/admin/users" });
   const params = searchParams ? await searchParams : {};
   const scope = parseUsersScope(params.scope);
   const users = await getAdminUsersList(scope);

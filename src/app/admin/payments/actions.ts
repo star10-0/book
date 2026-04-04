@@ -2,7 +2,7 @@
 
 import { PaymentStatus, Prisma } from "@prisma/client";
 import { revalidatePath } from "next/cache";
-import { requireAdmin } from "@/lib/auth-session";
+import { requireAdminScope } from "@/lib/auth-session";
 import { createAdminAuditLog } from "@/lib/admin/audit-log";
 import { grantAccessForPaidOrder } from "@/lib/access-grants";
 import {
@@ -34,7 +34,7 @@ async function audit(actorAdminId: string, action: Parameters<typeof createAdmin
 }
 
 export async function retryVerifyPaymentAction(formData: FormData) {
-  const admin = await requireAdmin({ callbackUrl: "/admin/payments" });
+  const admin = await requireAdminScope("PAYMENT_ADMIN", { callbackUrl: "/admin/payments" });
   const attemptId = val(formData, "attemptId");
   const userId = val(formData, "userId");
   const reason = val(formData, "reason");
@@ -50,7 +50,7 @@ export async function retryVerifyPaymentAction(formData: FormData) {
 }
 
 export async function reconcileByTxAction(formData: FormData) {
-  const admin = await requireAdmin({ callbackUrl: "/admin/payments" });
+  const admin = await requireAdminScope("PAYMENT_ADMIN", { callbackUrl: "/admin/payments" });
   const attemptId = val(formData, "attemptId");
   const userId = val(formData, "userId");
   const transactionReference = val(formData, "transactionReference");
@@ -69,7 +69,7 @@ export async function reconcileByTxAction(formData: FormData) {
 }
 
 export async function forceGrantPaymentAccessAction(formData: FormData) {
-  const admin = await requireAdmin({ callbackUrl: "/admin/payments" });
+  const admin = await requireAdminScope("PAYMENT_ADMIN", { callbackUrl: "/admin/payments" });
   const attemptId = val(formData, "attemptId");
   const reason = val(formData, "reason");
 
@@ -136,7 +136,7 @@ export async function forceGrantPaymentAccessAction(formData: FormData) {
 }
 
 export async function releasePaymentTxLockAction(formData: FormData) {
-  const admin = await requireAdmin({ callbackUrl: "/admin/payments" });
+  const admin = await requireAdminScope("PAYMENT_ADMIN", { callbackUrl: "/admin/payments" });
   const attemptId = val(formData, "attemptId");
   const reason = val(formData, "reason");
   if (!attemptId || !isAuditReasonValid(reason)) return;
@@ -164,7 +164,7 @@ export async function releasePaymentTxLockAction(formData: FormData) {
 }
 
 export async function recoverStuckAttemptAction(formData: FormData) {
-  const admin = await requireAdmin({ callbackUrl: "/admin/payments" });
+  const admin = await requireAdminScope("PAYMENT_ADMIN", { callbackUrl: "/admin/payments" });
   const attemptId = val(formData, "attemptId");
   const userId = val(formData, "userId");
   const transactionReference = val(formData, "transactionReference");

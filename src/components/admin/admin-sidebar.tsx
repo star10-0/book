@@ -18,6 +18,7 @@ const navItems = [
   { href: "/admin/promo-codes", label: "أكواد الخصم" },
   { href: "/admin/curriculum", label: "المنهاج" },
   { href: "/admin/users", label: "المستخدمون" },
+  { href: "/admin/reports", label: "التقارير" },
 ];
 
 function isCurrentPath(pathname: string, href: string) {

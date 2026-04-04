@@ -1,8 +1,9 @@
 import { createHmac, timingSafeEqual } from "node:crypto";
 import { cookies } from "next/headers";
 import { redirect } from "next/navigation";
+import { type AdminScope } from "@prisma/client";
 import { hasAcceptedCurrentDevicePolicy } from "@/lib/policy";
-import { isAdminRole, isCreatorOrAdminRole } from "@/lib/authz";
+import { hasAdminScope, isAdminRole, isCreatorOrAdminRole } from "@/lib/authz";
 import { assertServerEnv } from "@/lib/env";
 import { prisma } from "@/lib/prisma";
 
@@ -137,6 +138,7 @@ export async function getCurrentUser() {
       acceptedTermsVersion: true,
       acceptedDevicePolicyAt: true,
       requirePasswordReset: true,
+      adminScopes: true,
       creatorProfile: {
         select: {
           slug: true,
@@ -162,6 +164,7 @@ export async function getCurrentUser() {
     acceptedTermsVersion: user.acceptedTermsVersion,
     acceptedDevicePolicyAt: user.acceptedDevicePolicyAt,
     requirePasswordReset: user.requirePasswordReset,
+    adminScopes: user.adminScopes,
     creatorProfile: user.creatorProfile,
   };
 }
@@ -201,6 +204,16 @@ export async function requireAdmin(options?: { callbackUrl?: string }) {
   }
 
   return user;
+}
+
+export async function requireAdminScope(requiredScope: AdminScope, options?: { callbackUrl?: string }) {
+  const admin = await requireAdmin(options);
+
+  if (!hasAdminScope({ adminScopes: admin.adminScopes, required: requiredScope })) {
+    redirect("/admin");
+  }
+
+  return admin;
 }
 
 export async function requireCreator(options?: { callbackUrl?: string }) {

@@ -63,7 +63,16 @@ type ReviewQueueDeps = {
 const defaultDeps: ReviewQueueDeps = {
   paymentAttemptsFindMany: (args) => prisma.paymentAttempt.findMany(args),
   securityEventsFindMany: (args) => prisma.userSecurityEvent.findMany(args),
-  usersFindMany: async (args) => prisma.user.findMany(args as Prisma.UserFindManyArgs) as any,
+  usersFindMany: async (args) => {
+    const rows = await prisma.user.findMany(args as Prisma.UserFindManyArgs);
+    return rows as unknown as Array<{
+      id: string;
+      email: string;
+      role: UserRole;
+      requirePasswordReset: boolean;
+      _count: { securityEvents: number };
+    }>;
+  },
   adminAuditCount: (args) => prisma.adminAuditLog.count(args),
   orderIntegritySnapshot: () => getOrderIntegritySnapshot(25),
 };

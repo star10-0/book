@@ -63,6 +63,29 @@
    - The command fails if the user is not an `ADMIN`.
    - Existing sessions are invalidated by incrementing `sessionVersion`.
 
+6. (Optional, recommended) Assign granular admin scopes for operational separation:
+
+   - `SUPER_ADMIN`
+   - `PAYMENT_ADMIN`
+   - `SUPPORT_ADMIN`
+   - `CONTENT_ADMIN`
+
+   Notes:
+   - Existing admins without explicit scopes keep legacy full-access behavior for backward compatibility.
+   - The admin bootstrap command now creates the first admin with `SUPER_ADMIN`.
+   - Payments, support/user interventions, curriculum/content operations, and CSV report exports can be guarded by scope-specific checks.
+
+7. Admin reporting exports (CSV):
+
+   - `/api/admin/reports/users`
+   - `/api/admin/reports/suspicious-activity`
+   - `/api/admin/reports/failed-payments`
+   - `/api/admin/reports/payment-incidents`
+
+   Notes:
+   - Access is admin-only and scope-gated by report type.
+   - Every export action is logged in admin audit logs.
+
 ---
 
 ## Sprint 3: Production Launch Readiness (Docker/VPS)

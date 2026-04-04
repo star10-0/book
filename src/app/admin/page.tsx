@@ -32,6 +32,7 @@ export default async function AdminDashboardPage() {
     { href: "/admin/books", title: "الكتب", description: "مراجعة المحتوى والنشر والتحديثات." },
     { href: "/admin/curriculum", title: "المنهاج", description: "تنظيم المسارات التعليمية وربط الكتب بالمستويات." },
     { href: "/admin/promo-codes", title: "أكواد الخصم", description: "تشغيل الحملات ومراقبة الاستهلاك." },
+    { href: "/admin/reports", title: "التقارير", description: "تنزيل تقارير CSV تشغيلية للأمان والدفع والمستخدمين." },
   ];
 
   const quickActions: HubSection[] = [
@@ -42,6 +43,7 @@ export default async function AdminDashboardPage() {
     { href: "/admin/payments?scope=issues", title: "مشكلات دفع حديثة", description: "محاولات فاشلة أو عالقة في التحقق." },
     { href: "/admin/orders", title: "تحذيرات النزاهة", description: "حالات paid-without-grant وmismatch وpromo/rental." },
     { href: "/admin/books?status=PENDING_REVIEW", title: "صف مراجعة الكتب", description: "الوصول المباشر لمحتوى بانتظار الاعتماد." },
+    { href: "/admin/reports", title: "التقارير", description: "تصدير المستخدمين والنشاط المشبوه وحوادث الدفع." },
   ];
 
   const alerts = [
@@ -127,6 +129,23 @@ export default async function AdminDashboardPage() {
             <p className="mt-1 text-sm text-indigo-800">الإجراء المقترح: أصلح paid-without-grant أولاً ثم حالات mismatch المتبقية.</p>
           </article>
         </div>
+      </AdminPageCard>
+
+      <AdminPageCard>
+        <AdminPageHeader title="صحة النظام" description="جاهزية التهيئة ومؤشرات الفشل والانحرافات الأساسية." />
+        <div className="grid gap-3 sm:grid-cols-2 lg:grid-cols-4 text-sm">
+          <p className="rounded border p-3">سلامة البيئة: {dashboard.systemHealth.env.valid ? "سليم" : `أخطاء ${dashboard.systemHealth.env.errorCount.toLocaleString("ar-SY")}`}</p>
+          <p className="rounded border p-3">فشل مدفوعات آخر 24 ساعة: {dashboard.systemHealth.criticalFailures.failedPaymentsLast24h.toLocaleString("ar-SY")}</p>
+          <p className="rounded border p-3">تحقق عالق: {dashboard.systemHealth.criticalFailures.stuckVerifyingLast24h.toLocaleString("ar-SY")}</p>
+          <p className="rounded border p-3">انجراف هجرات: {dashboard.systemHealth.drift.pendingOrFailedMigrations.toLocaleString("ar-SY")}</p>
+        </div>
+        <ul className="mt-3 space-y-1 text-xs text-slate-600">
+          {dashboard.systemHealth.providers.map((provider) => (
+            <li key={provider.provider}>
+              {provider.provider}: {provider.ready ? "جاهز" : `غير جاهز (${provider.missingEnvKeys.join(", ") || "missing env"})`} • mode={provider.mode}
+            </li>
+          ))}
+        </ul>
       </AdminPageCard>
 
       <AdminPageCard>

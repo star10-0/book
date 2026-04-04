@@ -1,4 +1,4 @@
-import { UserRole } from "@prisma/client";
+import { AdminScope, UserRole } from "@prisma/client";
 
 export function isAdminRole(role: UserRole) {
   return role === UserRole.ADMIN;
@@ -10,6 +10,15 @@ export function isCreatorOrAdminRole(role: UserRole) {
 
 export function isCurriculumManagerRole(role: UserRole) {
   return isAdminRole(role);
+}
+
+export function hasAdminScope(input: { adminScopes?: AdminScope[] | null; required: AdminScope }) {
+  const scopes = input.adminScopes ?? [];
+  if (scopes.length === 0) {
+    return true;
+  }
+
+  return scopes.includes(AdminScope.SUPER_ADMIN) || scopes.includes(input.required);
 }
 
 export function canManageCreatorBook(input: {

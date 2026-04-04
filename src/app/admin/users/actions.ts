@@ -2,7 +2,7 @@
 
 import { AdminAuditAction, Prisma } from "@prisma/client";
 import { revalidatePath } from "next/cache";
-import { requireAdmin } from "@/lib/auth-session";
+import { requireAdminScope } from "@/lib/auth-session";
 import { createAdminAuditLog } from "@/lib/admin/audit-log";
 import {
   banUserByAdmin,
@@ -35,7 +35,7 @@ async function auditUserAction(input: {
 }
 
 export async function banUserAction(formData: FormData) {
-  const admin = await requireAdmin({ callbackUrl: "/admin/users" });
+  const admin = await requireAdminScope("SUPPORT_ADMIN", { callbackUrl: "/admin/users" });
   const targetUserId = getValue(formData, "targetUserId");
   const reason = getValue(formData, "reason");
 
@@ -48,7 +48,7 @@ export async function banUserAction(formData: FormData) {
 }
 
 export async function unbanUserAction(formData: FormData) {
-  const admin = await requireAdmin({ callbackUrl: "/admin/users" });
+  const admin = await requireAdminScope("SUPPORT_ADMIN", { callbackUrl: "/admin/users" });
   const targetUserId = getValue(formData, "targetUserId");
   const reason = getValue(formData, "reason");
   if (!targetUserId) return;
@@ -60,7 +60,7 @@ export async function unbanUserAction(formData: FormData) {
 }
 
 export async function adminForceLogoutAllDevicesAction(formData: FormData) {
-  const admin = await requireAdmin({ callbackUrl: "/admin/users" });
+  const admin = await requireAdminScope("SUPPORT_ADMIN", { callbackUrl: "/admin/users" });
   const targetUserId = getValue(formData, "targetUserId");
   const reason = getValue(formData, "reason");
   if (!targetUserId) return;
@@ -72,7 +72,7 @@ export async function adminForceLogoutAllDevicesAction(formData: FormData) {
 }
 
 export async function forcePasswordResetAction(formData: FormData) {
-  const admin = await requireAdmin({ callbackUrl: "/admin/users" });
+  const admin = await requireAdminScope("SUPPORT_ADMIN", { callbackUrl: "/admin/users" });
   const targetUserId = getValue(formData, "targetUserId");
   const reason = getValue(formData, "reason");
   if (!targetUserId) return;
@@ -84,7 +84,7 @@ export async function forcePasswordResetAction(formData: FormData) {
 }
 
 export async function revokeTrustedDeviceAction(formData: FormData) {
-  const admin = await requireAdmin({ callbackUrl: "/admin/users" });
+  const admin = await requireAdminScope("SUPPORT_ADMIN", { callbackUrl: "/admin/users" });
   const targetUserId = getValue(formData, "targetUserId");
   const deviceId = getValue(formData, "deviceId");
   const reason = getValue(formData, "reason");
@@ -115,7 +115,7 @@ export async function revokeTrustedDeviceAction(formData: FormData) {
 }
 
 export async function requireTrustedDeviceRebindAction(formData: FormData) {
-  const admin = await requireAdmin({ callbackUrl: "/admin/users" });
+  const admin = await requireAdminScope("SUPPORT_ADMIN", { callbackUrl: "/admin/users" });
   const targetUserId = getValue(formData, "targetUserId");
   const reason = getValue(formData, "reason");
 
