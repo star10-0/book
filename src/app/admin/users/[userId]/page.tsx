@@ -3,6 +3,7 @@ import {
   adminForceLogoutAllDevicesAction,
   banUserAction,
   forcePasswordResetAction,
+  requireTrustedDeviceRebindAction,
   revokeTrustedDeviceAction,
   unbanUserAction,
 } from "@/app/admin/users/actions";
@@ -64,6 +65,11 @@ export default async function AdminUserDetailsPage({ params }: PageProps) {
             <input type="hidden" name="reason" value="details page force password reset" />
             <button className="rounded border px-3 py-1" type="submit">فرض إعادة تعيين كلمة المرور</button>
           </form>
+          <form action={requireTrustedDeviceRebindAction}>
+            <input type="hidden" name="targetUserId" value={user.id} />
+            <input type="hidden" name="reason" value="details page require device rebind" />
+            <button className="rounded border px-3 py-1" type="submit">فرض إعادة ربط الجهاز</button>
+          </form>
         </div>
       </AdminPageCard>
 
@@ -113,6 +119,21 @@ export default async function AdminUserDetailsPage({ params }: PageProps) {
               </p>
             ))}
             {user.securityEvents.length === 0 ? <p className="text-slate-600">لا توجد أحداث أمان بعد.</p> : null}
+          </section>
+          <section className="space-y-2 text-sm">
+            <h3 className="font-semibold">محاولات مشبوهة (أجهزة غير موثوقة)</h3>
+            {user.securityEvents
+              .filter((event) => event.type === "LOGIN_BLOCKED_UNTRUSTED_DEVICE")
+              .slice(0, 6)
+              .map((event) => (
+                <p key={event.id} className="rounded border p-2">
+                  {event.type} — {event.ipAddress || "IP غير متاح"} —{" "}
+                  {formatArabicDate(event.createdAt, { dateStyle: "short", timeStyle: "short" })}
+                </p>
+              ))}
+            {user.securityEvents.filter((event) => event.type === "LOGIN_BLOCKED_UNTRUSTED_DEVICE").length === 0 ? (
+              <p className="text-slate-600">لا توجد محاولات مشبوهة حديثة.</p>
+            ) : null}
           </section>
           <section className="space-y-2 text-sm">
             <h3 className="font-semibold">آخر إجراءات المشرفين</h3>

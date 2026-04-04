@@ -1,7 +1,7 @@
 import { createHmac, timingSafeEqual } from "node:crypto";
 import { cookies } from "next/headers";
 import { redirect } from "next/navigation";
-import { DEVICE_POLICY_TERMS_VERSION } from "@/lib/policy";
+import { hasAcceptedCurrentDevicePolicy } from "@/lib/policy";
 import { isAdminRole, isCreatorOrAdminRole } from "@/lib/authz";
 import { assertServerEnv } from "@/lib/env";
 import { prisma } from "@/lib/prisma";
@@ -172,7 +172,7 @@ export async function requireUser(options?: { callbackUrl?: string; allowUnaccep
     redirect(`/login${callback}`);
   }
 
-  if (!options?.allowUnacceptedPolicy && user.acceptedTermsVersion !== DEVICE_POLICY_TERMS_VERSION) {
+  if (!options?.allowUnacceptedPolicy && !hasAcceptedCurrentDevicePolicy(user.acceptedTermsVersion)) {
     const callback = options?.callbackUrl ? `?callbackUrl=${encodeURIComponent(options.callbackUrl)}` : "";
     redirect(`/policy${callback}`);
   }

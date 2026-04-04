@@ -141,10 +141,31 @@ export async function enforceTrustedDeviceOnLogin(input: {
 export async function revokeTrustedDevice(input: { userId: string; deviceId: string }) {
   const result = await prisma.userTrustedDevice.updateMany({
     where: { id: input.deviceId, userId: input.userId, revokedAt: null },
-    data: { revokedAt: new Date(), isTrusted: false, isPrimary: false },
+    data: buildTrustedDeviceRevocationData(),
   });
 
   return result.count > 0;
 }
 
-export const __trustedDeviceInternals = { classifyTrustedDeviceLogin };
+export function buildTrustedDeviceRevocationData(now = new Date()) {
+  return { revokedAt: now, isTrusted: false, isPrimary: false };
+}
+
+export async function revokeAllTrustedDevicesForRebind(userId: string) {
+  const now = new Date();
+  const result = await prisma.userTrustedDevice.updateMany({
+    where: { userId, revokedAt: null },
+    data: buildTrustedDeviceRevocationData(now),
+  });
+
+  await prisma.user.update({
+    where: { id: userId },
+    data: {
+      sessionVersion: { increment: 1 },
+    },
+  });
+
+  return result.count;
+}
+
+export const __trustedDeviceInternals = { classifyTrustedDeviceLogin, buildTrustedDeviceRevocationData };

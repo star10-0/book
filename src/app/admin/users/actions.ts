@@ -11,7 +11,7 @@ import {
   unbanUserByAdmin,
 } from "@/lib/admin/user-management";
 import { prisma } from "@/lib/prisma";
-import { revokeTrustedDevice } from "@/lib/trusted-device";
+import { revokeAllTrustedDevicesForRebind, revokeTrustedDevice } from "@/lib/trusted-device";
 
 function getValue(formData: FormData, key: string) {
   const value = formData.get(key);
@@ -108,6 +108,36 @@ export async function revokeTrustedDeviceAction(formData: FormData) {
     targetUserId,
     reason: reason || "trusted device revoked",
     metadata: { deviceId },
+  });
+
+  revalidatePath("/admin/users");
+  revalidatePath(`/admin/users/${targetUserId}`);
+}
+
+export async function requireTrustedDeviceRebindAction(formData: FormData) {
+  const admin = await requireAdmin({ callbackUrl: "/admin/users" });
+  const targetUserId = getValue(formData, "targetUserId");
+  const reason = getValue(formData, "reason");
+
+  if (!targetUserId) return;
+
+  const revokedCount = await revokeAllTrustedDevicesForRebind(targetUserId);
+  if (revokedCount === 0) return;
+
+  await prisma.userSecurityEvent.create({
+    data: {
+      userId: targetUserId,
+      type: "TRUSTED_DEVICE_REVOKED",
+      metadata: { mode: "all", requireRebind: true, revokedCount },
+    },
+  });
+
+  await auditUserAction({
+    actorAdminId: admin.id,
+    action: "TRUSTED_DEVICE_REVOKED",
+    targetUserId,
+    reason: reason || "trusted devices revoked; rebind required",
+    metadata: { mode: "all", requireRebind: true, revokedCount },
   });
 
   revalidatePath("/admin/users");
