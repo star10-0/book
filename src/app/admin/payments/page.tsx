@@ -1,5 +1,5 @@
 import Link from "next/link";
-import { PaymentProvider, PaymentStatus } from "@prisma/client";
+import { PaymentAttemptStatus, PaymentProvider, PaymentStatus, Prisma } from "@prisma/client";
 import {
   reconcileByTxAction,
   recoverStuckAttemptAction,
@@ -26,8 +26,60 @@ function paymentStatusLabel(status: PaymentStatus) {
   return "قيد الانتظار";
 }
 
-export default async function AdminPaymentsPage() {
+type PaymentsScope = "all" | "needs-review" | "issues";
+
+type AdminPaymentsPageProps = {
+  searchParams?: Promise<Record<string, string | string[] | undefined>>;
+};
+
+function parseScope(scopeValue?: string | string[]): PaymentsScope {
+  const value = Array.isArray(scopeValue) ? scopeValue[0] : scopeValue;
+  if (value === "needs-review" || value === "issues") return value;
+  return "all";
+}
+
+function resolveScopeWhere(scope: PaymentsScope): Prisma.PaymentAttemptWhereInput {
+  if (scope === "needs-review") {
+    return {
+      status: {
+        in: [PaymentAttemptStatus.PENDING, PaymentAttemptStatus.SUBMITTED, PaymentAttemptStatus.VERIFYING],
+      },
+    };
+  }
+
+  if (scope === "issues") {
+    return {
+      OR: [
+        { status: PaymentAttemptStatus.FAILED },
+        {
+          status: PaymentAttemptStatus.VERIFYING,
+          updatedAt: { lt: new Date(Date.now() - 1000 * 60 * 20) },
+        },
+      ],
+    };
+  }
+
+  return {};
+}
+
+function scopeDescription(scope: PaymentsScope) {
+  if (scope === "needs-review") {
+    return "عرض محاولات الدفع التي ما زالت تحتاج مراجعة إدارية (PENDING/SUBMITTED/VERIFYING).";
+  }
+
+  if (scope === "issues") {
+    return "عرض محاولات الدفع الفاشلة أو العالقة في التحقق لتسريع الاستجابة التشغيلية.";
+  }
+
+  return "مراجعة محاولات الدفع مع إجراءات إدارية آمنة وقابلة للتتبع.";
+}
+
+export default async function AdminPaymentsPage({ searchParams }: AdminPaymentsPageProps) {
+  const params = searchParams ? await searchParams : {};
+  const scope = parseScope(params.scope);
+
   const attempts = await prisma.paymentAttempt.findMany({
+    where: resolveScopeWhere(scope),
     include: {
       payment: { select: { id: true, status: true, providerRef: true } },
       user: { select: { email: true } },
@@ -45,12 +97,23 @@ export default async function AdminPaymentsPage() {
 
   return (
     <AdminPageCard>
-      <AdminPageHeader title="إدارة المدفوعات" description="مراجعة محاولات الدفع مع إجراءات إدارية آمنة وقابلة للتتبع." />
+      <AdminPageHeader title="إدارة المدفوعات" description={scopeDescription(scope)} />
+      <div className="flex flex-wrap gap-2 text-xs">
+        <Link href="/admin/payments" className={`rounded border px-3 py-1.5 ${scope === "all" ? "bg-slate-900 text-white" : "bg-white text-slate-700"}`}>
+          الكل
+        </Link>
+        <Link href="/admin/payments?scope=needs-review" className={`rounded border px-3 py-1.5 ${scope === "needs-review" ? "bg-slate-900 text-white" : "bg-white text-slate-700"}`}>
+          تحتاج مراجعة
+        </Link>
+        <Link href="/admin/payments?scope=issues" className={`rounded border px-3 py-1.5 ${scope === "issues" ? "bg-slate-900 text-white" : "bg-white text-slate-700"}`}>
+          مشكلات
+        </Link>
+      </div>
       <AdminTable
         caption="جدول المدفوعات"
         rows={attempts}
         getRowKey={(row) => row.id}
-        emptyMessage="لا توجد محاولات دفع حالياً."
+        emptyMessage="لا توجد محاولات دفع ضمن هذا النطاق حالياً."
         columns={[
           { key: "id", title: "المحاولة", render: (row) => <Link className="font-mono text-xs text-indigo-700" href={`/admin/payments/${row.id}`}>{row.id}</Link> },
           { key: "tx", title: "tx", render: (row) => <span className="font-mono text-[11px]">{(row.requestPayload as { transactionReference?: string } | null)?.transactionReference ?? "—"}</span> },

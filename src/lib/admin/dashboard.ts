@@ -1,0 +1,155 @@
+import { BookStatus, PaymentAttemptStatus, Prisma } from "@prisma/client";
+import { suspiciousSecurityEventTypes } from "@/lib/admin/security-signals";
+import { prisma } from "@/lib/prisma";
+
+export type DashboardSnapshot = {
+  metrics: {
+    usersCount: number;
+    bannedUsersCount: number;
+    booksCount: number;
+    pendingBooksCount: number;
+    publishedBooksCount: number;
+    todayOrdersCount: number;
+    todayPaymentsCount: number;
+    needsReviewPaymentsCount: number;
+    failedOrStuckPaymentsCount: number;
+    suspiciousEventsTodayCount: number;
+  };
+  alerts: {
+    paymentsNeedingReview: number;
+    failedOrStuckPayments: number;
+    suspiciousDeviceAttemptsToday: number;
+    pendingBooksReview: number;
+  };
+  recentAdminActions: Array<{
+    id: string;
+    action: string;
+    createdAt: Date;
+    actorEmail: string;
+    reason: string | null;
+  }>;
+};
+
+type DashboardDeps = {
+  userCount: (args?: Prisma.UserCountArgs) => Promise<number>;
+  bookCount: (args?: Prisma.BookCountArgs) => Promise<number>;
+  orderCount: (args?: Prisma.OrderCountArgs) => Promise<number>;
+  paymentAttemptCount: (args?: Prisma.PaymentAttemptCountArgs) => Promise<number>;
+  userSecurityEventCount: (args?: Prisma.UserSecurityEventCountArgs) => Promise<number>;
+  adminAuditFindMany: (args: Prisma.AdminAuditLogFindManyArgs) => Promise<Array<{
+    id: string;
+    action: string;
+    reason: string | null;
+    createdAt: Date;
+    actorAdmin?: { email: string } | null;
+  }>>;
+};
+
+const defaultDeps: DashboardDeps = {
+  userCount: (args) => prisma.user.count(args),
+  bookCount: (args) => prisma.book.count(args),
+  orderCount: (args) => prisma.order.count(args),
+  paymentAttemptCount: (args) => prisma.paymentAttempt.count(args),
+  userSecurityEventCount: (args) => prisma.userSecurityEvent.count(args),
+  adminAuditFindMany: async (args) => {
+    const rows = await prisma.adminAuditLog.findMany(args);
+    return rows as Array<{
+      id: string;
+      action: string;
+      reason: string | null;
+      createdAt: Date;
+      actorAdmin?: { email: string } | null;
+    }>;
+  },
+};
+
+export async function loadAdminDashboardSnapshot(now = new Date(), deps: DashboardDeps = defaultDeps): Promise<DashboardSnapshot> {
+  const startOfToday = new Date(now);
+  startOfToday.setHours(0, 0, 0, 0);
+
+  const [
+    usersCount,
+    bannedUsersCount,
+    booksCount,
+    pendingBooksCount,
+    publishedBooksCount,
+    todayOrdersCount,
+    todayPaymentsCount,
+    needsReviewPaymentsCount,
+    failedOrStuckPaymentsCount,
+    suspiciousEventsTodayCount,
+    recentAdminActions,
+  ] = await Promise.all([
+    deps.userCount(),
+    deps.userCount({ where: { isActive: false } }),
+    deps.bookCount(),
+    deps.bookCount({ where: { status: BookStatus.PENDING_REVIEW } }),
+    deps.bookCount({ where: { status: BookStatus.PUBLISHED } }),
+    deps.orderCount({ where: { createdAt: { gte: startOfToday } } }),
+    deps.paymentAttemptCount({ where: { createdAt: { gte: startOfToday } } }),
+    deps.paymentAttemptCount({
+      where: {
+        status: {
+          in: [PaymentAttemptStatus.PENDING, PaymentAttemptStatus.SUBMITTED, PaymentAttemptStatus.VERIFYING],
+        },
+      },
+    }),
+    deps.paymentAttemptCount({
+      where: {
+        OR: [
+          { status: PaymentAttemptStatus.FAILED },
+          {
+            status: PaymentAttemptStatus.VERIFYING,
+            updatedAt: { lt: new Date(now.getTime() - 1000 * 60 * 20) },
+          },
+        ],
+      },
+    }),
+    deps.userSecurityEventCount({
+      where: {
+        createdAt: { gte: startOfToday },
+        type: { in: suspiciousSecurityEventTypes },
+      },
+    }),
+    deps.adminAuditFindMany({
+      select: {
+        id: true,
+        action: true,
+        reason: true,
+        createdAt: true,
+        actorAdmin: { select: { email: true } },
+      },
+      orderBy: { createdAt: "desc" },
+      take: 5,
+    }),
+  ]);
+
+  return {
+    metrics: {
+      usersCount,
+      bannedUsersCount,
+      booksCount,
+      pendingBooksCount,
+      publishedBooksCount,
+      todayOrdersCount,
+      todayPaymentsCount,
+      needsReviewPaymentsCount,
+      failedOrStuckPaymentsCount,
+      suspiciousEventsTodayCount,
+    },
+    alerts: {
+      paymentsNeedingReview: needsReviewPaymentsCount,
+      failedOrStuckPayments: failedOrStuckPaymentsCount,
+      suspiciousDeviceAttemptsToday: suspiciousEventsTodayCount,
+      pendingBooksReview: pendingBooksCount,
+    },
+    recentAdminActions: recentAdminActions.map((item) => ({
+      id: item.id,
+      action: item.action,
+      createdAt: item.createdAt,
+      actorEmail: item.actorAdmin?.email ?? "—",
+      reason: item.reason,
+    })),
+  };
+}
+

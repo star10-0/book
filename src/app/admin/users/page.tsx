@@ -1,5 +1,5 @@
 import Link from "next/link";
-import { UserRole } from "@prisma/client";
+import { Prisma, UserRole } from "@prisma/client";
 import {
   adminForceLogoutAllDevicesAction,
   banUserAction,
@@ -8,6 +8,7 @@ import {
 } from "@/app/admin/users/actions";
 import { AdminPageCard, AdminPageHeader } from "@/components/admin/admin-page";
 import { AdminTable } from "@/components/admin/admin-table";
+import { suspiciousSecurityEventTypes } from "@/lib/admin/security-signals";
 import { formatArabicDate } from "@/lib/formatters/intl";
 import { prisma } from "@/lib/prisma";
 
@@ -17,8 +18,62 @@ function roleLabel(role: UserRole) {
   return "قارئ";
 }
 
-export default async function AdminUsersPage() {
+type UsersScope = "all" | "banned" | "suspicious";
+
+type AdminUsersPageProps = {
+  searchParams?: Promise<Record<string, string | string[] | undefined>>;
+};
+
+function parseScope(scopeValue?: string | string[]): UsersScope {
+  const value = Array.isArray(scopeValue) ? scopeValue[0] : scopeValue;
+  if (value === "banned" || value === "suspicious") return value;
+  return "all";
+}
+
+async function resolveUsersWhere(scope: UsersScope): Promise<Prisma.UserWhereInput> {
+  if (scope === "banned") {
+    return { isActive: false };
+  }
+
+  if (scope === "suspicious") {
+    const suspiciousEvents = await prisma.userSecurityEvent.findMany({
+      where: {
+        type: { in: suspiciousSecurityEventTypes },
+      },
+      select: { userId: true },
+      orderBy: { createdAt: "desc" },
+      take: 300,
+      distinct: ["userId"],
+    });
+
+    if (suspiciousEvents.length === 0) {
+      return { id: "__none__" };
+    }
+
+    return { id: { in: suspiciousEvents.map((event) => event.userId) } };
+  }
+
+  return {};
+}
+
+function scopeDescription(scope: UsersScope) {
+  if (scope === "banned") {
+    return "عرض الحسابات المحظورة لتسريع عمليات الاسترجاع أو المتابعة الأمنية.";
+  }
+
+  if (scope === "suspicious") {
+    return "عرض الحسابات ذات المؤشرات الأمنية المشبوهة (أجهزة غير موثوقة/أنماط وصول غير طبيعية).";
+  }
+
+  return "إدارة أمن الحسابات، الأجهزة الموثوقة، وإجراءات التعليق واستعادة الوصول.";
+}
+
+export default async function AdminUsersPage({ searchParams }: AdminUsersPageProps) {
+  const params = searchParams ? await searchParams : {};
+  const scope = parseScope(params.scope);
+
   const users = await prisma.user.findMany({
+    where: await resolveUsersWhere(scope),
     select: {
       id: true,
       fullName: true,
@@ -40,12 +95,23 @@ export default async function AdminUsersPage() {
 
   return (
     <AdminPageCard>
-      <AdminPageHeader title="إدارة المستخدمين" description="إدارة أمن الحسابات، الأجهزة الموثوقة، وإجراءات التعليق واستعادة الوصول." />
+      <AdminPageHeader title="إدارة المستخدمين" description={scopeDescription(scope)} />
+      <div className="flex flex-wrap gap-2 text-xs">
+        <Link href="/admin/users" className={`rounded border px-3 py-1.5 ${scope === "all" ? "bg-slate-900 text-white" : "bg-white text-slate-700"}`}>
+          الكل
+        </Link>
+        <Link href="/admin/users?scope=banned" className={`rounded border px-3 py-1.5 ${scope === "banned" ? "bg-slate-900 text-white" : "bg-white text-slate-700"}`}>
+          محظورون
+        </Link>
+        <Link href="/admin/users?scope=suspicious" className={`rounded border px-3 py-1.5 ${scope === "suspicious" ? "bg-slate-900 text-white" : "bg-white text-slate-700"}`}>
+          مشبوهون
+        </Link>
+      </div>
       <AdminTable
         caption="جدول المستخدمين"
         rows={users}
         getRowKey={(row) => row.id}
-        emptyMessage="لا يوجد مستخدمون حالياً."
+        emptyMessage="لا يوجد مستخدمون ضمن هذا النطاق حالياً."
         columns={[
           { key: "email", title: "البريد", render: (row) => <Link className="font-semibold text-indigo-700" href={`/admin/users/${row.id}`}>{row.email}</Link> },
           { key: "name", title: "الاسم", render: (row) => row.fullName?.trim() || "—" },
