@@ -1,5 +1,5 @@
 import Link from "next/link";
-import { Prisma, UserRole } from "@prisma/client";
+import { UserRole } from "@prisma/client";
 import {
   adminForceLogoutAllDevicesAction,
   banUserAction,
@@ -8,9 +8,8 @@ import {
 } from "@/app/admin/users/actions";
 import { AdminPageCard, AdminPageHeader } from "@/components/admin/admin-page";
 import { AdminTable } from "@/components/admin/admin-table";
-import { suspiciousSecurityEventTypes } from "@/lib/admin/security-signals";
 import { formatArabicDate } from "@/lib/formatters/intl";
-import { prisma } from "@/lib/prisma";
+import { getAdminUsersList, parseUsersScope } from "@/lib/admin/users-directory";
 
 function roleLabel(role: UserRole) {
   if (role === "ADMIN") return "مشرف";
@@ -18,45 +17,11 @@ function roleLabel(role: UserRole) {
   return "قارئ";
 }
 
-type UsersScope = "all" | "banned" | "suspicious";
-
 type AdminUsersPageProps = {
   searchParams?: Promise<Record<string, string | string[] | undefined>>;
 };
 
-function parseScope(scopeValue?: string | string[]): UsersScope {
-  const value = Array.isArray(scopeValue) ? scopeValue[0] : scopeValue;
-  if (value === "banned" || value === "suspicious") return value;
-  return "all";
-}
-
-async function resolveUsersWhere(scope: UsersScope): Promise<Prisma.UserWhereInput> {
-  if (scope === "banned") {
-    return { isActive: false };
-  }
-
-  if (scope === "suspicious") {
-    const suspiciousEvents = await prisma.userSecurityEvent.findMany({
-      where: {
-        type: { in: suspiciousSecurityEventTypes },
-      },
-      select: { userId: true },
-      orderBy: { createdAt: "desc" },
-      take: 300,
-      distinct: ["userId"],
-    });
-
-    if (suspiciousEvents.length === 0) {
-      return { id: "__none__" };
-    }
-
-    return { id: { in: suspiciousEvents.map((event) => event.userId) } };
-  }
-
-  return {};
-}
-
-function scopeDescription(scope: UsersScope) {
+function scopeDescription(scope: ReturnType<typeof parseUsersScope>) {
   if (scope === "banned") {
     return "عرض الحسابات المحظورة لتسريع عمليات الاسترجاع أو المتابعة الأمنية.";
   }
@@ -70,28 +35,8 @@ function scopeDescription(scope: UsersScope) {
 
 export default async function AdminUsersPage({ searchParams }: AdminUsersPageProps) {
   const params = searchParams ? await searchParams : {};
-  const scope = parseScope(params.scope);
-
-  const users = await prisma.user.findMany({
-    where: await resolveUsersWhere(scope),
-    select: {
-      id: true,
-      fullName: true,
-      email: true,
-      role: true,
-      isActive: true,
-      lastSeenAt: true,
-      _count: {
-        select: {
-          orders: true,
-          accessGrants: true,
-          trustedDevices: { where: { revokedAt: null, isTrusted: true } },
-        },
-      },
-    },
-    orderBy: { createdAt: "desc" },
-    take: 100,
-  });
+  const scope = parseUsersScope(params.scope);
+  const users = await getAdminUsersList(scope);
 
   return (
     <AdminPageCard>
@@ -117,9 +62,14 @@ export default async function AdminUsersPage({ searchParams }: AdminUsersPagePro
           { key: "name", title: "الاسم", render: (row) => row.fullName?.trim() || "—" },
           { key: "role", title: "الدور", render: (row) => roleLabel(row.role) },
           { key: "status", title: "الحالة", render: (row) => (row.isActive ? "نشط" : "محظور") },
-          { key: "orders", title: "طلبات", render: (row) => row._count.orders.toLocaleString("ar-SY") },
-          { key: "grants", title: "وصول", render: (row) => row._count.accessGrants.toLocaleString("ar-SY") },
-          { key: "devices", title: "أجهزة نشطة", render: (row) => row._count.trustedDevices.toLocaleString("ar-SY") },
+          { key: "orders", title: "طلبات", render: (row) => row.ordersCount.toLocaleString("ar-SY") },
+          { key: "grants", title: "وصول", render: (row) => row.accessGrantsCount.toLocaleString("ar-SY") },
+          { key: "trustedDevices", title: "أجهزة موثوقة", render: (row) => row.trustedDevicesCount.toLocaleString("ar-SY") },
+          {
+            key: "activeDevices",
+            title: "أجهزة نشطة",
+            render: (row) => (typeof row.activeDevicesCount === "number" ? row.activeDevicesCount.toLocaleString("ar-SY") : "—"),
+          },
           {
             key: "lastSeen",
             title: "آخر نشاط",
