@@ -6,7 +6,6 @@ import Link from "next/link";
 import { useRouter } from "next/navigation";
 import { useEffect, useMemo, useRef, useState, useTransition } from "react";
 import { formatArabicCurrency } from "@/lib/formatters/intl";
-import { buildShamCashQrPayload } from "@/lib/payments/sham-cash-qr";
 
 interface OrderPaymentPanelProps {
   orderId: string;
@@ -176,22 +175,6 @@ export function OrderPaymentPanel({
     selectedProvider === PaymentProvider.SHAM_CASH ? shamDestinationLabel : syriatelDestinationLabel;
   const selectedDestinationMissing = selectedDestinationLabel === "غير متاح حالياً";
   const uiStatus = mapAttemptStatusToUiStatus(attemptStatus);
-
-  const shamCashQrPayload = useMemo(
-    () =>
-      buildShamCashQrPayload({
-        destinationAccount: shamCashDestinationAccount,
-        amountMajor: totalCents / 100,
-        currency,
-        orderReference: orderId,
-      }),
-    [currency, orderId, shamCashDestinationAccount, totalCents],
-  );
-
-  const shamCashQrImageUrl = useMemo(() => {
-    if (!shamCashQrPayload.payload) return "";
-    return `https://api.qrserver.com/v1/create-qr-code/?size=220x220&data=${encodeURIComponent(shamCashQrPayload.payload)}`;
-  }, [shamCashQrPayload.payload]);
 
   const copyText = async (text: string, successMessage: string) => {
     if (!text.trim() || text === "غير متاح حالياً") return;
@@ -541,20 +524,16 @@ export function OrderPaymentPanel({
 
                   <div className="mt-4 rounded-xl border border-indigo-200 bg-white p-3">
                     <p className="text-xs font-semibold text-slate-900">رمز QR للدفع السريع</p>
-                    {shamCashQrImageUrl ? (
-                      <div className="mt-2 flex flex-col items-center gap-2">
-                        <Image
-                          src={shamCashQrImageUrl}
-                          alt="رمز QR لتحويل Sham Cash"
-                          width={176}
-                          height={176}
-                          className="h-44 w-44 rounded-md border border-slate-200 bg-white p-2"
-                        />
-                        <p className="text-center text-[11px] text-slate-600">يتضمن بيانات الحساب والمبلغ ومرجع الطلب.</p>
-                      </div>
-                    ) : (
-                      <p className="mt-2 text-xs text-slate-600">تعذر إنشاء رمز QR الآن. يمكنك المتابعة عبر بيانات التحويل أعلاه.</p>
-                    )}
+                    <div className="mt-2 flex flex-col items-center gap-2">
+                      <Image
+                        src="/1/1.png"
+                        alt="رمز QR لتحويل Sham Cash"
+                        width={176}
+                        height={176}
+                        className="h-44 w-44 rounded-md border border-slate-200 bg-white p-2"
+                      />
+                      <p className="text-center text-[11px] text-slate-600">يتضمن بيانات الحساب والمبلغ ومرجع الطلب.</p>
+                    </div>
                   </div>
                 </div>
               ) : null}
