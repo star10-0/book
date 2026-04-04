@@ -3,7 +3,7 @@
 import { PaymentStatus, Prisma } from "@prisma/client";
 import { revalidatePath } from "next/cache";
 import { requireAdmin } from "@/lib/auth-session";
-import { logAdminAudit } from "@/lib/audit-admin";
+import { createAdminAuditLog } from "@/lib/admin/audit-log";
 import { grantAccessForPaidOrder } from "@/lib/access-grants";
 import { prisma } from "@/lib/prisma";
 import { reconcilePaymentByTransactionReference, verifyPayment } from "@/lib/payments/payment-service";
@@ -13,13 +13,14 @@ function val(formData: FormData, key: string) {
   return typeof value === "string" ? value.trim() : "";
 }
 
-async function audit(actorAdminId: string, action: Parameters<typeof logAdminAudit>[0]["action"], paymentAttemptId: string, reason?: string, metadata?: Prisma.InputJsonValue) {
-  await logAdminAudit({
+async function audit(actorAdminId: string, action: Parameters<typeof createAdminAuditLog>[0]["action"], paymentAttemptId: string, reason?: string, metadata?: Prisma.InputJsonValue, orderId?: string) {
+  await createAdminAuditLog({
     actorAdminId,
     action,
     paymentAttemptId,
     reason: reason || null,
     metadata,
+    orderId: orderId ?? null,
   });
 }
 
@@ -92,7 +93,8 @@ export async function forceGrantPaymentAccessAction(formData: FormData) {
     });
   });
 
-  await audit(admin.id, "PAYMENT_FORCE_GRANT_ACCESS", attemptId, reason, { forced: true });
+  const attempt = await prisma.paymentAttempt.findUnique({ where: { id: attemptId }, select: { orderId: true } });
+  await audit(admin.id, "PAYMENT_FORCE_GRANT_ACCESS", attemptId, reason, { forced: true }, attempt?.orderId);
   revalidatePath("/admin/payments");
   revalidatePath(`/admin/payments/${attemptId}`);
 }
