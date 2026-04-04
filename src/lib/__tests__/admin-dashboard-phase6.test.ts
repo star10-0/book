@@ -66,6 +66,14 @@ test("loadAdminDashboardSnapshot aggregates KPI and alerts from deps", async () 
         signals: [],
       },
     }),
+    systemHealthLoader: async () => ({
+      generatedAt: new Date("2026-04-04T10:00:00.000Z"),
+      env: { valid: true, errorCount: 0, warningCount: 1 },
+      providers: [{ provider: "SHAM_CASH", mode: "mock", ready: true, missingEnvKeys: [] }],
+      criticalFailures: { failedPaymentsLast24h: 2, stuckVerifyingLast24h: 1, suspiciousSecurityEventsLast24h: 3 },
+      areas: { paymentsHealthy: true, usersHealthy: true, ordersHealthy: true, contentHealthy: true },
+      drift: { prismaMigrationsHealthy: true, pendingOrFailedMigrations: 0 },
+    }),
   });
 
   assert.equal(snapshot.metrics.usersCount, counts.users);
@@ -82,6 +90,7 @@ test("loadAdminDashboardSnapshot aggregates KPI and alerts from deps", async () 
   assert.equal(snapshot.alerts.integrityAnomalies, 1);
   assert.equal(snapshot.alerts.criticalRiskSignals, 1);
   assert.equal(snapshot.recentSecurityActions.length, 1);
+  assert.equal(snapshot.systemHealth.env.valid, true);
 });
 
 test("suspicious event helper isolates risky security events", () => {

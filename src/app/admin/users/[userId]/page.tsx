@@ -12,10 +12,12 @@ import { getAdminUserDetails } from "@/lib/admin/users-directory";
 import { suspiciousSecurityEventTypes } from "@/lib/admin/security-signals";
 import { formatArabicDate } from "@/lib/formatters/intl";
 import { getUserIntegritySummary } from "@/lib/admin/order-integrity";
+import { requireAdminScope } from "@/lib/auth-session";
 
 type PageProps = { params: Promise<{ userId: string }> };
 
 export default async function AdminUserDetailsPage({ params }: PageProps) {
+  await requireAdminScope("SUPPORT_ADMIN", { callbackUrl: "/admin/users" });
   const { userId } = await params;
   const [user, integrity] = await Promise.all([
     getAdminUserDetails(userId),

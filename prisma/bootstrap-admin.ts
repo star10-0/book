@@ -1,4 +1,4 @@
-import { PrismaClient, UserRole } from '@prisma/client';
+import { AdminScope, PrismaClient, UserRole } from '@prisma/client';
 import { hashPassword } from '../src/lib/auth-password';
 
 const prisma = new PrismaClient();
@@ -39,6 +39,7 @@ const bootstrapAdmin = async () => {
     update: {
       fullName,
       role: UserRole.ADMIN,
+      adminScopes: [AdminScope.SUPER_ADMIN],
       isActive: true,
       passwordHash,
     },
@@ -46,6 +47,7 @@ const bootstrapAdmin = async () => {
       email,
       fullName,
       role: UserRole.ADMIN,
+      adminScopes: [AdminScope.SUPER_ADMIN],
       isActive: true,
       passwordHash,
     },

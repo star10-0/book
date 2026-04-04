@@ -13,6 +13,7 @@ import { paymentAttemptStatusLabels } from "@/lib/payments/status-flow";
 import { classifyPaymentIncident, type PaymentIncidentLabel } from "@/lib/admin/payment-admin";
 import { prisma } from "@/lib/prisma";
 import { getOrderIntegritySnapshot } from "@/lib/admin/order-integrity";
+import { requireAdminScope } from "@/lib/auth-session";
 
 function providerLabel(provider: PaymentProvider) {
   if (provider === "SHAM_CASH") return "Sham Cash";
@@ -95,6 +96,7 @@ function recommendedPaymentAction(input: { incident: PaymentIncidentLabel | null
 }
 
 export default async function AdminPaymentsPage({ searchParams }: AdminPaymentsPageProps) {
+  await requireAdminScope("PAYMENT_ADMIN", { callbackUrl: "/admin/payments" });
   const params = searchParams ? await searchParams : {};
   const scope = parseScope(params.scope);
 

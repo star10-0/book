@@ -3,6 +3,7 @@ import { suspiciousSecurityEventTypes } from "@/lib/admin/security-signals";
 import { prisma } from "@/lib/prisma";
 import { getOrderIntegritySnapshot } from "@/lib/admin/order-integrity";
 import { getQueueAlertSummary, loadOperationalReviewQueues, type ReviewQueuesSnapshot } from "@/lib/admin/review-queues";
+import { getSystemHealthSnapshot, type SystemHealthSnapshot } from "@/lib/admin/system-health";
 
 export type DashboardSnapshot = {
   metrics: {
@@ -44,6 +45,7 @@ export type DashboardSnapshot = {
     userId: string;
   }>;
   reviewQueues: ReviewQueuesSnapshot;
+  systemHealth: SystemHealthSnapshot;
 };
 
 type DashboardDeps = {
@@ -68,6 +70,7 @@ type DashboardDeps = {
   }>>;
   integrityWarningsCount: () => Promise<number>;
   reviewQueuesLoader: (now: Date) => Promise<ReviewQueuesSnapshot>;
+  systemHealthLoader: (now: Date) => Promise<SystemHealthSnapshot>;
 };
 
 const defaultDeps: DashboardDeps = {
@@ -93,6 +96,7 @@ const defaultDeps: DashboardDeps = {
     return Object.values(snapshot.totals).reduce((sum, value) => sum + value, 0);
   },
   reviewQueuesLoader: (now) => loadOperationalReviewQueues(now),
+  systemHealthLoader: (now) => getSystemHealthSnapshot(now),
 };
 
 export async function loadAdminDashboardSnapshot(now = new Date(), deps: DashboardDeps = defaultDeps): Promise<DashboardSnapshot> {
@@ -115,6 +119,7 @@ export async function loadAdminDashboardSnapshot(now = new Date(), deps: Dashboa
     recentSecurityActions,
     integrityWarningsCount,
     reviewQueues,
+    systemHealth,
   ] = await Promise.all([
     deps.userCount(),
     deps.userCount({ where: { isActive: false } }),
@@ -177,6 +182,7 @@ export async function loadAdminDashboardSnapshot(now = new Date(), deps: Dashboa
     }),
     deps.integrityWarningsCount(),
     deps.reviewQueuesLoader(now),
+    deps.systemHealthLoader(now),
   ]);
 
   const queueAlerts = getQueueAlertSummary(reviewQueues);
@@ -221,5 +227,6 @@ export async function loadAdminDashboardSnapshot(now = new Date(), deps: Dashboa
       createdAt: item.createdAt,
     })),
     reviewQueues,
+    systemHealth,
   };
 }

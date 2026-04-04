@@ -13,6 +13,13 @@ enum UserRole {
   ADMIN
 }
 
+enum AdminScope {
+  SUPER_ADMIN
+  PAYMENT_ADMIN
+  SUPPORT_ADMIN
+  CONTENT_ADMIN
+}
+
 enum BookStatus {
   DRAFT
   PENDING_REVIEW
@@ -90,6 +97,7 @@ enum PaymentAttemptStatus {
 
 
 enum AdminAuditAction {
+  REPORT_EXPORTED
   USER_BANNED
   USER_UNBANNED
   USER_FORCE_LOGOUT_ALL
@@ -156,6 +164,7 @@ model User {
   email             String            @unique
   fullName          String?
   role              UserRole          @default(USER)
+  adminScopes       AdminScope[]      @default([])
   isActive          Boolean           @default(true)
   passwordHash      String?
   sessionVersion    Int               @default(0)
