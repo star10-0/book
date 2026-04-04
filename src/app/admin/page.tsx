@@ -1,7 +1,7 @@
-import { BookStatus, PaymentAttemptStatus } from "@prisma/client";
 import Link from "next/link";
 import { AdminPageCard, AdminPageHeader } from "@/components/admin/admin-page";
-import { prisma } from "@/lib/prisma";
+import { formatArabicDate } from "@/lib/formatters/intl";
+import { loadAdminDashboardSnapshot } from "@/lib/admin/dashboard";
 
 type HubSection = {
   href: string;
@@ -11,65 +11,60 @@ type HubSection = {
 };
 
 export default async function AdminDashboardPage() {
-  const startOfToday = new Date();
-  startOfToday.setHours(0, 0, 0, 0);
-
-  const [
-    usersCount,
-    booksCount,
-    publishedBooksCount,
-    todayOrdersCount,
-    pendingReviewPaymentsCount,
-    unresolvedSecurityEvents,
-  ] = await Promise.all([
-    prisma.user.count(),
-    prisma.book.count(),
-    prisma.book.count({ where: { status: BookStatus.PUBLISHED } }),
-    prisma.order.count({ where: { createdAt: { gte: startOfToday } } }),
-    prisma.paymentAttempt.count({
-      where: {
-        status: {
-          in: [PaymentAttemptStatus.PENDING, PaymentAttemptStatus.SUBMITTED, PaymentAttemptStatus.VERIFYING],
-        },
-      },
-    }),
-    prisma.userSecurityEvent.count({
-      where: {
-        createdAt: { gte: startOfToday },
-        type: {
-          in: [
-            "LOGIN_BLOCKED_UNTRUSTED_DEVICE",
-            "CONTENT_ACCESS_TOKEN_INVALID",
-            "CONTENT_ACCESS_REPLAY_AFTER_REVOCATION",
-            "CONTENT_ACCESS_MULTIPLE_DEVICE_ANOMALY",
-            "SUSPICIOUS_ACCOUNT_ACTIVITY",
-          ],
-        },
-      },
-    }),
-  ]);
+  const dashboard = await loadAdminDashboardSnapshot();
 
   const metrics = [
-    { label: "إجمالي المستخدمين", value: usersCount.toLocaleString("ar-SY") },
-    { label: "إجمالي الكتب", value: booksCount.toLocaleString("ar-SY") },
-    { label: "كتب منشورة", value: publishedBooksCount.toLocaleString("ar-SY") },
-    { label: "طلبات اليوم", value: todayOrdersCount.toLocaleString("ar-SY") },
-    { label: "مدفوعات قيد المراجعة", value: pendingReviewPaymentsCount.toLocaleString("ar-SY") },
-    { label: "مؤشرات أمنية مشبوهة اليوم", value: unresolvedSecurityEvents.toLocaleString("ar-SY") },
+    { label: "إجمالي المستخدمين", value: dashboard.metrics.usersCount.toLocaleString("ar-SY") },
+    { label: "المستخدمون المحظورون", value: dashboard.metrics.bannedUsersCount.toLocaleString("ar-SY") },
+    { label: "إجمالي الكتب", value: dashboard.metrics.booksCount.toLocaleString("ar-SY") },
+    { label: "كتب بانتظار المراجعة", value: dashboard.metrics.pendingBooksCount.toLocaleString("ar-SY") },
+    { label: "كتب منشورة", value: dashboard.metrics.publishedBooksCount.toLocaleString("ar-SY") },
+    { label: "طلبات اليوم", value: dashboard.metrics.todayOrdersCount.toLocaleString("ar-SY") },
+    { label: "محاولات دفع اليوم", value: dashboard.metrics.todayPaymentsCount.toLocaleString("ar-SY") },
   ];
 
   const sections: HubSection[] = [
-    { href: "/admin/users", title: "المستخدمون", description: "إدارة حالة الحسابات والإجراءات الأمنية." },
-    { href: "/admin/payments", title: "المدفوعات", description: "مراجعة محاولات الدفع ومعالجة الحالات الحساسة." },
-    { href: "/admin/orders", title: "الطلبات", description: "متابعة الطلبات، التقدم، والتسليم الرقمي." },
-    { href: "/admin/books", title: "الكتب", description: "إدارة المحتوى والمنشورات وتحديث بيانات الكتب." },
-    { href: "/admin/curriculum", title: "المنهاج", description: "تنظيم المستويات وربط المحتوى بالمسارات التعليمية." },
-    { href: "/admin/promo-codes", title: "أكواد الخصم", description: "ضبط العروض والتوزيع ومتابعة الاستهلاك." },
+    { href: "/admin/users", title: "المستخدمون", description: "إدارة الحسابات، الحظر، وسياسات الوصول." },
+    { href: "/admin/payments", title: "المدفوعات", description: "مراجعة محاولات الدفع والإجراءات التصحيحية." },
+    { href: "/admin/orders", title: "الطلبات", description: "متابعة الطلبات والتسليم الرقمي للحالات التشغيلية." },
+    { href: "/admin/books", title: "الكتب", description: "مراجعة المحتوى والنشر والتحديثات." },
+    { href: "/admin/curriculum", title: "المنهاج", description: "تنظيم المسارات التعليمية وربط الكتب بالمستويات." },
+    { href: "/admin/promo-codes", title: "أكواد الخصم", description: "تشغيل الحملات ومراقبة الاستهلاك." },
+  ];
+
+  const quickActions: HubSection[] = [
+    { href: "/admin/users", title: "كل المستخدمين", description: "عرض أحدث الحسابات وإدارة الحالة." },
+    { href: "/admin/users?scope=suspicious", title: "حسابات مشبوهة", description: "آخر الحسابات المرتبطة بمؤشرات أمان حساسة." },
+    { href: "/admin/payments", title: "كل المدفوعات", description: "مركز شامل لحالة محاولات الدفع." },
+    { href: "/admin/payments?scope=needs-review", title: "مدفوعات تحتاج مراجعة", description: "حالات PENDING/SUBMITTED/VERIFYING." },
+    { href: "/admin/payments?scope=issues", title: "مشكلات دفع حديثة", description: "محاولات فاشلة أو عالقة في التحقق." },
+    { href: "/admin/books?status=PENDING_REVIEW", title: "صف مراجعة الكتب", description: "الوصول المباشر لمحتوى بانتظار الاعتماد." },
+  ];
+
+  const alerts = [
     {
-      href: "/admin/users",
-      title: "الأمن والتدقيق",
-      description: "أساس جاهز لسجل التدقيق وإجراءات الأمان في المراحل القادمة.",
-      badge: "قريبًا",
+      title: "مدفوعات تحتاج مراجعة",
+      value: dashboard.alerts.paymentsNeedingReview,
+      href: "/admin/payments?scope=needs-review",
+      cta: "فتح قائمة المراجعة",
+    },
+    {
+      title: "محاولات دفع فاشلة/عالقة",
+      value: dashboard.alerts.failedOrStuckPayments,
+      href: "/admin/payments?scope=issues",
+      cta: "مراجعة المشكلات",
+    },
+    {
+      title: "محاولات أجهزة مشبوهة اليوم",
+      value: dashboard.alerts.suspiciousDeviceAttemptsToday,
+      href: "/admin/users?scope=suspicious",
+      cta: "فتح الحسابات المرتبطة",
+    },
+    {
+      title: "كتب بانتظار المراجعة",
+      value: dashboard.alerts.pendingBooksReview,
+      href: "/admin/books?status=PENDING_REVIEW",
+      cta: "فتح صف المراجعة",
     },
   ];
 
@@ -78,11 +73,23 @@ export default async function AdminDashboardPage() {
       <AdminPageCard>
         <AdminPageHeader
           title="مركز العمليات"
-          description="لوحة مختصرة وواضحة لإدارة المستخدمين والمدفوعات والطلبات والمحتوى دون ازدحام."
+          description="لوحة تشغيل يومية لمتابعة المدفوعات، الأمان، المستخدمين، والمحتوى بسرعة ووضوح."
         />
       </AdminPageCard>
 
-      <section className="grid gap-4 sm:grid-cols-2 xl:grid-cols-3">
+      <section className="grid gap-4 sm:grid-cols-2 xl:grid-cols-4">
+        {alerts.map((alert) => (
+          <article key={alert.title} className="rounded-xl border border-amber-200 bg-amber-50 p-4 shadow-sm">
+            <p className="text-sm text-amber-800">{alert.title}</p>
+            <p className="mt-2 text-2xl font-bold text-amber-900">{alert.value.toLocaleString("ar-SY")}</p>
+            <Link href={alert.href} className="mt-3 inline-flex text-sm font-semibold text-amber-900 underline-offset-2 hover:underline">
+              {alert.cta}
+            </Link>
+          </article>
+        ))}
+      </section>
+
+      <section className="grid gap-4 sm:grid-cols-2 xl:grid-cols-4">
         {metrics.map((metric) => (
           <article key={metric.label} className="rounded-xl border border-slate-200 bg-white p-4 shadow-sm">
             <p className="text-sm text-slate-500">{metric.label}</p>
@@ -92,7 +99,23 @@ export default async function AdminDashboardPage() {
       </section>
 
       <AdminPageCard>
-        <AdminPageHeader title="أقسام الإدارة" description="اختر القسم المطلوب للوصول السريع إلى مهام التشغيل اليومية." />
+        <AdminPageHeader title="اختصارات سريعة" description="انتقل مباشرةً إلى أكثر المهام التشغيلية استخداماً." />
+        <div className="grid gap-3 sm:grid-cols-2 lg:grid-cols-3">
+          {quickActions.map((section) => (
+            <Link
+              key={`${section.href}-${section.title}`}
+              href={section.href}
+              className="rounded-xl border border-slate-200 bg-slate-50 p-4 transition hover:border-slate-300 hover:bg-white focus-visible:outline-none focus-visible:ring-2 focus-visible:ring-slate-500"
+            >
+              <p className="text-base font-semibold text-slate-900">{section.title}</p>
+              <p className="mt-1 text-sm text-slate-600">{section.description}</p>
+            </Link>
+          ))}
+        </div>
+      </AdminPageCard>
+
+      <AdminPageCard>
+        <AdminPageHeader title="أقسام الإدارة" description="بوابة الوصول إلى جميع مناطق التشغيل والإدارة." />
         <div className="grid gap-3 sm:grid-cols-2 lg:grid-cols-3">
           {sections.map((section) => (
             <Link
@@ -110,6 +133,23 @@ export default async function AdminDashboardPage() {
             </Link>
           ))}
         </div>
+      </AdminPageCard>
+
+      <AdminPageCard>
+        <AdminPageHeader title="آخر الإجراءات الإدارية" description="آخر العمليات التي نفذها فريق الإدارة (للإشراف التشغيلي)." />
+        {dashboard.recentAdminActions.length === 0 ? (
+          <p className="rounded-lg border border-dashed border-slate-300 bg-slate-50 p-4 text-sm text-slate-600">لا توجد إجراءات إدارية مسجلة حتى الآن.</p>
+        ) : (
+          <ul className="space-y-2">
+            {dashboard.recentAdminActions.map((item) => (
+              <li key={item.id} className="rounded-lg border border-slate-200 bg-slate-50 p-3 text-sm text-slate-700">
+                <p className="font-semibold text-slate-900">{item.action}</p>
+                <p className="text-xs text-slate-600">{item.actorEmail} • {formatArabicDate(item.createdAt, { dateStyle: "short", timeStyle: "short" })}</p>
+                <p className="mt-1 text-xs text-slate-500">السبب: {item.reason || "—"}</p>
+              </li>
+            ))}
+          </ul>
+        )}
       </AdminPageCard>
     </>
   );
