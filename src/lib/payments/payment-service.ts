@@ -549,6 +549,69 @@ export async function reconcilePaymentByTransactionReference(input: {
   });
 }
 
+export async function recoverPaymentAttempt(input: {
+  attemptId: string;
+  userId: string;
+  transactionReference?: string;
+  mockOutcome?: "paid" | "failed";
+}) {
+  const attemptId = input.attemptId.trim();
+  const userId = input.userId.trim();
+  const transactionReference = input.transactionReference?.trim();
+
+  if (!attemptId || !userId) {
+    paymentError(PAYMENT_ERROR_CODES.invalidPaymentProofInput);
+  }
+
+  const attempt = await prisma.paymentAttempt.findFirst({
+    where: { id: attemptId, userId },
+    include: { payment: true, order: true },
+  });
+
+  if (!attempt) {
+    paymentError(PAYMENT_ERROR_CODES.attemptNotFound);
+  }
+
+  if (attempt.status === "PAID" || attempt.payment.status === "SUCCEEDED") {
+    await prisma.$transaction(async (tx) => {
+      await tx.order.update({
+        where: { id: attempt.orderId },
+        data: { status: "PAID", placedAt: attempt.order.placedAt ?? new Date() },
+      });
+      await tx.payment.update({
+        where: { id: attempt.paymentId },
+        data: { status: "SUCCEEDED", paidAt: attempt.payment.paidAt ?? new Date(), failedAt: null },
+      });
+      await grantAccessForPaidOrder(tx, { orderId: attempt.orderId, userId: attempt.userId, grantedAt: new Date() });
+      await markPromoRedemptionsRedeemed(tx, {
+        orderId: attempt.orderId,
+        paymentId: attempt.paymentId,
+        at: new Date(),
+      });
+    });
+
+    return prisma.paymentAttempt.findUniqueOrThrow({
+      where: { id: attemptId },
+      include: { payment: true, order: true },
+    });
+  }
+
+  if (transactionReference) {
+    return reconcilePaymentByTransactionReference({
+      attemptId,
+      userId,
+      transactionReference,
+      mockOutcome: input.mockOutcome,
+    });
+  }
+
+  return verifyPayment({
+    attemptId,
+    userId,
+    mockOutcome: input.mockOutcome,
+  });
+}
+
 function extractTransactionReference(payload: Prisma.JsonValue | null): string | undefined {
   if (!payload || typeof payload !== "object" || Array.isArray(payload)) {
     return undefined;

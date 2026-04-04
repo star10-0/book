@@ -2,6 +2,7 @@ import { notFound } from "next/navigation";
 import {
   forceGrantPaymentAccessAction,
   reconcileByTxAction,
+  recoverStuckAttemptAction,
   releasePaymentTxLockAction,
   retryVerifyPaymentAction,
 } from "@/app/admin/payments/actions";
@@ -49,16 +50,21 @@ export default async function AdminPaymentAttemptPage({ params }: PageProps) {
           <p>الحالة: {attempt.status}</p>
           <p>حالة الدفع: {attempt.payment.status}</p>
           <p>حالة الطلب: {attempt.order.status}</p>
+          <p>paymentId: {attempt.paymentId}</p>
+          <p>orderId: {attempt.orderId}</p>
           <p>tx: {txRef || "—"}</p>
           <p>providerReference: {attempt.providerReference || "—"}</p>
           <p>providerRef على Payment: {attempt.payment.providerRef || "—"}</p>
           <p>فشل: {attempt.failureReason || "—"}</p>
+          <p>createdAt: {formatArabicDate(attempt.createdAt, { dateStyle: "short", timeStyle: "short" })}</p>
+          <p>updatedAt: {formatArabicDate(attempt.updatedAt, { dateStyle: "short", timeStyle: "short" })}</p>
           <p>تم التحقق: {attempt.verifiedAt ? formatArabicDate(attempt.verifiedAt, { dateStyle: "short", timeStyle: "short" }) : "—"}</p>
           <p>وصول ممنوح: {accessExists > 0 ? "نعم" : "لا"}</p>
         </div>
         <div className="mt-4 grid gap-2 sm:grid-cols-2">
           <form action={retryVerifyPaymentAction} className="rounded border p-3 text-xs"><input type="hidden" name="attemptId" value={attempt.id} /><input type="hidden" name="userId" value={attempt.userId} /><input name="reason" className="mb-2 w-full rounded border px-2 py-1" placeholder="سبب التدخل" required defaultValue="manual retry verify" /><button className="rounded border px-2 py-1">إعادة تحقق</button></form>
           <form action={reconcileByTxAction} className="rounded border p-3 text-xs"><input type="hidden" name="attemptId" value={attempt.id} /><input type="hidden" name="userId" value={attempt.userId} /><input name="transactionReference" className="mb-2 w-full rounded border px-2 py-1" required defaultValue={txRef} /><input name="reason" className="mb-2 w-full rounded border px-2 py-1" required defaultValue="manual tx reconcile" /><button className="rounded border px-2 py-1">مطابقة بالمرجع</button></form>
+          <form action={recoverStuckAttemptAction} className="rounded border p-3 text-xs"><input type="hidden" name="attemptId" value={attempt.id} /><input type="hidden" name="userId" value={attempt.userId} /><input name="transactionReference" className="mb-2 w-full rounded border px-2 py-1" defaultValue={txRef} placeholder="transactionReference (اختياري)" /><input name="reason" className="mb-2 w-full rounded border px-2 py-1" required defaultValue="manual attempt recovery" /><button className="rounded border px-2 py-1">استرداد محاولة عالقة</button></form>
           <form action={forceGrantPaymentAccessAction} className="rounded border p-3 text-xs"><input type="hidden" name="attemptId" value={attempt.id} /><input name="reason" className="mb-2 w-full rounded border px-2 py-1" required placeholder="سبب إلزامي" /><button className="rounded border px-2 py-1">منح وصول قسري (مع تدقيق)</button></form>
           <form action={releasePaymentTxLockAction} className="rounded border p-3 text-xs"><input type="hidden" name="attemptId" value={attempt.id} /><input name="reason" className="mb-2 w-full rounded border px-2 py-1" required placeholder="سبب تحرير القفل" /><button className="rounded border px-2 py-1">تحرير قفل tx</button></form>
         </div>
