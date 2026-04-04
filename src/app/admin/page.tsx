@@ -46,34 +46,34 @@ export default async function AdminDashboardPage() {
 
   const alerts = [
     {
+      title: "مدفوعات حرجة تحتاج تدخلاً",
+      value: dashboard.alerts.criticalPaymentsNeedingReview,
+      href: "/admin/payments?scope=issues",
+      cta: "ابدأ الاستعادة الآن",
+    },
+    {
+      title: "حسابات/أجهزة مشبوهة",
+      value: dashboard.alerts.suspiciousAccountsOrDevices,
+      href: "/admin/users?scope=suspicious",
+      cta: "فتح قائمة الاشتباه",
+    },
+    {
+      title: "شذوذ نزاهة يتطلب تدخل",
+      value: dashboard.alerts.integrityAnomalies,
+      href: "/admin/orders",
+      cta: "معالجة الشذوذ",
+    },
+    {
+      title: "إشارات مخاطر حرجة",
+      value: dashboard.alerts.criticalRiskSignals,
+      href: "/admin/payments?scope=issues",
+      cta: "راجع إشارات المخاطر",
+    },
+    {
       title: "مدفوعات تحتاج مراجعة",
       value: dashboard.alerts.paymentsNeedingReview,
       href: "/admin/payments?scope=needs-review",
       cta: "فتح قائمة المراجعة",
-    },
-    {
-      title: "محاولات دفع فاشلة/عالقة",
-      value: dashboard.alerts.failedOrStuckPayments,
-      href: "/admin/payments?scope=issues",
-      cta: "مراجعة المشكلات",
-    },
-    {
-      title: "محاولات أجهزة مشبوهة اليوم",
-      value: dashboard.alerts.suspiciousDeviceAttemptsToday,
-      href: "/admin/users?scope=suspicious",
-      cta: "فتح الحسابات المرتبطة",
-    },
-    {
-      title: "تحذيرات نزاهة الطلبات/الوصول",
-      value: dashboard.alerts.integrityWarnings,
-      href: "/admin/orders",
-      cta: "فتح فحص النزاهة",
-    },
-    {
-      title: "كتب بانتظار المراجعة",
-      value: dashboard.alerts.pendingBooksReview,
-      href: "/admin/books?status=PENDING_REVIEW",
-      cta: "فتح صف المراجعة",
     },
   ];
 
@@ -86,7 +86,7 @@ export default async function AdminDashboardPage() {
         />
       </AdminPageCard>
 
-      <section className="grid gap-4 sm:grid-cols-2 xl:grid-cols-4">
+      <section className="grid gap-4 sm:grid-cols-2 xl:grid-cols-5">
         {alerts.map((alert) => (
           <article key={alert.title} className="rounded-xl border border-amber-200 bg-amber-50 p-4 shadow-sm">
             <p className="text-sm text-amber-800">{alert.title}</p>
@@ -106,6 +106,28 @@ export default async function AdminDashboardPage() {
           </article>
         ))}
       </section>
+
+      <AdminPageCard>
+        <AdminPageHeader title="توصيات تشغيلية فورية" description="أعلى قوائم العمل ذات الأولوية مع خطوة تالية مقترحة." />
+        <div className="grid gap-3 sm:grid-cols-2">
+          <article className="rounded-xl border border-rose-200 bg-rose-50 p-4">
+            <p className="font-semibold text-rose-900">صف استعادة المدفوعات ({dashboard.reviewQueues.paymentRecoveryQueue.length.toLocaleString("ar-SY")})</p>
+            <p className="mt-1 text-sm text-rose-800">الإجراء المقترح: ابدأ بالمحاولات العالقة ثم حالات تضارب المرجع.</p>
+          </article>
+          <article className="rounded-xl border border-amber-200 bg-amber-50 p-4">
+            <p className="font-semibold text-amber-900">صف حسابات مشبوهة ({dashboard.reviewQueues.suspiciousUsersQueue.length.toLocaleString("ar-SY")})</p>
+            <p className="mt-1 text-sm text-amber-800">الإجراء المقترح: مراجعة الأجهزة الموثوقة وتقييد الجلسات فوراً للحالات المتكررة.</p>
+          </article>
+          <article className="rounded-xl border border-amber-200 bg-amber-50 p-4">
+            <p className="font-semibold text-amber-900">صف محاولات أجهزة مشبوهة ({dashboard.reviewQueues.suspiciousDeviceAttemptsQueue.length.toLocaleString("ar-SY")})</p>
+            <p className="mt-1 text-sm text-amber-800">الإجراء المقترح: تحقق هوية المستخدم ثم قرر إعادة الربط أو الحظر المؤقت.</p>
+          </article>
+          <article className="rounded-xl border border-indigo-200 bg-indigo-50 p-4">
+            <p className="font-semibold text-indigo-900">طلبات تحتاج تدخل ({dashboard.reviewQueues.ordersRequiringInterventionQueue.length.toLocaleString("ar-SY")})</p>
+            <p className="mt-1 text-sm text-indigo-800">الإجراء المقترح: أصلح paid-without-grant أولاً ثم حالات mismatch المتبقية.</p>
+          </article>
+        </div>
+      </AdminPageCard>
 
       <AdminPageCard>
         <AdminPageHeader title="اختصارات سريعة" description="انتقل مباشرةً إلى أكثر المهام التشغيلية استخداماً." />
@@ -145,30 +167,6 @@ export default async function AdminDashboardPage() {
       </AdminPageCard>
 
       <AdminPageCard>
-        <AdminPageHeader title="الحوكمة والأمن" description="مساحة متابعة أساسية للجاهزية الأمنية وسجل عمليات الإدارة." />
-        <div className="grid gap-3 sm:grid-cols-2">
-          <Link
-            href="/admin/users?scope=suspicious"
-            className="rounded-xl border border-slate-200 bg-slate-50 p-4 transition hover:border-slate-300 hover:bg-white focus-visible:outline-none focus-visible:ring-2 focus-visible:ring-slate-500"
-          >
-            <p className="text-base font-semibold text-slate-900">نظرة أمنية</p>
-            <p className="mt-1 text-sm text-slate-600">
-              متابعة مؤشرات المحاولات المشبوهة ({dashboard.metrics.suspiciousEventsTodayCount.toLocaleString("ar-SY")} اليوم).
-            </p>
-          </Link>
-          <Link
-            href="/admin/payments?scope=issues"
-            className="rounded-xl border border-slate-200 bg-slate-50 p-4 transition hover:border-slate-300 hover:bg-white focus-visible:outline-none focus-visible:ring-2 focus-visible:ring-slate-500"
-          >
-            <p className="text-base font-semibold text-slate-900">نظرة التدقيق التشغيلي</p>
-            <p className="mt-1 text-sm text-slate-600">
-              مراجعة العمليات الحساسة وربطها بحالات الدفع المتعثرة ({dashboard.alerts.failedOrStuckPayments.toLocaleString("ar-SY")} حالة).
-            </p>
-          </Link>
-        </div>
-      </AdminPageCard>
-
-      <AdminPageCard>
         <AdminPageHeader title="آخر الإجراءات الإدارية" description="آخر العمليات التي نفذها فريق الإدارة (للإشراف التشغيلي)." />
         {dashboard.recentAdminActions.length === 0 ? (
           <p className="rounded-lg border border-dashed border-slate-300 bg-slate-50 p-4 text-sm text-slate-600">لا توجد إجراءات إدارية مسجلة حتى الآن.</p>
@@ -179,6 +177,23 @@ export default async function AdminDashboardPage() {
                 <p className="font-semibold text-slate-900">{item.action}</p>
                 <p className="text-xs text-slate-600">{item.actorEmail} • {formatArabicDate(item.createdAt, { dateStyle: "short", timeStyle: "short" })}</p>
                 <p className="mt-1 text-xs text-slate-500">السبب: {item.reason || "—"}</p>
+              </li>
+            ))}
+          </ul>
+        )}
+      </AdminPageCard>
+
+      <AdminPageCard>
+        <AdminPageHeader title="آخر أحداث الأمن المهمة" description="أحدث الأحداث عالية القيمة لمتابعة المخاطر بشكل استباقي." />
+        {dashboard.recentSecurityActions.length === 0 ? (
+          <p className="rounded-lg border border-dashed border-slate-300 bg-slate-50 p-4 text-sm text-slate-600">لا توجد أحداث أمنية مهمة ضمن آخر 24 ساعة.</p>
+        ) : (
+          <ul className="space-y-2">
+            {dashboard.recentSecurityActions.map((item) => (
+              <li key={item.id} className="rounded-lg border border-slate-200 bg-slate-50 p-3 text-sm text-slate-700">
+                <p className="font-semibold text-slate-900">{item.type}</p>
+                <p className="text-xs text-slate-600">user: {item.userId}</p>
+                <p className="mt-1 text-xs text-slate-500">{formatArabicDate(item.createdAt, { dateStyle: "short", timeStyle: "short" })}</p>
               </li>
             ))}
           </ul>
