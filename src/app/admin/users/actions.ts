@@ -4,8 +4,13 @@ import { AdminAuditAction, Prisma } from "@prisma/client";
 import { revalidatePath } from "next/cache";
 import { requireAdmin } from "@/lib/auth-session";
 import { createAdminAuditLog } from "@/lib/admin/audit-log";
+import {
+  banUserByAdmin,
+  forceLogoutAllSessionsByAdmin,
+  forcePasswordResetByAdmin,
+  unbanUserByAdmin,
+} from "@/lib/admin/user-management";
 import { prisma } from "@/lib/prisma";
-import { invalidateUserSessions } from "@/lib/session-invalidation";
 import { revokeTrustedDevice } from "@/lib/trusted-device";
 
 function getValue(formData: FormData, key: string) {
@@ -34,18 +39,10 @@ export async function banUserAction(formData: FormData) {
   const targetUserId = getValue(formData, "targetUserId");
   const reason = getValue(formData, "reason");
 
-  if (!targetUserId || targetUserId === admin.id) return;
+  if (!targetUserId) return;
 
-  await prisma.user.updateMany({
-    where: { id: targetUserId, isActive: true },
-    data: {
-      isActive: false,
-      bannedReason: reason || null,
-      sessionVersion: { increment: 1 },
-    },
-  });
+  await banUserByAdmin({ actorAdminId: admin.id, targetUserId, reason });
 
-  await auditUserAction({ actorAdminId: admin.id, action: "USER_BANNED", targetUserId, reason: reason || "ban" });
   revalidatePath("/admin/users");
   revalidatePath(`/admin/users/${targetUserId}`);
 }
@@ -56,11 +53,8 @@ export async function unbanUserAction(formData: FormData) {
   const reason = getValue(formData, "reason");
   if (!targetUserId) return;
 
-  await prisma.user.updateMany({
-    where: { id: targetUserId, isActive: false },
-    data: { isActive: true, bannedReason: null },
-  });
-  await auditUserAction({ actorAdminId: admin.id, action: "USER_UNBANNED", targetUserId, reason: reason || "unban" });
+  await unbanUserByAdmin({ actorAdminId: admin.id, targetUserId, reason });
+
   revalidatePath("/admin/users");
   revalidatePath(`/admin/users/${targetUserId}`);
 }
@@ -71,15 +65,7 @@ export async function adminForceLogoutAllDevicesAction(formData: FormData) {
   const reason = getValue(formData, "reason");
   if (!targetUserId) return;
 
-  await invalidateUserSessions(targetUserId);
-  await prisma.userSecurityEvent.create({ data: { userId: targetUserId, type: "FORCE_LOGOUT_ALL" } });
-
-  await auditUserAction({
-    actorAdminId: admin.id,
-    action: "USER_FORCE_LOGOUT_ALL",
-    targetUserId,
-    reason: reason || "force logout",
-  });
+  await forceLogoutAllSessionsByAdmin({ actorAdminId: admin.id, targetUserId, reason });
 
   revalidatePath("/admin/users");
   revalidatePath(`/admin/users/${targetUserId}`);
@@ -91,19 +77,7 @@ export async function forcePasswordResetAction(formData: FormData) {
   const reason = getValue(formData, "reason");
   if (!targetUserId) return;
 
-  await prisma.user.update({
-    where: { id: targetUserId },
-    data: { requirePasswordReset: true, sessionVersion: { increment: 1 } },
-  });
-
-  await prisma.userSecurityEvent.create({ data: { userId: targetUserId, type: "PASSWORD_RESET_REQUIRED" } });
-
-  await auditUserAction({
-    actorAdminId: admin.id,
-    action: "USER_FORCE_PASSWORD_RESET",
-    targetUserId,
-    reason: reason || "force password reset",
-  });
+  await forcePasswordResetByAdmin({ actorAdminId: admin.id, targetUserId, reason });
 
   revalidatePath("/admin/users");
   revalidatePath(`/admin/users/${targetUserId}`);
