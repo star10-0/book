@@ -11,12 +11,16 @@ import { AdminPageCard, AdminPageHeader } from "@/components/admin/admin-page";
 import { getAdminUserDetails } from "@/lib/admin/users-directory";
 import { suspiciousSecurityEventTypes } from "@/lib/admin/security-signals";
 import { formatArabicDate } from "@/lib/formatters/intl";
+import { getUserIntegritySummary } from "@/lib/admin/order-integrity";
 
 type PageProps = { params: Promise<{ userId: string }> };
 
 export default async function AdminUserDetailsPage({ params }: PageProps) {
   const { userId } = await params;
-  const user = await getAdminUserDetails(userId);
+  const [user, integrity] = await Promise.all([
+    getAdminUserDetails(userId),
+    getUserIntegritySummary(userId),
+  ]);
 
   if (!user) notFound();
 
@@ -69,6 +73,11 @@ export default async function AdminUserDetailsPage({ params }: PageProps) {
           <p>مدفوعات قيد المتابعة: {user.paymentSummary.pending.toLocaleString("ar-SY")}</p>
           <p>مدفوعات فاشلة: {user.paymentSummary.failed.toLocaleString("ar-SY")}</p>
           <p>إجمالي المنح/الكتب المملوكة: {user.accessGrantsCount.toLocaleString("ar-SY")}</p>
+          <p className="sm:col-span-2 rounded border border-amber-200 bg-amber-50 p-2">
+            تحذيرات النزاهة: {integrity.totalWarnings.toLocaleString("ar-SY")} (مدفوع بدون وصول: {integrity.paidWithoutGrant.toLocaleString("ar-SY")} •
+            منح مشبوهة: {integrity.suspiciousGrantCount.toLocaleString("ar-SY")} •
+            إيجارات منتهية: {integrity.staleRentalCount.toLocaleString("ar-SY")})
+          </p>
         </div>
       </AdminPageCard>
 

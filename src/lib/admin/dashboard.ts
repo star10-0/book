@@ -1,6 +1,7 @@
 import { BookStatus, PaymentAttemptStatus, Prisma } from "@prisma/client";
 import { suspiciousSecurityEventTypes } from "@/lib/admin/security-signals";
 import { prisma } from "@/lib/prisma";
+import { getOrderIntegritySnapshot } from "@/lib/admin/order-integrity";
 
 export type DashboardSnapshot = {
   metrics: {
@@ -15,12 +16,14 @@ export type DashboardSnapshot = {
     failedOrStuckPaymentsCount: number;
     suspiciousEventsTodayCount: number;
     auditLogsTodayCount: number;
+    integrityWarningsCount: number;
   };
   alerts: {
     paymentsNeedingReview: number;
     failedOrStuckPayments: number;
     suspiciousDeviceAttemptsToday: number;
     pendingBooksReview: number;
+    integrityWarnings: number;
   };
   recentAdminActions: Array<{
     id: string;
@@ -45,6 +48,7 @@ type DashboardDeps = {
     createdAt: Date;
     actorAdmin?: { email: string } | null;
   }>>;
+  integrityWarningsCount: () => Promise<number>;
 };
 
 const defaultDeps: DashboardDeps = {
@@ -63,6 +67,10 @@ const defaultDeps: DashboardDeps = {
       createdAt: Date;
       actorAdmin?: { email: string } | null;
     }>;
+  },
+  integrityWarningsCount: async () => {
+    const snapshot = await getOrderIntegritySnapshot(1);
+    return Object.values(snapshot.totals).reduce((sum, value) => sum + value, 0);
   },
 };
 
@@ -83,6 +91,7 @@ export async function loadAdminDashboardSnapshot(now = new Date(), deps: Dashboa
     suspiciousEventsTodayCount,
     auditLogsTodayCount,
     recentAdminActions,
+    integrityWarningsCount,
   ] = await Promise.all([
     deps.userCount(),
     deps.userCount({ where: { isActive: false } }),
@@ -127,6 +136,7 @@ export async function loadAdminDashboardSnapshot(now = new Date(), deps: Dashboa
       orderBy: { createdAt: "desc" },
       take: 5,
     }),
+    deps.integrityWarningsCount(),
   ]);
 
   return {
@@ -142,12 +152,14 @@ export async function loadAdminDashboardSnapshot(now = new Date(), deps: Dashboa
       failedOrStuckPaymentsCount,
       suspiciousEventsTodayCount,
       auditLogsTodayCount,
+      integrityWarningsCount,
     },
     alerts: {
       paymentsNeedingReview: needsReviewPaymentsCount,
       failedOrStuckPayments: failedOrStuckPaymentsCount,
       suspiciousDeviceAttemptsToday: suspiciousEventsTodayCount,
       pendingBooksReview: pendingBooksCount,
+      integrityWarnings: integrityWarningsCount,
     },
     recentAdminActions: recentAdminActions.map((item) => ({
       id: item.id,
