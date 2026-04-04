@@ -17,7 +17,7 @@ test("admin user details page exposes trusted device controls and suspicious att
 
   assert.equal(source.includes("فرض إعادة ربط الجهاز"), true);
   assert.equal(source.includes("محاولات مشبوهة (أجهزة غير موثوقة)"), true);
-  assert.equal(source.includes('LOGIN_BLOCKED_UNTRUSTED_DEVICE'), true);
+  assert.equal(source.includes('suspiciousSecurityEventTypes'), true);
 });
 
 test("signin flow keeps banned users blocked", () => {

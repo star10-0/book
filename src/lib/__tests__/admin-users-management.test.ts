@@ -1,6 +1,7 @@
 import assert from "node:assert/strict";
 import { readFileSync } from "node:fs";
 import test from "node:test";
+import { isSessionTokenValid } from "@/lib/admin/user-security";
 import {
   banUserByAdmin,
   forceLogoutAllSessionsByAdmin,
@@ -53,6 +54,7 @@ test("admin users list page renders core fields and quick actions", () => {
   assert.equal(source.includes('title: "الحالة"'), true);
   assert.equal(source.includes('title: "طلبات"'), true);
   assert.equal(source.includes('title: "وصول"'), true);
+  assert.equal(source.includes('title: "أجهزة موثوقة"'), true);
   assert.equal(source.includes('title: "أجهزة نشطة"'), true);
   assert.equal(source.includes('title: "آخر نشاط"'), true);
 
@@ -93,6 +95,13 @@ test("ban user deactivates account, invalidates sessions, and audits", async () 
       next: { isActive: false, sessionVersion: 8 },
     },
   });
+  assert.equal(isSessionTokenValid(7, 8, false), false);
+});
+
+test("ban rejects self-action", async () => {
+  const { deps } = createDeps();
+  const result = await banUserByAdmin({ actorAdminId: "user_1", targetUserId: "user_1" }, deps);
+  assert.deepEqual(result, { ok: false, code: "SELF_ACTION" });
 });
 
 test("unban user restores active state and writes audit log", async () => {
@@ -133,6 +142,7 @@ test("force logout increments session version and creates audit trail", async ()
       next: { sessionVersion: 13 },
     },
   });
+  assert.equal(isSessionTokenValid(12, 13, true), false);
 });
 
 test("force password reset sets flag, invalidates sessions, and audits", async () => {
