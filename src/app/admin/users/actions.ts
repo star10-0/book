@@ -3,7 +3,7 @@
 import { AdminAuditAction, Prisma } from "@prisma/client";
 import { revalidatePath } from "next/cache";
 import { requireAdmin } from "@/lib/auth-session";
-import { logAdminAudit } from "@/lib/audit-admin";
+import { createAdminAuditLog } from "@/lib/admin/audit-log";
 import { prisma } from "@/lib/prisma";
 import { invalidateUserSessions } from "@/lib/session-invalidation";
 import { revokeTrustedDevice } from "@/lib/trusted-device";
@@ -20,7 +20,7 @@ async function auditUserAction(input: {
   reason?: string;
   metadata?: Prisma.InputJsonValue;
 }) {
-  await logAdminAudit({
+  await createAdminAuditLog({
     actorAdminId: input.actorAdminId,
     action: input.action,
     targetUserId: input.targetUserId,
@@ -40,6 +40,7 @@ export async function banUserAction(formData: FormData) {
     where: { id: targetUserId, isActive: true },
     data: {
       isActive: false,
+      bannedReason: reason || null,
       sessionVersion: { increment: 1 },
     },
   });
@@ -55,7 +56,10 @@ export async function unbanUserAction(formData: FormData) {
   const reason = getValue(formData, "reason");
   if (!targetUserId) return;
 
-  await prisma.user.updateMany({ where: { id: targetUserId, isActive: false }, data: { isActive: true } });
+  await prisma.user.updateMany({
+    where: { id: targetUserId, isActive: false },
+    data: { isActive: true, bannedReason: null },
+  });
   await auditUserAction({ actorAdminId: admin.id, action: "USER_UNBANNED", targetUserId, reason: reason || "unban" });
   revalidatePath("/admin/users");
   revalidatePath(`/admin/users/${targetUserId}`);

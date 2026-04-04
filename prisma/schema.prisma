@@ -178,6 +178,7 @@ model User {
   acceptedDevicePolicyAt DateTime?
   acceptedTermsVersion String?
   requirePasswordReset Boolean           @default(false)
+  bannedReason         String?
   lastSeenAt           DateTime?
   createdAt         DateTime          @default(now())
   updatedAt         DateTime          @updatedAt
@@ -410,6 +411,7 @@ model Order {
   paymentAttempts  PaymentAttempt[]
   promoCode        PromoCode?        @relation(fields: [promoCodeId], references: [id], onDelete: SetNull)
   promoRedemptions PromoRedemption[]
+  adminAuditLogs   AdminAuditLog[]
 
   @@index([userId, status])
   @@index([createdAt])
@@ -611,6 +613,7 @@ model AdminAuditLog {
   actorAdminId     String
   targetUserId     String?
   paymentAttemptId String?
+  orderId          String?
   action           AdminAuditAction
   reason           String?
   metadata         Json?
@@ -618,10 +621,12 @@ model AdminAuditLog {
   actorAdmin       User             @relation("AdminAuditActor", fields: [actorAdminId], references: [id], onDelete: Restrict)
   targetUser       User?            @relation("AdminAuditTargetUser", fields: [targetUserId], references: [id], onDelete: SetNull)
   paymentAttempt   PaymentAttempt?  @relation(fields: [paymentAttemptId], references: [id], onDelete: SetNull)
+  order            Order?           @relation(fields: [orderId], references: [id], onDelete: SetNull)
 
   @@index([actorAdminId, createdAt])
   @@index([targetUserId, createdAt])
   @@index([paymentAttemptId, createdAt])
+  @@index([orderId, createdAt])
   @@index([action, createdAt])
 }
 
