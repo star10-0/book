@@ -14,6 +14,7 @@ export type DashboardSnapshot = {
     needsReviewPaymentsCount: number;
     failedOrStuckPaymentsCount: number;
     suspiciousEventsTodayCount: number;
+    auditLogsTodayCount: number;
   };
   alerts: {
     paymentsNeedingReview: number;
@@ -36,6 +37,7 @@ type DashboardDeps = {
   orderCount: (args?: Prisma.OrderCountArgs) => Promise<number>;
   paymentAttemptCount: (args?: Prisma.PaymentAttemptCountArgs) => Promise<number>;
   userSecurityEventCount: (args?: Prisma.UserSecurityEventCountArgs) => Promise<number>;
+  adminAuditCount: (args?: Prisma.AdminAuditLogCountArgs) => Promise<number>;
   adminAuditFindMany: (args: Prisma.AdminAuditLogFindManyArgs) => Promise<Array<{
     id: string;
     action: string;
@@ -51,6 +53,7 @@ const defaultDeps: DashboardDeps = {
   orderCount: (args) => prisma.order.count(args),
   paymentAttemptCount: (args) => prisma.paymentAttempt.count(args),
   userSecurityEventCount: (args) => prisma.userSecurityEvent.count(args),
+  adminAuditCount: (args) => prisma.adminAuditLog.count(args),
   adminAuditFindMany: async (args) => {
     const rows = await prisma.adminAuditLog.findMany(args);
     return rows as Array<{
@@ -78,6 +81,7 @@ export async function loadAdminDashboardSnapshot(now = new Date(), deps: Dashboa
     needsReviewPaymentsCount,
     failedOrStuckPaymentsCount,
     suspiciousEventsTodayCount,
+    auditLogsTodayCount,
     recentAdminActions,
   ] = await Promise.all([
     deps.userCount(),
@@ -111,6 +115,7 @@ export async function loadAdminDashboardSnapshot(now = new Date(), deps: Dashboa
         type: { in: suspiciousSecurityEventTypes },
       },
     }),
+    deps.adminAuditCount({ where: { createdAt: { gte: startOfToday } } }),
     deps.adminAuditFindMany({
       select: {
         id: true,
@@ -136,6 +141,7 @@ export async function loadAdminDashboardSnapshot(now = new Date(), deps: Dashboa
       needsReviewPaymentsCount,
       failedOrStuckPaymentsCount,
       suspiciousEventsTodayCount,
+      auditLogsTodayCount,
     },
     alerts: {
       paymentsNeedingReview: needsReviewPaymentsCount,
@@ -152,4 +158,3 @@ export async function loadAdminDashboardSnapshot(now = new Date(), deps: Dashboa
     })),
   };
 }
-

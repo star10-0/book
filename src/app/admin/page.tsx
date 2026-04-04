@@ -21,6 +21,7 @@ export default async function AdminDashboardPage() {
     { label: "كتب منشورة", value: dashboard.metrics.publishedBooksCount.toLocaleString("ar-SY") },
     { label: "طلبات اليوم", value: dashboard.metrics.todayOrdersCount.toLocaleString("ar-SY") },
     { label: "محاولات دفع اليوم", value: dashboard.metrics.todayPaymentsCount.toLocaleString("ar-SY") },
+    { label: "سجلات تدقيق اليوم", value: dashboard.metrics.auditLogsTodayCount.toLocaleString("ar-SY") },
   ];
 
   const sections: HubSection[] = [
@@ -132,6 +133,30 @@ export default async function AdminDashboardPage() {
               <p className="mt-1 text-sm text-slate-600">{section.description}</p>
             </Link>
           ))}
+        </div>
+      </AdminPageCard>
+
+      <AdminPageCard>
+        <AdminPageHeader title="الحوكمة والأمن" description="مساحة متابعة أساسية للجاهزية الأمنية وسجل عمليات الإدارة." />
+        <div className="grid gap-3 sm:grid-cols-2">
+          <Link
+            href="/admin/users?scope=suspicious"
+            className="rounded-xl border border-slate-200 bg-slate-50 p-4 transition hover:border-slate-300 hover:bg-white focus-visible:outline-none focus-visible:ring-2 focus-visible:ring-slate-500"
+          >
+            <p className="text-base font-semibold text-slate-900">نظرة أمنية</p>
+            <p className="mt-1 text-sm text-slate-600">
+              متابعة مؤشرات المحاولات المشبوهة ({dashboard.metrics.suspiciousEventsTodayCount.toLocaleString("ar-SY")} اليوم).
+            </p>
+          </Link>
+          <Link
+            href="/admin/payments?scope=issues"
+            className="rounded-xl border border-slate-200 bg-slate-50 p-4 transition hover:border-slate-300 hover:bg-white focus-visible:outline-none focus-visible:ring-2 focus-visible:ring-slate-500"
+          >
+            <p className="text-base font-semibold text-slate-900">نظرة التدقيق التشغيلي</p>
+            <p className="mt-1 text-sm text-slate-600">
+              مراجعة العمليات الحساسة وربطها بحالات الدفع المتعثرة ({dashboard.alerts.failedOrStuckPayments.toLocaleString("ar-SY")} حالة).
+            </p>
+          </Link>
         </div>
       </AdminPageCard>
 
