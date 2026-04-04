@@ -10,6 +10,20 @@ function hashToken(token: string) {
   return createHash("sha256").update(token).digest("hex");
 }
 
+export function inferDeviceLabel(userAgent?: string | null) {
+  if (!userAgent) return "جهاز موثوق";
+
+  const ua = userAgent.toLowerCase();
+  if (ua.includes("iphone")) return "iPhone";
+  if (ua.includes("ipad")) return "iPad";
+  if (ua.includes("android")) return "Android";
+  if (ua.includes("mac os")) return "Mac";
+  if (ua.includes("windows")) return "Windows";
+  if (ua.includes("linux")) return "Linux";
+
+  return "جهاز موثوق";
+}
+
 async function getOrCreateDeviceToken() {
   const store = await cookies();
   const existing = store.get(TRUSTED_DEVICE_COOKIE)?.value;
@@ -76,6 +90,7 @@ export async function enforceTrustedDeviceOnLogin(input: {
         where: { id: matched.id },
         data: {
           lastSeenAt: now,
+          label: matched.label || inferDeviceLabel(input.userAgent),
           userAgent: input.userAgent || matched.userAgent,
           ipAddress: input.ipAddress || matched.ipAddress,
         },
@@ -129,6 +144,7 @@ export async function enforceTrustedDeviceOnLogin(input: {
         tokenHash,
         isTrusted: true,
         isPrimary: true,
+        label: inferDeviceLabel(input.userAgent),
         userAgent: input.userAgent ?? null,
         ipAddress: input.ipAddress ?? null,
         firstSeenAt: now,
@@ -202,4 +218,4 @@ export async function revokeAllTrustedDevicesForRebind(userId: string) {
   return result.count;
 }
 
-export const __trustedDeviceInternals = { classifyTrustedDeviceLogin, buildTrustedDeviceRevocationData };
+export const __trustedDeviceInternals = { classifyTrustedDeviceLogin, buildTrustedDeviceRevocationData, inferDeviceLabel };
