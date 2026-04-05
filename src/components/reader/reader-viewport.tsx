@@ -3,6 +3,7 @@
 import { useEffect, useMemo, useRef, useState } from "react";
 import { parseEpubSectionFromLocator, parsePdfPageFromLocator, toEpubLocator, toPdfLocator } from "@/lib/reader/locator";
 import { ReaderDocumentSource, ReaderTheme } from "@/lib/reader/types";
+import { sanitizeReaderHtml } from "@/lib/security/html-sanitizer";
 
 type ReaderControls = {
   next: () => void;
@@ -209,6 +210,10 @@ export function ReaderViewport({
     });
   }, [epubSections, epubStatus, locator, onControlsReady, onLocationChange, source]);
 
+  const sanitizedCurrentSectionHtml = useMemo(() => {
+    return currentEpubSection?.data?.bodyHtml ? sanitizeReaderHtml(currentEpubSection.data.bodyHtml) : "";
+  }, [currentEpubSection]);
+
   useEffect(() => {
     const canvas = canvasRef.current;
     if (!canvas) {
@@ -369,7 +374,7 @@ export function ReaderViewport({
         </p>
         <h2 className="text-base font-semibold">{currentEpubSection.data.title}</h2>
       </header>
-      <div className={`prose prose-slate max-w-none ${palette.prose}`} dangerouslySetInnerHTML={{ __html: currentEpubSection.data.bodyHtml }} />
+      <div className={`prose prose-slate max-w-none ${palette.prose}`} dangerouslySetInnerHTML={{ __html: sanitizedCurrentSectionHtml }} />
     </article>
   );
 }

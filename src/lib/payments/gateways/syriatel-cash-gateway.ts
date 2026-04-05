@@ -99,6 +99,12 @@ function formatMinorAmountForReason(amountCents: number): string {
   return `${amountCents} cents (${major})`;
 }
 
+function isCurrencyRequiredForSyriatelVerify() {
+  const configured = process.env.SYRIATEL_CASH_REQUIRE_CURRENCY_ON_VERIFY?.trim().toLowerCase();
+  return configured === "1" || configured === "true" || configured === "yes";
+}
+
+
 export class SyriatelCashGateway implements PaymentGateway {
   readonly provider = PaymentProvider.SYRIATEL_CASH;
 
@@ -191,6 +197,15 @@ export class SyriatelCashGateway implements PaymentGateway {
       });
     }
 
+    if (!verifiedCurrency && isCurrencyRequiredForSyriatelVerify()) {
+      throw new GatewayRequestError({
+        provider: "syriatel_cash",
+        phase: "verify",
+        statusCode: 409,
+        message: "Syriatel Cash verify response did not include currency while strict currency validation is enabled.",
+      });
+    }
+
     if (verifiedDestination && !destinationMatches) {
       throw new GatewayRequestError({
         provider: "syriatel_cash",
@@ -220,6 +235,7 @@ export class SyriatelCashGateway implements PaymentGateway {
         amountMatches,
         currencyMatches,
         destinationMatches,
+        currencyCheckSkipped: !verifiedCurrency,
       },
       isPaid,
       failureReason: isPaid ? undefined : failureReason,

@@ -427,6 +427,7 @@ model Order {
   adminAuditLogs   AdminAuditLog[]
 
   @@index([userId, status])
+  @@index([userId, status, updatedAt])
   @@index([createdAt])
   @@index([promoCodeId])
 }

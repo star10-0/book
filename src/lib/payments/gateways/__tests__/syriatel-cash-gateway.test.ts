@@ -291,3 +291,45 @@ test("SyriatelCashGateway blocks mock mode outside explicit development/test mod
 
   process.env = originalEnv;
 });
+
+
+test("SyriatelCashGateway verify can require currency when strict flag is enabled", async () => {
+  const originalFetch = global.fetch;
+  const originalEnv = { ...process.env };
+
+  setLiveEnv();
+  process.env.SYRIATEL_CASH_REQUIRE_CURRENCY_ON_VERIFY = "true";
+
+  global.fetch = async () =>
+    new Response(
+      JSON.stringify({
+        success: true,
+        data: {
+          found: true,
+          transaction: {
+            transaction_no: "TX-555",
+            to: "dest-acc-1",
+            amount: 10,
+          },
+          account: {
+            gsm: "dest-acc-1",
+          },
+        },
+      }),
+      { status: 200 },
+    );
+
+  await assert.rejects(
+    gateway.verifyPayment({
+      paymentId: "p-1",
+      providerReference: "ref-1",
+      transactionReference: "TX-555",
+      expectedAmountCents: 1000,
+      expectedCurrency: "SYP",
+    }),
+    (error: unknown) => error instanceof GatewayRequestError && error.phase === "verify",
+  );
+
+  process.env = originalEnv;
+  global.fetch = originalFetch;
+});
