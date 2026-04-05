@@ -175,6 +175,37 @@ Exposure response requirements:
 
 Use `SECURITY_SECRET_ROTATION.md` for exact per-secret procedures and impact notes.
 
+### Secret leak prevention checks (local + CI)
+
+This repository includes a dedicated secret-hardening baseline:
+
+- `server-only` boundaries for secret-bearing modules.
+- Centralized sensitive-data redaction for logs/diagnostics.
+- App Router API route export validation to prevent accidental helper exports from route files.
+- `.gitleaks.toml` + CI workflow (`.github/workflows/secret-scan.yml`) for repository secret scanning.
+- Client bundle scan script (`scripts/check-client-bundle-secrets.mjs`) to detect accidental secret indicators in `.next/static`.
+
+Recommended local verification commands:
+
+```bash
+# 1) Build to generate client bundle artifacts
+npm run build
+
+# 2) Secret scan repository history/worktree
+#    (uses local gitleaks if installed; otherwise Docker image fallback)
+npm run security:scan:secrets
+
+# 3) Check built client bundle for secret indicators
+npm run security:scan:bundle
+
+# 4) Existing code quality gates
+npm run lint
+npm run typecheck
+npm test
+```
+
+False-positive handling policy: keep allowlists narrow and value-based in `.gitleaks.toml`; avoid broad path exclusions that can hide real leaks.
+
 ---
 
 ## Verify Deployed Branch/Commit Before Payment Debugging

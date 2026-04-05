@@ -1,5 +1,7 @@
+import "server-only";
 import { createHash, createHmac, randomUUID } from "node:crypto";
 import path from "node:path";
+import { readOptionalServerEnv, readRequiredServerEnv } from "@/lib/env";
 
 export const STORAGE_PROVIDER_KEYS = ["local", "s3", "r2"] as const;
 
@@ -106,16 +108,16 @@ class S3CompatibleStorageProvider implements StorageProviderAdapter {
   constructor(key: Extract<StorageProviderKey, "s3" | "r2">) {
     this.key = key;
     this.publicBucket = readRequiredEnv("BOOK_STORAGE_S3_PUBLIC_BUCKET");
-    this.privateBucket = process.env.BOOK_STORAGE_S3_PRIVATE_BUCKET?.trim() || this.publicBucket;
-    this.region = process.env.BOOK_STORAGE_S3_REGION?.trim() || "us-east-1";
-    this.publicBaseUrl = process.env.BOOK_STORAGE_PUBLIC_BASE_URL?.trim() || null;
-    this.signedUrlExpirySeconds = resolveSignedUrlExpiry(process.env.BOOK_STORAGE_SIGNED_URL_EXPIRY_SECONDS);
+    this.privateBucket = readOptionalServerEnv("BOOK_STORAGE_S3_PRIVATE_BUCKET") || this.publicBucket;
+    this.region = readOptionalServerEnv("BOOK_STORAGE_S3_REGION") || "us-east-1";
+    this.publicBaseUrl = readOptionalServerEnv("BOOK_STORAGE_PUBLIC_BASE_URL") || null;
+    this.signedUrlExpirySeconds = resolveSignedUrlExpiry(readOptionalServerEnv("BOOK_STORAGE_SIGNED_URL_EXPIRY_SECONDS"));
 
     this.accessKeyId = readRequiredEnv("BOOK_STORAGE_S3_ACCESS_KEY_ID");
     this.secretAccessKey = readRequiredEnv("BOOK_STORAGE_S3_SECRET_ACCESS_KEY");
-    this.sessionToken = process.env.BOOK_STORAGE_S3_SESSION_TOKEN?.trim() || null;
+    this.sessionToken = readOptionalServerEnv("BOOK_STORAGE_S3_SESSION_TOKEN") || null;
 
-    this.endpoint = new URL(process.env.BOOK_STORAGE_S3_ENDPOINT?.trim() || `https://s3.${this.region}.amazonaws.com`);
+    this.endpoint = new URL(readOptionalServerEnv("BOOK_STORAGE_S3_ENDPOINT") || `https://s3.${this.region}.amazonaws.com`);
   }
 
   async uploadFile(input: StorageUploadInput): Promise<StoredUpload> {
@@ -329,17 +331,15 @@ function resolveSignedUrlExpiry(rawValue: string | undefined) {
 }
 
 function readRequiredEnv(key: string) {
-  const value = process.env[key]?.trim();
-
-  if (!value) {
+  try {
+    return readRequiredServerEnv(key);
+  } catch {
     throw new Error(`Missing required storage environment variable: ${key}`);
   }
-
-  return value;
 }
 
 export const resolveStorageProviderFromEnv = (): StorageProviderKey => {
-  const configuredProvider = process.env.BOOK_STORAGE_PROVIDER?.toLowerCase();
+  const configuredProvider = readOptionalServerEnv("BOOK_STORAGE_PROVIDER")?.toLowerCase();
 
   if (configuredProvider === "s3" || configuredProvider === "r2") {
     return configuredProvider;

@@ -1,3 +1,5 @@
+import "server-only";
+import { readOptionalServerEnv } from "@/lib/env";
 export type RateLimitConfig = {
   key: string;
   limit: number;
@@ -28,8 +30,7 @@ type MemoryWindow = {
 const memoryWindows = new Map<string, MemoryWindow>();
 
 function readOptionalEnv(name: string): string | undefined {
-  const value = process.env[name]?.trim();
-  return value && value.length > 0 ? value : undefined;
+  return readOptionalServerEnv(name);
 }
 
 function getKvConfig() {

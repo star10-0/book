@@ -1,5 +1,7 @@
+import "server-only";
 import { logInfo } from "@/lib/observability/logger";
 import { sanitizeForLogs } from "@/lib/observability/redaction";
+import { readOptionalServerEnv, readRequiredServerEnv } from "@/lib/env";
 
 const DEFAULT_TIMEOUT_MS = 10_000;
 
@@ -27,17 +29,15 @@ export class GatewayRequestError extends Error {
 }
 
 export function readRequiredEnv(name: string): string {
-  const value = process.env[name]?.trim();
-
-  if (!value) {
+  try {
+    return readRequiredServerEnv(name);
+  } catch {
     throw new GatewayConfigurationError(`Missing required environment variable: ${name}`);
   }
-
-  return value;
 }
 
 export function readOptionalTimeoutMs(name: string): number {
-  const rawValue = process.env[name]?.trim();
+  const rawValue = readOptionalServerEnv(name);
 
   if (!rawValue) {
     return DEFAULT_TIMEOUT_MS;

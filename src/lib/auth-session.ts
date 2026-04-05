@@ -1,10 +1,11 @@
+import "server-only";
 import { createHmac, timingSafeEqual } from "node:crypto";
 import { cookies } from "next/headers";
 import { redirect } from "next/navigation";
 import { type AdminScope } from "@prisma/client";
 import { hasAcceptedCurrentDevicePolicy } from "@/lib/policy";
 import { hasAdminScope, isAdminRole, isCreatorOrAdminRole } from "@/lib/authz";
-import { assertServerEnv } from "@/lib/env";
+import { assertServerEnv, readRequiredServerEnv } from "@/lib/env";
 import { prisma } from "@/lib/prisma";
 
 const SESSION_COOKIE_NAME = "book_session";
@@ -12,7 +13,7 @@ const SESSION_DURATION_SECONDS = 60 * 60 * 24 * 7;
 
 function getAuthSecret() {
   assertServerEnv();
-  return process.env.AUTH_SECRET as string;
+  return readRequiredServerEnv("AUTH_SECRET");
 }
 
 function base64UrlEncode(input: string) {

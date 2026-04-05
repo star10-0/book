@@ -1,0 +1,13 @@
+title = "book gitleaks config"
+
+[extend]
+useDefault = true
+
+[allowlist]
+description = "allow known non-sensitive test placeholders only"
+
+regexes = [
+  '''secret-key''',
+  '''test-secret''',
+  '''token-1''',
+]

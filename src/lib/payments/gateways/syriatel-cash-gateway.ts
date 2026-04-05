@@ -1,3 +1,4 @@
+import "server-only";
 import { PaymentProvider } from "@prisma/client";
 import { logInfo } from "@/lib/observability/logger";
 import { createMockPaymentResult, verifyMockPaymentResult } from "@/lib/payments/gateways/mock-payment-gateway";
@@ -11,6 +12,7 @@ import {
   safeLogProviderResponse,
   sanitizeForLogs,
 } from "@/lib/payments/gateways/provider-http";
+import { readOptionalServerEnv } from "@/lib/env";
 import { getSyriatelCashIntegrationConfig } from "@/lib/payments/gateways/provider-integration";
 import type {
   CreatePaymentGatewayInput,
@@ -100,7 +102,7 @@ function formatMinorAmountForReason(amountCents: number): string {
 }
 
 function isCurrencyRequiredForSyriatelVerify() {
-  const configured = process.env.SYRIATEL_CASH_REQUIRE_CURRENCY_ON_VERIFY?.trim().toLowerCase();
+  const configured = readOptionalServerEnv("SYRIATEL_CASH_REQUIRE_CURRENCY_ON_VERIFY")?.toLowerCase();
   return configured === "1" || configured === "true" || configured === "yes";
 }
 

@@ -1,3 +1,4 @@
+import "server-only";
 import {
   getLiveProvidersEnvKey,
   getMissingLiveEnvKeys,
@@ -30,6 +31,19 @@ function readEnv(key: string): string | undefined {
 
   const trimmed = value.trim();
   return trimmed.length > 0 ? trimmed : undefined;
+}
+
+export function readOptionalServerEnv(key: string): string | undefined {
+  return readEnv(key);
+}
+
+export function readRequiredServerEnv(key: string): string {
+  const value = readEnv(key);
+  if (!value) {
+    throw new Error(`Missing required environment variable: ${key}`);
+  }
+
+  return value;
 }
 
 export function getNodeEnv(): RuntimeEnvironment {

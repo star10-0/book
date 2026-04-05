@@ -1,4 +1,6 @@
+import "server-only";
 import { createHmac, randomUUID, timingSafeEqual } from "node:crypto";
+import { readOptionalServerEnv, readRequiredServerEnv } from "@/lib/env";
 
 export type ProtectedDisposition = "inline" | "attachment";
 
@@ -13,17 +15,15 @@ type ProtectedAssetTokenPayload = {
 };
 
 function getSigningSecret() {
-  const secret = process.env.AUTH_SECRET?.trim();
-  if (!secret) {
+  try {
+    return readRequiredServerEnv("AUTH_SECRET");
+  } catch {
     throw new Error("AUTH_SECRET is required for content-protection token signing.");
   }
-
-  return secret;
 }
 
 function getSigningSecretOrNull() {
-  const secret = process.env.AUTH_SECRET?.trim();
-  return secret && secret.length > 0 ? secret : null;
+  return readOptionalServerEnv("AUTH_SECRET") ?? null;
 }
 
 function base64UrlEncode(input: string) {

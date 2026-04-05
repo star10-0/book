@@ -1,3 +1,4 @@
+import "server-only";
 import { randomUUID } from "node:crypto";
 import { redactSensitiveData } from "@/lib/observability/redaction";
 

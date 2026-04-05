@@ -1,11 +1,13 @@
+import "server-only";
+import { readOptionalServerEnv } from "@/lib/env";
 export type MetricsAuthDecision =
   | { ok: true }
   | { ok: false; status: 401; reason: "UNAUTHORIZED" }
   | { ok: false; status: 503; reason: "TOKEN_UNSET_IN_PRODUCTION" };
 
 export function evaluateMetricsAuth(request: Request): MetricsAuthDecision {
-  const expected = process.env.METRICS_TOKEN?.trim();
-  const isProduction = process.env.NODE_ENV === "production";
+  const expected = readOptionalServerEnv("METRICS_TOKEN");
+  const isProduction = readOptionalServerEnv("NODE_ENV") === "production";
 
   if (!expected) {
     if (isProduction) {
