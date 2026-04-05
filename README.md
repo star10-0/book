@@ -72,7 +72,7 @@
    - `CONTENT_ADMIN`
 
    Notes:
-   - Existing admins without explicit scopes keep legacy full-access behavior for backward compatibility.
+   - Admins without explicit scopes are denied scope-gated operations by default.
    - The admin bootstrap command now creates the first admin with `SUPER_ADMIN`.
    - Payments, support/user interventions, curriculum/content operations, and CSV report exports can be guarded by scope-specific checks.
    - `BREAK_GLASS_PAYMENT_ADMIN` should be granted only to a tiny emergency-only group and is required for force-grant settlement bypass operations.

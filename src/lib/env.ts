@@ -130,6 +130,14 @@ function validateEnvironment(): EnvIssue[] {
     });
   }
 
+  if (nodeEnv === "production" && Object.prototype.hasOwnProperty.call(process.env, "ADMIN_SCOPES_LEGACY_ALLOW_EMPTY")) {
+    issues.push({
+      severity: "error",
+      key: "ADMIN_SCOPES_LEGACY_ALLOW_EMPTY",
+      message: "ADMIN_SCOPES_LEGACY_ALLOW_EMPTY has been removed and must not be set in production.",
+    });
+  }
+
   if (nodeEnv === "production") {
     const kvUrl = readEnv("KV_REST_API_URL") ?? readEnv("UPSTASH_REDIS_REST_URL");
     const kvToken = readEnv("KV_REST_API_TOKEN") ?? readEnv("UPSTASH_REDIS_REST_TOKEN");

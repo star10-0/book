@@ -58,33 +58,15 @@ test("canManageCreatorBook enforces creator ownership boundaries", () => {
 
 test("hasAdminScope denies empty scopes by default", () => {
   assert.equal(hasAdminScope({ adminScopes: [], required: "PAYMENT_ADMIN" as AdminScope }), false);
+  assert.equal(hasAdminScope({ adminScopes: [], required: "BREAK_GLASS_PAYMENT_ADMIN" as AdminScope }), false);
 });
 
-test("hasAdminScope preserves SUPER_ADMIN and explicit scope semantics", () => {
+test("hasAdminScope allows SUPER_ADMIN for any required admin scope", () => {
   assert.equal(hasAdminScope({ adminScopes: ["SUPER_ADMIN" as AdminScope], required: "CONTENT_ADMIN" as AdminScope }), true);
+});
+
+test("hasAdminScope allows explicit matching scope and denies non-matching scope", () => {
   assert.equal(hasAdminScope({ adminScopes: ["PAYMENT_ADMIN" as AdminScope], required: "PAYMENT_ADMIN" as AdminScope }), true);
   assert.equal(hasAdminScope({ adminScopes: ["BREAK_GLASS_PAYMENT_ADMIN" as AdminScope], required: "BREAK_GLASS_PAYMENT_ADMIN" as AdminScope }), true);
   assert.equal(hasAdminScope({ adminScopes: ["SUPPORT_ADMIN" as AdminScope], required: "PAYMENT_ADMIN" as AdminScope }), false);
-});
-
-test("hasAdminScope allows legacy empty scopes only with explicit fallback flag", () => {
-  assert.equal(
-    hasAdminScope({
-      adminScopes: [],
-      required: "PAYMENT_ADMIN" as AdminScope,
-      allowLegacyEmptyScopesFallback: true,
-    }),
-    true,
-  );
-});
-
-test("hasAdminScope never grants break-glass scope through legacy empty-scope fallback", () => {
-  assert.equal(
-    hasAdminScope({
-      adminScopes: [],
-      required: "BREAK_GLASS_PAYMENT_ADMIN" as AdminScope,
-      allowLegacyEmptyScopesFallback: true,
-    }),
-    false,
-  );
 });
