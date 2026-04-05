@@ -24,8 +24,8 @@ export async function POST(request: Request) {
 
   const rateLimit = await enforceRateLimit({ key: `payments:create:${clientIp}`, limit: 40, windowMs: 60_000, requireDistributedInProduction: true });
   if (!rateLimit.allowed) {
-    if (rateLimit.reason === "RATE_LIMIT_BACKEND_UNAVAILABLE") {
-      return rejectRateLimitUnavailable();
+    if (rateLimit.reason === "RATE_LIMIT_BACKEND_UNAVAILABLE" || rateLimit.reason === "RATE_LIMIT_ENV_MISCONFIG") {
+      return rejectRateLimitUnavailable(rateLimit.reason);
     }
     return rejectRateLimited(rateLimit.retryAfterSeconds);
   }
