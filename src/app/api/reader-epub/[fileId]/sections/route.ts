@@ -14,6 +14,7 @@ import { prisma } from "@/lib/prisma";
 import { jsonNoStore } from "@/lib/security";
 import { verifyProtectedAssetToken } from "@/lib/security/content-protection";
 import { logUserSecurityEvent } from "@/lib/security/suspicious-activity";
+import { sanitizeReaderHtml } from "@/lib/security/html-sanitizer";
 
 export const runtime = "nodejs";
 
@@ -208,7 +209,13 @@ print(json.dumps({'sections': sections}, ensure_ascii=False))
   });
 
   const parsed = JSON.parse(stdout) as { sections?: EpubSection[] };
-  return Array.isArray(parsed.sections) ? parsed.sections : [];
+  const sections = Array.isArray(parsed.sections) ? parsed.sections : [];
+
+  return sections.map((section) => ({
+    ...section,
+    title: section.title.trim() || "فصل بدون عنوان",
+    bodyHtml: sanitizeReaderHtml(section.bodyHtml),
+  }));
 }
 
 export async function GET(request: Request, { params }: ReaderEpubSectionsRouteParams) {

@@ -13,7 +13,17 @@ type ProtectedAssetTokenPayload = {
 };
 
 function getSigningSecret() {
-  return process.env.AUTH_SECRET?.trim() || "book-dev-content-protection-secret";
+  const secret = process.env.AUTH_SECRET?.trim();
+  if (!secret) {
+    throw new Error("AUTH_SECRET is required for content-protection token signing.");
+  }
+
+  return secret;
+}
+
+function getSigningSecretOrNull() {
+  const secret = process.env.AUTH_SECRET?.trim();
+  return secret && secret.length > 0 ? secret : null;
 }
 
 function base64UrlEncode(input: string) {
@@ -26,6 +36,10 @@ function base64UrlDecode(input: string) {
 
 function sign(encodedPayload: string) {
   return createHmac("sha256", getSigningSecret()).update(encodedPayload).digest("base64url");
+}
+
+function signWithSecret(encodedPayload: string, secret: string) {
+  return createHmac("sha256", secret).update(encodedPayload).digest("base64url");
 }
 
 function secureEqual(left: string, right: string) {
@@ -78,7 +92,12 @@ export function verifyProtectedAssetToken(input: {
     return { valid: false as const, reason: "MALFORMED_TOKEN" as const };
   }
 
-  if (!secureEqual(sign(encoded), signature)) {
+  const secret = getSigningSecretOrNull();
+  if (!secret) {
+    return { valid: false as const, reason: "SIGNING_SECRET_UNSET" as const };
+  }
+
+  if (!secureEqual(signWithSecret(encoded, secret), signature)) {
     return { valid: false as const, reason: "INVALID_SIGNATURE" as const };
   }
 

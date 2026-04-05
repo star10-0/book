@@ -10,6 +10,15 @@ import {
 } from "@/lib/orders/create-order";
 import { prisma } from "@/lib/prisma";
 import { enforceRateLimit, isSameOriginMutation, jsonNoStore, rejectCrossOriginMutation, rejectRateLimitUnavailable, rejectRateLimited } from "@/lib/security";
+import { buildPendingOrderAdvisoryLockKeys } from "@/lib/orders/pending-order-lock";
+
+async function lockPendingOrderSlot(tx: Prisma.TransactionClient, input: { userId: string; offerId: string }) {
+  const [keyA, keyB] = buildPendingOrderAdvisoryLockKeys(input);
+
+  await tx.$executeRaw`
+    SELECT pg_advisory_xact_lock(${keyA}, ${keyB});
+  `;
+}
 
 export async function POST(request: Request) {
   const requestId = getRequestId(request);
@@ -56,79 +65,73 @@ export async function POST(request: Request) {
   try {
     const now = new Date();
 
-    const offer = await prisma.bookOffer.findFirst({
-      where: {
-        id: validation.data.offerId,
-        bookId: validation.data.bookId,
-      },
-      include: {
-        book: {
-          select: {
-            id: true,
-            titleAr: true,
-            status: true,
-            format: true,
-          },
-        },
-      },
-    });
-
-    if (!offer || !isOfferCurrentlyAvailable(offer, now)) {
-      return jsonNoStore({ message: "العرض المحدد غير متاح حالياً." }, { status: 404 });
-    }
-
-    if (offer.priceCents < 0) {
-      return jsonNoStore({ message: "سعر العرض غير صالح حالياً. يرجى اختيار عرض آخر." }, { status: 409 });
-    }
-
-    const [activeGrant, existingPendingOrder] = await Promise.all([
-      prisma.accessGrant.findFirst({
+    const result = await prisma.$transaction(async (tx) => {
+      const offer = await tx.bookOffer.findFirst({
         where: {
-          userId: user.id,
-          bookId: offer.bookId,
-          type: mapOfferTypeToAccessGrantType(offer.type),
-          status: "ACTIVE",
-          OR: [{ expiresAt: null }, { expiresAt: { gt: now } }],
+          id: validation.data.offerId,
+          bookId: validation.data.bookId,
         },
-        select: { id: true },
-      }),
-      prisma.order.findFirst({
-        where: {
-          userId: user.id,
-          status: "PENDING",
-          items: {
-            some: {
-              offerId: offer.id,
-              bookId: offer.bookId,
+        include: {
+          book: {
+            select: {
+              id: true,
+              titleAr: true,
+              status: true,
+              format: true,
             },
           },
         },
-        select: { id: true },
-      }),
-    ]);
+      });
 
-    if (activeGrant) {
-      return jsonNoStore({ message: "تملك وصولاً نشطاً لهذا العرض بالفعل." }, { status: 409 });
-    }
+      if (!offer || !isOfferCurrentlyAvailable(offer, now)) {
+        return { type: "OFFER_UNAVAILABLE" as const };
+      }
 
-    if (existingPendingOrder) {
-      return jsonNoStore(
-        {
-          message: "لديك طلب معلّق لهذا العرض مسبقاً.",
-          order: { id: existingPendingOrder.id },
-          checkoutUrl: `/checkout/${existingPendingOrder.id}`,
-          summaryUrl: `/orders/${existingPendingOrder.id}/summary`,
-        },
-        { status: 200 },
-      );
-    }
+      if (offer.priceCents < 0) {
+        return { type: "INVALID_OFFER_PRICE" as const };
+      }
 
-    const totals = calculateOrderTotals({ subtotalCents: offer.priceCents });
-    if (!totals) {
-      return jsonNoStore({ message: "تعذر تسعير هذا العرض حالياً." }, { status: 409 });
-    }
+      await lockPendingOrderSlot(tx, { userId: user.id, offerId: offer.id });
 
-    const createdOrder = await prisma.$transaction(async (tx) => {
+      const [activeGrant, existingPendingOrder] = await Promise.all([
+        tx.accessGrant.findFirst({
+          where: {
+            userId: user.id,
+            bookId: offer.bookId,
+            type: mapOfferTypeToAccessGrantType(offer.type),
+            status: "ACTIVE",
+            OR: [{ expiresAt: null }, { expiresAt: { gt: now } }],
+          },
+          select: { id: true },
+        }),
+        tx.order.findFirst({
+          where: {
+            userId: user.id,
+            status: "PENDING",
+            items: {
+              some: {
+                offerId: offer.id,
+                bookId: offer.bookId,
+              },
+            },
+          },
+          select: { id: true },
+        }),
+      ]);
+
+      if (activeGrant) {
+        return { type: "ALREADY_GRANTED" as const };
+      }
+
+      if (existingPendingOrder) {
+        return { type: "PENDING_EXISTS" as const, orderId: existingPendingOrder.id };
+      }
+
+      const totals = calculateOrderTotals({ subtotalCents: offer.priceCents });
+      if (!totals) {
+        return { type: "PRICING_UNAVAILABLE" as const };
+      }
+
       const order = await tx.order.create({
         data: {
           userId: user.id,
@@ -153,18 +156,46 @@ export async function POST(request: Request) {
         },
       });
 
-      return order;
+      return { type: "CREATED" as const, order };
     });
+
+    if (result.type === "OFFER_UNAVAILABLE") {
+      return jsonNoStore({ message: "العرض المحدد غير متاح حالياً." }, { status: 404 });
+    }
+
+    if (result.type === "INVALID_OFFER_PRICE") {
+      return jsonNoStore({ message: "سعر العرض غير صالح حالياً. يرجى اختيار عرض آخر." }, { status: 409 });
+    }
+
+    if (result.type === "ALREADY_GRANTED") {
+      return jsonNoStore({ message: "تملك وصولاً نشطاً لهذا العرض بالفعل." }, { status: 409 });
+    }
+
+    if (result.type === "PENDING_EXISTS") {
+      return jsonNoStore(
+        {
+          message: "لديك طلب معلّق لهذا العرض مسبقاً.",
+          order: { id: result.orderId },
+          checkoutUrl: `/checkout/${result.orderId}`,
+          summaryUrl: `/orders/${result.orderId}/summary`,
+        },
+        { status: 200 },
+      );
+    }
+
+    if (result.type === "PRICING_UNAVAILABLE") {
+      return jsonNoStore({ message: "تعذر تسعير هذا العرض حالياً." }, { status: 409 });
+    }
 
     return jsonNoStore(
       {
         message: "تم إنشاء الطلب بنجاح.",
         order: {
-          id: createdOrder.id,
-          status: createdOrder.status,
-          totalCents: createdOrder.totalCents,
-          currency: createdOrder.currency,
-          items: createdOrder.items.map((item) => ({
+          id: result.order.id,
+          status: result.order.status,
+          totalCents: result.order.totalCents,
+          currency: result.order.currency,
+          items: result.order.items.map((item) => ({
             id: item.id,
             titleSnapshot: item.titleSnapshot,
             offerType: item.offerType,
@@ -172,8 +203,8 @@ export async function POST(request: Request) {
             rentalDays: item.rentalDays,
           })),
         },
-        checkoutUrl: `/checkout/${createdOrder.id}`,
-        summaryUrl: `/orders/${createdOrder.id}/summary`,
+        checkoutUrl: `/checkout/${result.order.id}`,
+        summaryUrl: `/orders/${result.order.id}/summary`,
       },
       { status: 201 },
     );
