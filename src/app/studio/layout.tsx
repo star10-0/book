@@ -1,9 +1,17 @@
+import type { Metadata } from "next";
 import type { ReactNode } from "react";
 import { StudioSidebar } from "@/components/studio/studio-sidebar";
 import { requireUser } from "@/lib/auth-session";
 
 type StudioLayoutProps = {
   children: ReactNode;
+};
+
+export const metadata: Metadata = {
+  robots: {
+    index: false,
+    follow: false,
+  },
 };
 
 export default async function StudioLayout({ children }: StudioLayoutProps) {
