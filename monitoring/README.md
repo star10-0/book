@@ -77,6 +77,25 @@ POSTGRES_EXPORTER_DSN=postgresql://user:pass@host:5432/dbname?sslmode=require
 
 Put Grafana and Uptime Kuma behind your reverse proxy + auth controls.
 
+## Metrics endpoint authentication
+
+When `METRICS_TOKEN` is configured, `GET /api/metrics` accepts only:
+
+- `Authorization: Bearer <METRICS_TOKEN>`
+
+Query-string credentials such as `?token=...` are intentionally unsupported.
+
+When `METRICS_TOKEN` is not configured:
+
+- Production (`NODE_ENV=production`): endpoint returns `503` (fail closed)
+- Non-production: endpoint is open for local/developer scraping
+
+Example:
+
+```bash
+curl -H "Authorization: Bearer ${METRICS_TOKEN}" https://<app-domain>/api/metrics
+```
+
 ## What is monitored
 
 - App up/down and health endpoint status

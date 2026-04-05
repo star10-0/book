@@ -10,6 +10,8 @@ export function evaluateMetricsAuth(request: Request): MetricsAuthDecision {
   const isProduction = readOptionalServerEnv("NODE_ENV") === "production";
 
   if (!expected) {
+    // Explicitly intended developer ergonomics:
+    // when METRICS_TOKEN is unset outside production, allow local/dev scraping.
     if (isProduction) {
       return { ok: false, status: 503, reason: "TOKEN_UNSET_IN_PRODUCTION" };
     }
@@ -18,9 +20,8 @@ export function evaluateMetricsAuth(request: Request): MetricsAuthDecision {
   }
 
   const headerToken = request.headers.get("authorization")?.replace(/^Bearer\s+/i, "").trim();
-  const queryToken = new URL(request.url).searchParams.get("token")?.trim();
 
-  if (headerToken === expected || queryToken === expected) {
+  if (headerToken === expected) {
     return { ok: true };
   }
 

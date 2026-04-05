@@ -39,3 +39,14 @@ test("metrics auth requires matching token when configured", () => {
 
   process.env = original;
 });
+
+test("metrics auth rejects query-string token when configured", () => {
+  const original = { ...process.env };
+  Object.assign(process.env, { NODE_ENV: "production" });
+  process.env.METRICS_TOKEN = "token-1";
+
+  const queryTokenAttempt = evaluateMetricsAuth(new Request("https://book.local/api/metrics?token=token-1"));
+  assert.deepEqual(queryTokenAttempt, { ok: false, status: 401, reason: "UNAUTHORIZED" });
+
+  process.env = original;
+});
