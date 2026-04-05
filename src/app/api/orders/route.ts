@@ -16,7 +16,7 @@ async function lockPendingOrderSlot(tx: Prisma.TransactionClient, input: { userI
   const [keyA, keyB] = buildPendingOrderAdvisoryLockKeys(input);
 
   await tx.$executeRaw`
-    SELECT pg_advisory_xact_lock(${keyA}, ${keyB});
+    SELECT pg_advisory_xact_lock(${keyA}::int4, ${keyB}::int4);
   `;
 }
 
