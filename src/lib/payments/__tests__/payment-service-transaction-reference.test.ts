@@ -94,3 +94,30 @@ test("H) reconcile candidate ignores paid attempts to avoid double grant", () =>
 
   assert.equal(candidate?.id, "a2");
 });
+
+test("I) canonical transaction reference normalization trims and lowercases new submissions", () => {
+  const canonical = __paymentServiceInternals.normalizeTransactionReference("  AbC-123  ");
+  assert.equal(canonical, "abc-123");
+});
+
+test("J) legacy requestPayload transaction reference is still resolved for reconciliation", () => {
+  const canonical = __paymentServiceInternals.resolveCanonicalTransactionReference({
+    transactionReference: null,
+    requestPayload: {
+      transactionReference: "  Legacy-Tx-77 ",
+    },
+  });
+
+  assert.equal(canonical, "legacy-tx-77");
+});
+
+test("K) dedicated transactionReference column takes precedence over legacy payload", () => {
+  const canonical = __paymentServiceInternals.resolveCanonicalTransactionReference({
+    transactionReference: "  NEW-CANONICAL-REF ",
+    requestPayload: {
+      transactionReference: "old-legacy-ref",
+    },
+  });
+
+  assert.equal(canonical, "new-canonical-ref");
+});
