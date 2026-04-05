@@ -2,6 +2,7 @@ import "server-only";
 
 import { Prisma } from "@prisma/client";
 import { revalidatePath } from "next/cache";
+import { createAdminAuditLog } from "@/lib/admin/audit-log";
 import { requireCurriculumAdmin } from "@/lib/curriculum/permissions";
 import { prisma } from "@/lib/prisma";
 
@@ -62,11 +63,17 @@ function isUniqueConstraintError(error: unknown) {
 }
 
 export async function createCurriculumLevel(input: CurriculumLevelInput) {
-  await requireCurriculumAdmin();
+  const admin = await requireCurriculumAdmin();
   const values = validateLevelInput(input);
 
   try {
     const level = await prisma.curriculumLevel.create({ data: values });
+    await createAdminAuditLog({
+      actorAdminId: admin.id,
+      action: "CURRICULUM_MUTATION",
+      reason: "create curriculum level",
+      metadata: { operation: "create_level", levelId: level.id, slug: level.slug },
+    });
     revalidatePath("/admin/curriculum");
     return level;
   } catch (error) {
@@ -79,13 +86,19 @@ export async function createCurriculumLevel(input: CurriculumLevelInput) {
 }
 
 export async function updateCurriculumLevel(levelId: string, input: CurriculumLevelInput) {
-  await requireCurriculumAdmin();
+  const admin = await requireCurriculumAdmin();
   const values = validateLevelInput(input);
 
   try {
     const level = await prisma.curriculumLevel.update({
       where: { id: levelId },
       data: values,
+    });
+    await createAdminAuditLog({
+      actorAdminId: admin.id,
+      action: "CURRICULUM_MUTATION",
+      reason: "update curriculum level",
+      metadata: { operation: "update_level", levelId, slug: level.slug },
     });
 
     revalidatePath("/admin/curriculum");
@@ -101,11 +114,17 @@ export async function updateCurriculumLevel(levelId: string, input: CurriculumLe
 }
 
 export async function deleteCurriculumLevelSafely(levelId: string) {
-  await requireCurriculumAdmin();
+  const admin = await requireCurriculumAdmin();
 
   await prisma.$transaction(async (tx) => {
     await tx.curriculumLevelBook.deleteMany({ where: { curriculumLevelId: levelId } });
     await tx.curriculumLevel.delete({ where: { id: levelId } });
+  });
+  await createAdminAuditLog({
+    actorAdminId: admin.id,
+    action: "CURRICULUM_MUTATION",
+    reason: "delete curriculum level",
+    metadata: { operation: "delete_level", levelId },
   });
 
   revalidatePath("/admin/curriculum");
@@ -127,6 +146,12 @@ export async function attachBookToCurriculumLevel(input: {
         addedByAdminId: admin.id,
       },
     });
+    await createAdminAuditLog({
+      actorAdminId: admin.id,
+      action: "CURRICULUM_MUTATION",
+      reason: "attach book to curriculum level",
+      metadata: { operation: "attach_book", curriculumLevelId: input.curriculumLevelId, bookId: input.bookId, linkId: link.id },
+    });
 
     revalidatePath("/admin/curriculum");
     revalidatePath(`/admin/curriculum/${input.curriculumLevelId}`);
@@ -141,7 +166,7 @@ export async function attachBookToCurriculumLevel(input: {
 }
 
 export async function detachBookFromCurriculumLevel(input: { curriculumLevelId: string; bookId: string }) {
-  await requireCurriculumAdmin();
+  const admin = await requireCurriculumAdmin();
 
   await prisma.curriculumLevelBook.deleteMany({
     where: {
@@ -149,13 +174,19 @@ export async function detachBookFromCurriculumLevel(input: { curriculumLevelId: 
       bookId: input.bookId,
     },
   });
+  await createAdminAuditLog({
+    actorAdminId: admin.id,
+    action: "CURRICULUM_MUTATION",
+    reason: "detach book from curriculum level",
+    metadata: { operation: "detach_book", curriculumLevelId: input.curriculumLevelId, bookId: input.bookId },
+  });
 
   revalidatePath("/admin/curriculum");
   revalidatePath(`/admin/curriculum/${input.curriculumLevelId}`);
 }
 
 export async function reorderCurriculumLevels(items: ReorderLevelInput[]) {
-  await requireCurriculumAdmin();
+  const admin = await requireCurriculumAdmin();
 
   await prisma.$transaction(
     items.map((item) =>
@@ -165,12 +196,18 @@ export async function reorderCurriculumLevels(items: ReorderLevelInput[]) {
       }),
     ),
   );
+  await createAdminAuditLog({
+    actorAdminId: admin.id,
+    action: "CURRICULUM_MUTATION",
+    reason: "reorder curriculum levels",
+    metadata: { operation: "reorder_levels", count: items.length },
+  });
 
   revalidatePath("/admin/curriculum");
 }
 
 export async function reorderCurriculumLevelBooks(items: ReorderLevelBookInput[]) {
-  await requireCurriculumAdmin();
+  const admin = await requireCurriculumAdmin();
 
   await prisma.$transaction(
     items.map((item) =>
@@ -180,6 +217,12 @@ export async function reorderCurriculumLevelBooks(items: ReorderLevelBookInput[]
       }),
     ),
   );
+  await createAdminAuditLog({
+    actorAdminId: admin.id,
+    action: "CURRICULUM_MUTATION",
+    reason: "reorder curriculum level books",
+    metadata: { operation: "reorder_level_books", count: items.length },
+  });
 
   revalidatePath("/admin/curriculum");
 }

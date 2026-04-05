@@ -4,6 +4,7 @@ import { BookStatus } from "@prisma/client";
 import { revalidatePath } from "next/cache";
 import { redirect } from "next/navigation";
 import { requireAdmin } from "@/lib/auth-session";
+import { createAdminAuditLog } from "@/lib/admin/audit-log";
 import { prisma } from "@/lib/prisma";
 import {
   buildAccessSettingsFromPolicy,
@@ -22,7 +23,7 @@ export type BookFormState = {
 };
 
 export async function createBookAction(_prevState: BookFormState, formData: FormData): Promise<BookFormState> {
-  await requireAdmin({ callbackUrl: "/admin/books/new" });
+  const admin = await requireAdmin({ callbackUrl: "/admin/books/new" });
 
   const values = buildBookValues(formData, {
     publicationStatus: "draft",
@@ -49,6 +50,12 @@ export async function createBookAction(_prevState: BookFormState, formData: Form
     },
     select: { id: true },
   });
+  await createAdminAuditLog({
+    actorAdminId: admin.id,
+    action: "BOOK_MUTATION",
+    reason: "create book",
+    metadata: { operation: "create", bookId: book.id, titleAr: values.titleAr },
+  });
 
   revalidatePath("/admin/books");
   revalidatePath("/books");
@@ -65,7 +72,7 @@ export async function updateAdminBookTextContentAction(
   _prevState: AdminBookTextContentState,
   formData: FormData,
 ): Promise<AdminBookTextContentState> {
-  await requireAdmin({ callbackUrl: `/admin/books/${bookId}/edit` });
+  const admin = await requireAdmin({ callbackUrl: `/admin/books/${bookId}/edit` });
 
   const parsed = parseTextContentForm(formData);
   if (parsed.error) {
@@ -78,6 +85,12 @@ export async function updateAdminBookTextContentAction(
       textContent: parsed.textContent || null,
     },
   });
+  await createAdminAuditLog({
+    actorAdminId: admin.id,
+    action: "BOOK_MUTATION",
+    reason: "update book text content",
+    metadata: { operation: "update_text_content", bookId, textUpdated: Boolean(parsed.textContent) },
+  });
 
   revalidatePath(`/admin/books/${bookId}/edit`);
   revalidatePath("/admin/books");
@@ -89,7 +102,7 @@ export async function updateAdminBookTextContentAction(
 }
 
 export async function updateBookAction(bookId: string, _prevState: BookFormState, formData: FormData): Promise<BookFormState> {
-  await requireAdmin({ callbackUrl: `/admin/books/${bookId}/edit` });
+  const admin = await requireAdmin({ callbackUrl: `/admin/books/${bookId}/edit` });
 
   const values = buildBookValues(formData, {
     publicationStatus: "draft",
@@ -120,6 +133,12 @@ export async function updateBookAction(bookId: string, _prevState: BookFormState
       offers: buildBookOffersReplaceData(validation.data),
     },
   });
+  await createAdminAuditLog({
+    actorAdminId: admin.id,
+    action: "BOOK_MUTATION",
+    reason: "update book",
+    metadata: { operation: "update", bookId, status: validation.data.status },
+  });
 
   revalidatePath("/admin/books");
   revalidatePath(`/admin/books/${bookId}/edit`);
@@ -135,21 +154,31 @@ export async function updateBookAction(bookId: string, _prevState: BookFormState
 }
 
 export async function deleteBookAction(formData: FormData) {
-  await requireAdmin({ callbackUrl: "/admin/books" });
+  const admin = await requireAdmin({ callbackUrl: "/admin/books" });
 
   const bookId = formData.get("bookId");
 
+  const deleteReason = String(formData.get("deleteReason") ?? "").trim();
+  const confirmationText = String(formData.get("confirmationText") ?? "").trim();
+  const expected = "DELETE";
   if (typeof bookId !== "string" || !bookId) {
     return;
   }
+  if (deleteReason.length < 8 || confirmationText !== expected) return;
 
   await prisma.book.delete({ where: { id: bookId } });
+  await createAdminAuditLog({
+    actorAdminId: admin.id,
+    action: "BOOK_MUTATION",
+    reason: deleteReason,
+    metadata: { operation: "delete", bookId },
+  });
   revalidatePath("/admin/books");
   revalidatePath("/books");
 }
 
 export async function publishBookAction(formData: FormData) {
-  await requireAdmin({ callbackUrl: "/admin/books" });
+  const admin = await requireAdmin({ callbackUrl: "/admin/books" });
 
   const bookId = formData.get("bookId");
 
@@ -158,12 +187,18 @@ export async function publishBookAction(formData: FormData) {
   }
 
   await prisma.book.update({ where: { id: bookId }, data: { status: BookStatus.PUBLISHED } });
+  await createAdminAuditLog({
+    actorAdminId: admin.id,
+    action: "BOOK_MUTATION",
+    reason: "publish book",
+    metadata: { operation: "publish", bookId },
+  });
   revalidatePath("/admin/books");
   revalidatePath("/books");
 }
 
 export async function unpublishBookAction(formData: FormData) {
-  await requireAdmin({ callbackUrl: "/admin/books" });
+  const admin = await requireAdmin({ callbackUrl: "/admin/books" });
 
   const bookId = formData.get("bookId");
 
@@ -172,6 +207,12 @@ export async function unpublishBookAction(formData: FormData) {
   }
 
   await prisma.book.update({ where: { id: bookId }, data: { status: BookStatus.DRAFT } });
+  await createAdminAuditLog({
+    actorAdminId: admin.id,
+    action: "BOOK_MUTATION",
+    reason: "unpublish book",
+    metadata: { operation: "unpublish", bookId },
+  });
   revalidatePath("/admin/books");
   revalidatePath("/books");
 }

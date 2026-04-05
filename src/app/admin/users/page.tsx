@@ -69,8 +69,8 @@ export default async function AdminUsersPage({ searchParams }: AdminUsersPagePro
           { key: "trustedDevices", title: "أجهزة موثوقة", render: (row) => row.trustedDevicesCount.toLocaleString("ar-SY") },
           {
             key: "activeDevices",
-            title: "أجهزة نشطة",
-            render: (row) => (typeof row.activeDevicesCount === "number" ? row.activeDevicesCount.toLocaleString("ar-SY") : "—"),
+            title: "أجهزة نشطة (غير متاح)",
+            render: (row) => (typeof row.activeDevicesCount === "number" ? row.activeDevicesCount.toLocaleString("ar-SY") : "غير متاح حالياً"),
           },
           {
             key: "lastSeen",

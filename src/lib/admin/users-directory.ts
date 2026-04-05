@@ -113,6 +113,7 @@ const defaultDeps: UsersDirectoryDeps = {
       ordersCount: user._count.orders,
       accessGrantsCount: user._count.accessGrants,
       trustedDevicesCount: user._count.trustedDevices,
+      // This metric is intentionally unavailable until live device-session telemetry is implemented.
       activeDevicesCount: null,
     }));
   },

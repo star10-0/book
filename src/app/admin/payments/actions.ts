@@ -38,7 +38,9 @@ export async function retryVerifyPaymentAction(formData: FormData) {
   const attemptId = val(formData, "attemptId");
   const userId = val(formData, "userId");
   const reason = val(formData, "reason");
-  if (!attemptId || !userId || !isAuditReasonValid(reason)) return;
+  if (!attemptId || !userId || !isAuditReasonValid(reason)) {
+    return;
+  }
 
   const result = await verifyPayment({ attemptId, userId });
   await audit(admin.id, "PAYMENT_RETRY_VERIFY", attemptId, reason || "retry verify", {
@@ -47,6 +49,7 @@ export async function retryVerifyPaymentAction(formData: FormData) {
 
   revalidatePath("/admin/payments");
   revalidatePath(`/admin/payments/${attemptId}`);
+  return;
 }
 
 export async function reconcileByTxAction(formData: FormData) {
@@ -56,7 +59,9 @@ export async function reconcileByTxAction(formData: FormData) {
   const transactionReference = val(formData, "transactionReference");
   const reason = val(formData, "reason");
 
-  if (!attemptId || !userId || !transactionReference || !isAuditReasonValid(reason)) return;
+  if (!attemptId || !userId || !transactionReference || !isAuditReasonValid(reason)) {
+    return;
+  }
 
   const result = await reconcilePaymentByTransactionReference({ attemptId, userId, transactionReference });
   await audit(admin.id, "PAYMENT_RECONCILE_BY_TX", attemptId, reason || "reconcile by tx", {
@@ -66,6 +71,7 @@ export async function reconcileByTxAction(formData: FormData) {
 
   revalidatePath("/admin/payments");
   revalidatePath(`/admin/payments/${attemptId}`);
+  return;
 }
 
 export async function forceGrantPaymentAccessAction(formData: FormData) {
@@ -73,11 +79,22 @@ export async function forceGrantPaymentAccessAction(formData: FormData) {
   const attemptId = val(formData, "attemptId");
   const reason = val(formData, "reason");
 
-  if (!attemptId || !isAuditReasonValid(reason)) return;
+  if (!attemptId || !isAuditReasonValid(reason)) {
+    return;
+  }
 
   const operationResult = await prisma.$transaction(async (tx) => {
     const attempt = await tx.paymentAttempt.findUnique({ where: { id: attemptId }, include: { order: true, payment: true } });
     if (!attempt) return { changed: false, alreadyGranted: false, orderId: null as string | null, reason: "attempt_not_found" };
+
+    const consistentInput = isPaymentOrderStateConsistent({
+      paymentStatus: attempt.payment.status,
+      orderStatus: attempt.order.status,
+    });
+
+    if (!consistentInput) {
+      return { changed: false, alreadyGranted: false, orderId: attempt.orderId, reason: "inconsistent_state" };
+    }
 
     const activeGrants = await tx.accessGrant.count({
       where: {
@@ -90,15 +107,6 @@ export async function forceGrantPaymentAccessAction(formData: FormData) {
     const alreadyGranted = !shouldForceGrantAccess(activeGrants);
     if (!alreadyGranted) {
       await grantAccessForPaidOrder(tx, { orderId: attempt.orderId, userId: attempt.userId, grantedAt: new Date() });
-    }
-
-    const consistentInput = isPaymentOrderStateConsistent({
-      paymentStatus: attempt.payment.status,
-      orderStatus: attempt.order.status,
-    });
-
-    if (!consistentInput) {
-      return { changed: false, alreadyGranted, orderId: attempt.orderId, reason: "inconsistent_state" };
     }
 
     await tx.payment.update({
@@ -133,20 +141,32 @@ export async function forceGrantPaymentAccessAction(formData: FormData) {
   );
   revalidatePath("/admin/payments");
   revalidatePath(`/admin/payments/${attemptId}`);
+  if (operationResult.reason === "inconsistent_state") {
+    return;
+  }
+
+  return;
 }
 
 export async function releasePaymentTxLockAction(formData: FormData) {
   const admin = await requireAdminScope("PAYMENT_ADMIN", { callbackUrl: "/admin/payments" });
   const attemptId = val(formData, "attemptId");
   const reason = val(formData, "reason");
-  if (!attemptId || !isAuditReasonValid(reason)) return;
+  if (!attemptId || !isAuditReasonValid(reason)) {
+    return;
+  }
 
   const attempt = await prisma.paymentAttempt.findUnique({
     where: { id: attemptId },
     select: { status: true },
   });
 
-  if (!attempt || !canReleaseTxLock(attempt.status)) return;
+  if (!attempt) {
+    return;
+  }
+  if (!canReleaseTxLock(attempt.status)) {
+    return;
+  }
 
   const released = await prisma.paymentAttempt.updateMany({
     where: { id: attemptId, status: attempt.status },
@@ -161,6 +181,7 @@ export async function releasePaymentTxLockAction(formData: FormData) {
 
   revalidatePath("/admin/payments");
   revalidatePath(`/admin/payments/${attemptId}`);
+  return;
 }
 
 export async function recoverStuckAttemptAction(formData: FormData) {
@@ -169,13 +190,17 @@ export async function recoverStuckAttemptAction(formData: FormData) {
   const userId = val(formData, "userId");
   const transactionReference = val(formData, "transactionReference");
   const reason = val(formData, "reason");
-  if (!attemptId || !userId || !isAuditReasonValid(reason)) return;
+  if (!attemptId || !userId || !isAuditReasonValid(reason)) {
+    return;
+  }
 
   const attempt = await prisma.paymentAttempt.findUnique({
     where: { id: attemptId },
     include: { payment: true, order: true },
   });
-  if (!attempt) return;
+  if (!attempt) {
+    return;
+  }
 
   if (
     shouldEnsureGrantForPaidState({
@@ -211,7 +236,9 @@ export async function recoverStuckAttemptAction(formData: FormData) {
       });
     });
   } else {
-    if (!canRecoverPaymentAttempt(attempt.status) && attempt.status !== "SUBMITTED") return;
+    if (!canRecoverPaymentAttempt(attempt.status) && attempt.status !== "SUBMITTED") {
+      return;
+    }
 
     await recoverPaymentAttempt({
       attemptId,
@@ -244,4 +271,5 @@ export async function recoverStuckAttemptAction(formData: FormData) {
   );
   revalidatePath("/admin/payments");
   revalidatePath(`/admin/payments/${attemptId}`);
+  return;
 }

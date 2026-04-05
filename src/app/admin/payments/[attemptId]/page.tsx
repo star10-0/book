@@ -8,6 +8,7 @@ import {
 } from "@/app/admin/payments/actions";
 import { AdminPageCard, AdminPageHeader } from "@/components/admin/admin-page";
 import { classifyPaymentIncident } from "@/lib/admin/payment-admin";
+import { requireAdminScope } from "@/lib/auth-session";
 import { formatArabicDate } from "@/lib/formatters/intl";
 import { prisma } from "@/lib/prisma";
 
@@ -47,7 +48,12 @@ function extractDiagnosticHint(payload: unknown): string | null {
   return null;
 }
 
+function canReconcileByTx(transactionReference: string) {
+  return Boolean(transactionReference.trim());
+}
+
 export default async function AdminPaymentAttemptPage({ params }: PageProps) {
+  await requireAdminScope("PAYMENT_ADMIN", { callbackUrl: "/admin/payments" });
   const { attemptId } = await params;
 
   const attempt = await prisma.paymentAttempt.findUnique({
@@ -110,10 +116,10 @@ export default async function AdminPaymentAttemptPage({ params }: PageProps) {
         ) : null}
         <div className="mt-4 grid gap-2 sm:grid-cols-2">
           <form action={retryVerifyPaymentAction} className="rounded border p-3 text-xs"><input type="hidden" name="attemptId" value={attempt.id} /><input type="hidden" name="userId" value={attempt.userId} /><input name="reason" className="mb-2 w-full rounded border px-2 py-1" placeholder="سبب التدخل" required defaultValue="manual retry verify" /><button className="rounded border px-2 py-1">إعادة تحقق</button></form>
-          <form action={reconcileByTxAction} className="rounded border p-3 text-xs"><input type="hidden" name="attemptId" value={attempt.id} /><input type="hidden" name="userId" value={attempt.userId} /><input name="transactionReference" className="mb-2 w-full rounded border px-2 py-1" required defaultValue={txRef} /><input name="reason" className="mb-2 w-full rounded border px-2 py-1" required defaultValue="manual tx reconcile" /><button className="rounded border px-2 py-1">مطابقة بالمرجع</button></form>
+          <form action={reconcileByTxAction} className="rounded border p-3 text-xs"><input type="hidden" name="attemptId" value={attempt.id} /><input type="hidden" name="userId" value={attempt.userId} /><input name="transactionReference" className="mb-2 w-full rounded border px-2 py-1" required defaultValue={txRef} /><input name="reason" className="mb-2 w-full rounded border px-2 py-1" required defaultValue="manual tx reconcile" /><button disabled={!canReconcileByTx(txRef)} className="rounded border px-2 py-1 disabled:cursor-not-allowed disabled:opacity-50">مطابقة بالمرجع</button></form>
           <form action={recoverStuckAttemptAction} className="rounded border p-3 text-xs"><input type="hidden" name="attemptId" value={attempt.id} /><input type="hidden" name="userId" value={attempt.userId} /><input name="transactionReference" className="mb-2 w-full rounded border px-2 py-1" defaultValue={txRef} placeholder="transactionReference (اختياري)" /><input name="reason" className="mb-2 w-full rounded border px-2 py-1" required defaultValue="manual attempt recovery" /><button className="rounded border px-2 py-1">استرداد محاولة عالقة</button></form>
-          <form action={forceGrantPaymentAccessAction} className="rounded border p-3 text-xs"><input type="hidden" name="attemptId" value={attempt.id} /><input name="reason" className="mb-2 w-full rounded border px-2 py-1" required placeholder="سبب إلزامي" /><button className="rounded border px-2 py-1">منح وصول قسري (مع تدقيق)</button></form>
-          <form action={releasePaymentTxLockAction} className="rounded border p-3 text-xs"><input type="hidden" name="attemptId" value={attempt.id} /><input name="reason" className="mb-2 w-full rounded border px-2 py-1" required placeholder="سبب تحرير القفل" /><button className="rounded border px-2 py-1">تحرير قفل tx</button></form>
+          <form action={forceGrantPaymentAccessAction} className="rounded border border-rose-200 bg-rose-50 p-3 text-xs"><input type="hidden" name="attemptId" value={attempt.id} /><input name="reason" className="mb-2 w-full rounded border px-2 py-1" required placeholder="سبب إلزامي ومحدد" /><button className="rounded border border-rose-300 px-2 py-1 text-rose-800">منح وصول قسري (حساس)</button></form>
+          <form action={releasePaymentTxLockAction} className="rounded border p-3 text-xs"><input type="hidden" name="attemptId" value={attempt.id} /><input name="reason" className="mb-2 w-full rounded border px-2 py-1" required placeholder="سبب تحرير القفل" /><button disabled={attempt.status !== "VERIFYING"} className="rounded border px-2 py-1 disabled:cursor-not-allowed disabled:opacity-50">تحرير قفل tx</button></form>
         </div>
       </AdminPageCard>
 

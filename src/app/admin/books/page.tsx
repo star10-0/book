@@ -201,6 +201,8 @@ export default async function AdminBooksPage({ searchParams }: AdminBooksPagePro
 
                 <form action={deleteBookAction}>
                   <input type="hidden" name="bookId" value={row.id} />
+                  <input name="deleteReason" required minLength={8} className="w-36 rounded border px-1 py-0.5 text-[11px]" placeholder="سبب الحذف" />
+                  <input name="confirmationText" required className="w-20 rounded border px-1 py-0.5 text-[11px]" placeholder="اكتب DELETE" />
                   <button type="submit" className="text-rose-700 underline underline-offset-2 hover:text-rose-500">
                     حذف
                   </button>

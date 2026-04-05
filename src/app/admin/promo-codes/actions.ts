@@ -3,6 +3,7 @@
 import { PromoCodeAppliesTo, PromoCodeAudience, PromoCodeType } from "@prisma/client";
 import { revalidatePath } from "next/cache";
 import { requireAdmin } from "@/lib/auth-session";
+import { createAdminAuditLog } from "@/lib/admin/audit-log";
 import { prisma } from "@/lib/prisma";
 
 function parseOptionalInt(value: FormDataEntryValue | null) {
@@ -63,13 +64,19 @@ export async function createPromoCodeAction(formData: FormData) {
       createdByUserId: user.id,
     },
   });
+  await createAdminAuditLog({
+    actorAdminId: user.id,
+    action: "PROMO_CODE_MUTATION",
+    reason: `create promo: ${code}`,
+    metadata: { operation: "create", code, type, audience, appliesTo },
+  });
 
   revalidatePath("/admin/promo-codes");
   revalidatePath("/checkout");
 }
 
 export async function togglePromoCodeAction(formData: FormData) {
-  await requireAdmin({ callbackUrl: "/admin/promo-codes" });
+  const admin = await requireAdmin({ callbackUrl: "/admin/promo-codes" });
 
   const promoCodeId = String(formData.get("promoCodeId") ?? "");
   if (!promoCodeId) return;
@@ -81,12 +88,18 @@ export async function togglePromoCodeAction(formData: FormData) {
     where: { id: promoCodeId },
     data: { isActive: !promo.isActive },
   });
+  await createAdminAuditLog({
+    actorAdminId: admin.id,
+    action: "PROMO_CODE_MUTATION",
+    reason: `toggle promo: ${promoCodeId}`,
+    metadata: { operation: "toggle", promoCodeId, nextActive: !promo.isActive },
+  });
 
   revalidatePath("/admin/promo-codes");
 }
 
 export async function updatePromoCodeAction(formData: FormData) {
-  await requireAdmin({ callbackUrl: "/admin/promo-codes" });
+  const admin = await requireAdmin({ callbackUrl: "/admin/promo-codes" });
 
   const promoCodeId = String(formData.get("promoCodeId") ?? "").trim();
   if (!promoCodeId) return;
@@ -118,6 +131,12 @@ export async function updatePromoCodeAction(formData: FormData) {
       organizationId: String(formData.get("organizationId") ?? "") || null,
       creatorId: String(formData.get("creatorId") ?? "") || null,
     },
+  });
+  await createAdminAuditLog({
+    actorAdminId: admin.id,
+    action: "PROMO_CODE_MUTATION",
+    reason: `update promo: ${promoCodeId}`,
+    metadata: { operation: "update", promoCodeId, code, type, audience, appliesTo },
   });
 
   revalidatePath("/admin/promo-codes");

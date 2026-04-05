@@ -55,7 +55,7 @@ test("admin users list page renders core fields and quick actions", () => {
   assert.equal(source.includes('title: "طلبات"'), true);
   assert.equal(source.includes('title: "وصول"'), true);
   assert.equal(source.includes('title: "أجهزة موثوقة"'), true);
-  assert.equal(source.includes('title: "أجهزة نشطة"'), true);
+  assert.equal(source.includes('title: "أجهزة نشطة (غير متاح)"'), true);
   assert.equal(source.includes('title: "آخر نشاط"'), true);
 
   assert.equal(source.includes("banUserAction"), true);
