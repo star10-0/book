@@ -17,6 +17,13 @@ test("force grant validates consistency before any grant mutation", () => {
   assert.equal(consistencyCheckIndex < grantMutationIndex, true);
 });
 
+test("force grant action requires break-glass scope and incident ticket input", () => {
+  const source = readFileSync("src/app/admin/payments/actions.ts", "utf8");
+  assert.equal(source.includes('requireAdminScope("BREAK_GLASS_PAYMENT_ADMIN"'), true);
+  assert.equal(source.includes('const incidentTicketId = val(formData, "incidentTicketId");'), true);
+  assert.equal(source.includes("validateBreakGlassForceGrantInput({ reason, incidentTicketId })"), true);
+});
+
 test("payments list disables misleading actions when prerequisites are missing", () => {
   const source = readFileSync("src/app/admin/payments/page.tsx", "utf8");
   assert.equal(source.includes("disabled={!canReconcileByTx"), true);
@@ -56,7 +63,8 @@ test("payment admin server actions enforce PAYMENT_ADMIN scope", () => {
     const end = source.indexOf("export async function", start + 10);
     const body = source.slice(start, end === -1 ? undefined : end);
 
-    assert.equal(body.includes('requireAdminScope("PAYMENT_ADMIN"'), true);
+    const expectedScope = actionName === "forceGrantPaymentAccessAction" ? "BREAK_GLASS_PAYMENT_ADMIN" : "PAYMENT_ADMIN";
+    assert.equal(body.includes(`requireAdminScope("${expectedScope}"`), true);
   }
 });
 
@@ -65,4 +73,15 @@ test("force-grant and recovery write payment admin audit trail actions", () => {
   assert.equal(source.includes('"PAYMENT_FORCE_GRANT_ACCESS"'), true);
   assert.equal(source.includes('"PAYMENT_RETRY_VERIFY"'), true);
   assert.equal(source.includes('"PAYMENT_TX_LOCK_RELEASED"'), true);
+  assert.equal(source.includes("incidentTicketId"), true);
+  assert.equal(source.includes("beforeState"), true);
+  assert.equal(source.includes("afterState"), true);
+  assert.equal(source.includes("alreadyGranted"), true);
+});
+
+test("admin payment detail page warns about provider-settlement bypass and break-glass scope", () => {
+  const source = readFileSync("src/app/admin/payments/[attemptId]/page.tsx", "utf8");
+  assert.equal(source.includes("BREAK_GLASS_PAYMENT_ADMIN"), true);
+  assert.equal(source.includes("يتجاوز التسوية المؤكدة من مزود الدفع"), true);
+  assert.equal(source.includes("incidentTicketId"), true);
 });

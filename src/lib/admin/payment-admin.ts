@@ -8,6 +8,10 @@ export type PaymentIncidentLabel =
   | "tx_conflict"
   | "recoverable_stuck_attempt";
 
+export type BreakGlassOverrideValidationResult =
+  | { allowed: true; normalizedReason: string; normalizedIncidentTicketId: string }
+  | { allowed: false; code: "missing_reason" | "missing_incident_ticket" | "disabled_in_production" };
+
 export function shouldForceGrantAccess(existingActiveGrantCount: number) {
   return existingActiveGrantCount === 0;
 }
@@ -18,6 +22,42 @@ export function canReleaseTxLock(status: AdminOperableAttemptStatus) {
 
 export function isAuditReasonValid(reason: string) {
   return reason.trim().length >= 5;
+}
+
+export function isBreakGlassIncidentTicketValid(incidentTicketId: string) {
+  return incidentTicketId.trim().length >= 3;
+}
+
+export function isBreakGlassPaymentOverrideEnabled() {
+  if (process.env.NODE_ENV !== "production") {
+    return true;
+  }
+
+  const value = process.env.BREAK_GLASS_PAYMENT_OVERRIDE_ENABLED?.trim().toLowerCase();
+  return value === "1" || value === "true" || value === "yes" || value === "on";
+}
+
+export function validateBreakGlassForceGrantInput(input: { reason: string; incidentTicketId: string }): BreakGlassOverrideValidationResult {
+  const normalizedReason = input.reason.trim();
+  const normalizedIncidentTicketId = input.incidentTicketId.trim();
+
+  if (!isBreakGlassPaymentOverrideEnabled()) {
+    return { allowed: false, code: "disabled_in_production" };
+  }
+
+  if (!isAuditReasonValid(normalizedReason)) {
+    return { allowed: false, code: "missing_reason" };
+  }
+
+  if (!isBreakGlassIncidentTicketValid(normalizedIncidentTicketId)) {
+    return { allowed: false, code: "missing_incident_ticket" };
+  }
+
+  return {
+    allowed: true,
+    normalizedReason,
+    normalizedIncidentTicketId,
+  };
 }
 
 export function canRecoverPaymentAttempt(status: AdminOperableAttemptStatus) {

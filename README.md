@@ -67,6 +67,7 @@
 
    - `SUPER_ADMIN`
    - `PAYMENT_ADMIN`
+   - `BREAK_GLASS_PAYMENT_ADMIN`
    - `SUPPORT_ADMIN`
    - `CONTENT_ADMIN`
 
@@ -74,6 +75,7 @@
    - Existing admins without explicit scopes keep legacy full-access behavior for backward compatibility.
    - The admin bootstrap command now creates the first admin with `SUPER_ADMIN`.
    - Payments, support/user interventions, curriculum/content operations, and CSV report exports can be guarded by scope-specific checks.
+   - `BREAK_GLASS_PAYMENT_ADMIN` should be granted only to a tiny emergency-only group and is required for force-grant settlement bypass operations.
 
 7. Admin reporting exports (CSV):
 
@@ -127,6 +129,7 @@ Startup validation runs via `src/instrumentation.ts` and `src/lib/env.ts`.
 - `PAYMENT_LIVE_PROVIDERS` (comma-separated: `SHAM_CASH`, `SYRIATEL_CASH`) when live mode is used. If omitted, live mode defaults to `SHAM_CASH`.
 - `ALLOW_MOCK_PAYMENTS=false` in production
 - `ALLOW_MOCK_PAYMENT_VERIFICATION=false` in production
+- `BREAK_GLASS_PAYMENT_OVERRIDE_ENABLED=false` by default in production (set `true` only for approved incident recovery windows)
 - `KV_REST_API_URL`
 - `KV_REST_API_TOKEN`
 

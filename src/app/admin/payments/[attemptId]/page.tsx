@@ -8,6 +8,7 @@ import {
 } from "@/app/admin/payments/actions";
 import { AdminPageCard, AdminPageHeader } from "@/components/admin/admin-page";
 import { classifyPaymentIncident } from "@/lib/admin/payment-admin";
+import { hasAdminScope } from "@/lib/authz";
 import { requireAdminScope } from "@/lib/auth-session";
 import { formatArabicDate } from "@/lib/formatters/intl";
 import { prisma } from "@/lib/prisma";
@@ -53,7 +54,7 @@ function canReconcileByTx(transactionReference: string) {
 }
 
 export default async function AdminPaymentAttemptPage({ params }: PageProps) {
-  await requireAdminScope("PAYMENT_ADMIN", { callbackUrl: "/admin/payments" });
+  const admin = await requireAdminScope("PAYMENT_ADMIN", { callbackUrl: "/admin/payments" });
   const { attemptId } = await params;
 
   const attempt = await prisma.paymentAttempt.findUnique({
@@ -88,6 +89,12 @@ export default async function AdminPaymentAttemptPage({ params }: PageProps) {
     providerReferenceMatchesPayment,
   });
   const diagnosticHint = extractDiagnosticHint(attempt.responsePayload);
+  const hasBreakGlassScope = hasAdminScope({
+    adminScopes: admin.adminScopes,
+    required: "BREAK_GLASS_PAYMENT_ADMIN",
+  });
+  const breakGlassGateEnabled = process.env.NODE_ENV !== "production"
+    || ["1", "true", "yes", "on"].includes((process.env.BREAK_GLASS_PAYMENT_OVERRIDE_ENABLED ?? "").trim().toLowerCase());
 
   return (
     <div className="space-y-4" dir="rtl">
@@ -114,11 +121,38 @@ export default async function AdminPaymentAttemptPage({ params }: PageProps) {
         {diagnosticHint ? (
           <p className="mt-3 rounded border border-amber-200 bg-amber-50 px-3 py-2 text-xs text-amber-900">{diagnosticHint}</p>
         ) : null}
+        <div className="mt-3 space-y-2 text-xs">
+          <p className="rounded border border-slate-200 bg-slate-50 px-3 py-2 text-slate-700">
+            صلاحيات PAYMENT_ADMIN: مراجعة المحاولات، إعادة التحقق، المطابقة بمرجع العملية، استرداد المحاولة، وتحرير قفل التحقق.
+          </p>
+          <p className="rounded border border-rose-200 bg-rose-50 px-3 py-2 text-rose-900">
+            صلاحية BREAK_GLASS_PAYMENT_ADMIN: منح الوصول القسري فقط لحالات الطوارئ، مع رقم تذكرة حادث وسبب إلزامي. هذا المسار يتجاوز تأكيد التسوية من مزود الدفع.
+          </p>
+        </div>
         <div className="mt-4 grid gap-2 sm:grid-cols-2">
           <form action={retryVerifyPaymentAction} className="rounded border p-3 text-xs"><input type="hidden" name="attemptId" value={attempt.id} /><input type="hidden" name="userId" value={attempt.userId} /><input name="reason" className="mb-2 w-full rounded border px-2 py-1" placeholder="سبب التدخل" required defaultValue="manual retry verify" /><button className="rounded border px-2 py-1">إعادة تحقق</button></form>
           <form action={reconcileByTxAction} className="rounded border p-3 text-xs"><input type="hidden" name="attemptId" value={attempt.id} /><input type="hidden" name="userId" value={attempt.userId} /><input name="transactionReference" className="mb-2 w-full rounded border px-2 py-1" required defaultValue={txRef} /><input name="reason" className="mb-2 w-full rounded border px-2 py-1" required defaultValue="manual tx reconcile" /><button disabled={!canReconcileByTx(txRef)} className="rounded border px-2 py-1 disabled:cursor-not-allowed disabled:opacity-50">مطابقة بالمرجع</button></form>
           <form action={recoverStuckAttemptAction} className="rounded border p-3 text-xs"><input type="hidden" name="attemptId" value={attempt.id} /><input type="hidden" name="userId" value={attempt.userId} /><input name="transactionReference" className="mb-2 w-full rounded border px-2 py-1" defaultValue={txRef} placeholder="transactionReference (اختياري)" /><input name="reason" className="mb-2 w-full rounded border px-2 py-1" required defaultValue="manual attempt recovery" /><button className="rounded border px-2 py-1">استرداد محاولة عالقة</button></form>
-          <form action={forceGrantPaymentAccessAction} className="rounded border border-rose-200 bg-rose-50 p-3 text-xs"><input type="hidden" name="attemptId" value={attempt.id} /><input name="reason" className="mb-2 w-full rounded border px-2 py-1" required placeholder="سبب إلزامي ومحدد" /><button className="rounded border border-rose-300 px-2 py-1 text-rose-800">منح وصول قسري (حساس)</button></form>
+          <form action={forceGrantPaymentAccessAction} className="rounded border border-rose-200 bg-rose-50 p-3 text-xs">
+            <input type="hidden" name="attemptId" value={attempt.id} />
+            <input
+              name="incidentTicketId"
+              className="mb-2 w-full rounded border px-2 py-1"
+              required
+              placeholder="رقم تذكرة حادث إلزامي (INC-1234)"
+            />
+            <input name="reason" className="mb-2 w-full rounded border px-2 py-1" required placeholder="سبب إلزامي ومحدد" />
+            <p className="mb-2 rounded border border-rose-300 bg-white px-2 py-1 text-[11px] text-rose-900">
+              تحذير: هذا الإجراء يتجاوز التسوية المؤكدة من مزود الدفع. استخدمه فقط في حالات الاستعادة الطارئة.
+            </p>
+            <button
+              disabled={!hasBreakGlassScope || !breakGlassGateEnabled}
+              title={!hasBreakGlassScope ? "تحتاج صلاحية BREAK_GLASS_PAYMENT_ADMIN." : !breakGlassGateEnabled ? "مغلق بيئياً في الإنتاج (BREAK_GLASS_PAYMENT_OVERRIDE_ENABLED=false)." : undefined}
+              className="rounded border border-rose-300 px-2 py-1 text-rose-800 disabled:cursor-not-allowed disabled:opacity-50"
+            >
+              منح وصول قسري (Break-glass)
+            </button>
+          </form>
           <form action={releasePaymentTxLockAction} className="rounded border p-3 text-xs"><input type="hidden" name="attemptId" value={attempt.id} /><input name="reason" className="mb-2 w-full rounded border px-2 py-1" required placeholder="سبب تحرير القفل" /><button disabled={attempt.status !== "VERIFYING"} className="rounded border px-2 py-1 disabled:cursor-not-allowed disabled:opacity-50">تحرير قفل tx</button></form>
         </div>
       </AdminPageCard>

@@ -63,6 +63,7 @@ test("hasAdminScope denies empty scopes by default", () => {
 test("hasAdminScope preserves SUPER_ADMIN and explicit scope semantics", () => {
   assert.equal(hasAdminScope({ adminScopes: ["SUPER_ADMIN" as AdminScope], required: "CONTENT_ADMIN" as AdminScope }), true);
   assert.equal(hasAdminScope({ adminScopes: ["PAYMENT_ADMIN" as AdminScope], required: "PAYMENT_ADMIN" as AdminScope }), true);
+  assert.equal(hasAdminScope({ adminScopes: ["BREAK_GLASS_PAYMENT_ADMIN" as AdminScope], required: "BREAK_GLASS_PAYMENT_ADMIN" as AdminScope }), true);
   assert.equal(hasAdminScope({ adminScopes: ["SUPPORT_ADMIN" as AdminScope], required: "PAYMENT_ADMIN" as AdminScope }), false);
 });
 
@@ -74,5 +75,16 @@ test("hasAdminScope allows legacy empty scopes only with explicit fallback flag"
       allowLegacyEmptyScopesFallback: true,
     }),
     true,
+  );
+});
+
+test("hasAdminScope never grants break-glass scope through legacy empty-scope fallback", () => {
+  assert.equal(
+    hasAdminScope({
+      adminScopes: [],
+      required: "BREAK_GLASS_PAYMENT_ADMIN" as AdminScope,
+      allowLegacyEmptyScopesFallback: true,
+    }),
+    false,
   );
 });

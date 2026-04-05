@@ -164,6 +164,9 @@ export default async function AdminPaymentsPage({ searchParams }: AdminPaymentsP
   return (
     <AdminPageCard>
       <AdminPageHeader title="إدارة المدفوعات" description={scopeDescription(scope)} />
+      <p className="rounded border border-slate-200 bg-slate-50 px-3 py-2 text-xs text-slate-700">
+        تنبيه صلاحيات: PAYMENT_ADMIN مخصص للمراجعة والتشخيص والتصحيح غير القسري. عمليات break-glass التي تتجاوز تأكيد تسوية المزود تتطلب صلاحية منفصلة BREAK_GLASS_PAYMENT_ADMIN.
+      </p>
       <p className="rounded border border-amber-200 bg-amber-50 px-3 py-2 text-xs text-amber-900">
         تحذيرات نزاهة مرتبطة بالطلبات/الوصول: {Object.values(integrity.totals).reduce((sum, value) => sum + value, 0).toLocaleString("ar-SY")}
         {' '}— راجع صفحة الطلبات لمعالجة التفاصيل.

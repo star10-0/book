@@ -9,10 +9,12 @@ import {
   canReleaseTxLock,
   canRecoverPaymentAttempt,
   classifyPaymentIncident,
+  isBreakGlassPaymentOverrideEnabled,
   isAuditReasonValid,
   isPaymentOrderStateConsistent,
   shouldEnsureGrantForPaidState,
   shouldForceGrantAccess,
+  validateBreakGlassForceGrantInput,
 } from "@/lib/admin/payment-admin";
 import { prisma } from "@/lib/prisma";
 import { reconcilePaymentByTransactionReference, recoverPaymentAttempt, verifyPayment } from "@/lib/payments/payment-service";
@@ -76,17 +78,53 @@ export async function reconcileByTxAction(formData: FormData) {
 }
 
 export async function forceGrantPaymentAccessAction(formData: FormData) {
-  const admin = await requireAdminScope("PAYMENT_ADMIN", { callbackUrl: "/admin/payments" });
+  const admin = await requireAdminScope("BREAK_GLASS_PAYMENT_ADMIN", { callbackUrl: "/admin/payments" });
   const attemptId = val(formData, "attemptId");
   const reason = val(formData, "reason");
+  const incidentTicketId = val(formData, "incidentTicketId");
 
-  if (!attemptId || !isAuditReasonValid(reason)) {
+  if (!attemptId) {
+    return;
+  }
+
+  const validation = validateBreakGlassForceGrantInput({ reason, incidentTicketId });
+  if (!validation.allowed) {
+    await audit(
+      admin.id,
+      "PAYMENT_FORCE_GRANT_ACCESS",
+      attemptId,
+      reason || "break-glass force grant denied",
+      {
+        denied: true,
+        denialCode: validation.code,
+        incidentTicketId: incidentTicketId || null,
+        breakGlassGateEnabled: isBreakGlassPaymentOverrideEnabled(),
+      },
+    );
     return;
   }
 
   const operationResult = await prisma.$transaction(async (tx) => {
     const attempt = await tx.paymentAttempt.findUnique({ where: { id: attemptId }, include: { order: true, payment: true } });
-    if (!attempt) return { changed: false, alreadyGranted: false, orderId: null as string | null, reason: "attempt_not_found" };
+    if (!attempt) {
+      return {
+        changed: false,
+        alreadyGranted: false,
+        orderId: null as string | null,
+        reason: "attempt_not_found",
+        beforeState: null,
+        afterState: null,
+      };
+    }
+
+    const beforeState = {
+      attemptStatus: attempt.status,
+      paymentStatus: attempt.payment.status,
+      orderStatus: attempt.order.status,
+      paymentPaidAt: attempt.payment.paidAt?.toISOString() ?? null,
+      orderPlacedAt: attempt.order.placedAt?.toISOString() ?? null,
+      attemptVerifiedAt: attempt.verifiedAt?.toISOString() ?? null,
+    } as const;
 
     const consistentInput = isPaymentOrderStateConsistent({
       paymentStatus: attempt.payment.status,
@@ -94,7 +132,7 @@ export async function forceGrantPaymentAccessAction(formData: FormData) {
     });
 
     if (!consistentInput) {
-      return { changed: false, alreadyGranted: false, orderId: attempt.orderId, reason: "inconsistent_state" };
+      return { changed: false, alreadyGranted: false, orderId: attempt.orderId, reason: "inconsistent_state", beforeState, afterState: null };
     }
 
     const activeGrants = await tx.accessGrant.count({
@@ -125,7 +163,23 @@ export async function forceGrantPaymentAccessAction(formData: FormData) {
       data: { status: "PAID", verifiedAt: attempt.verifiedAt ?? new Date(), failureReason: null },
     });
 
-    return { changed: true, alreadyGranted, orderId: attempt.orderId, reason: null as string | null };
+    const updated = await tx.paymentAttempt.findUnique({
+      where: { id: attemptId },
+      include: { order: true, payment: true },
+    });
+
+    const afterState = updated
+      ? {
+          attemptStatus: updated.status,
+          paymentStatus: updated.payment.status,
+          orderStatus: updated.order.status,
+          paymentPaidAt: updated.payment.paidAt?.toISOString() ?? null,
+          orderPlacedAt: updated.order.placedAt?.toISOString() ?? null,
+          attemptVerifiedAt: updated.verifiedAt?.toISOString() ?? null,
+        }
+      : null;
+
+    return { changed: true, alreadyGranted, orderId: attempt.orderId, reason: null as string | null, beforeState, afterState };
   });
 
   await audit(
@@ -134,9 +188,15 @@ export async function forceGrantPaymentAccessAction(formData: FormData) {
     attemptId,
     reason,
     {
+      mode: "break_glass",
+      bypassesProviderSettlement: true,
+      incidentTicketId: validation.normalizedIncidentTicketId,
       forced: operationResult?.changed ?? false,
       alreadyGranted: operationResult?.alreadyGranted ?? false,
       skippedReason: operationResult?.reason ?? null,
+      beforeState: operationResult?.beforeState ?? null,
+      afterState: operationResult?.afterState ?? null,
+      immutable: true,
     },
     operationResult?.orderId ?? undefined,
   );
