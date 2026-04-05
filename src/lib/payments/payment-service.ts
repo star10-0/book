@@ -396,6 +396,19 @@ export async function verifyPayment(input: VerifyPaymentInput) {
     }
   })();
 
+  const mismatchDiagnostic = await diagnoseProviderMismatch({
+    attempt,
+    transactionReference,
+    selectedProviderFailureReason: gatewayResult.failureReason,
+    selectedProviderPaid: gatewayResult.isPaid,
+  });
+
+  const finalizedFailureReason = buildFinalFailureReason({
+    attemptProvider: attempt.provider,
+    gatewayResultFailureReason: gatewayResult.failureReason,
+    mismatchDiagnostic,
+  });
+
   const finalAttemptStatus: PaymentAttemptStatus = gatewayResult.isPaid ? "PAID" : "FAILED";
 
   return prisma.$transaction(async (tx) => {
@@ -406,8 +419,11 @@ export async function verifyPayment(input: VerifyPaymentInput) {
       data: {
         status: finalAttemptStatus,
         verifiedAt: new Date(),
-        responsePayload: sanitizePayloadForStorage(gatewayResult.rawPayload),
-        failureReason: gatewayResult.failureReason,
+        responsePayload: buildVerificationResponsePayload({
+          rawPayload: gatewayResult.rawPayload,
+          mismatchDiagnostic,
+        }),
+        failureReason: finalizedFailureReason,
       },
     });
 
@@ -465,6 +481,149 @@ export async function verifyPayment(input: VerifyPaymentInput) {
 
     return finalizedAttempt;
   });
+}
+
+type ProviderMismatchDiagnostic = {
+  code: "provider_mismatch_possible" | "tx_not_found_in_selected_provider";
+  selectedProvider: PaymentProvider;
+  suggestedProvider?: PaymentProvider;
+  txReference: string;
+};
+
+function buildVerificationResponsePayload(input: {
+  rawPayload?: Record<string, unknown>;
+  mismatchDiagnostic?: ProviderMismatchDiagnostic;
+}): Prisma.InputJsonValue | undefined {
+  const sanitizedRawPayload = sanitizePayloadForStorage(input.rawPayload);
+  const hasDiagnostic = Boolean(input.mismatchDiagnostic);
+
+  if (!sanitizedRawPayload && !hasDiagnostic) {
+    return undefined;
+  }
+
+  if (!hasDiagnostic) {
+    return sanitizedRawPayload;
+  }
+
+  return {
+    providerVerification: sanitizedRawPayload ?? null,
+    diagnostic: input.mismatchDiagnostic,
+  } satisfies Prisma.InputJsonValue;
+}
+
+async function diagnoseProviderMismatch(input: {
+  attempt: AttemptWithRelations;
+  transactionReference?: string;
+  selectedProviderFailureReason?: string;
+  selectedProviderPaid: boolean;
+}): Promise<ProviderMismatchDiagnostic | undefined> {
+  if (!input.transactionReference || input.selectedProviderPaid) {
+    return undefined;
+  }
+
+  if (!isTransactionNotFoundInSelectedProvider(input.selectedProviderFailureReason, input.attempt.provider)) {
+    return undefined;
+  }
+
+  const alternateProvider = getAlternateManualProvider(input.attempt.provider);
+
+  if (!alternateProvider) {
+    return {
+      code: "tx_not_found_in_selected_provider",
+      selectedProvider: input.attempt.provider,
+      txReference: input.transactionReference,
+    };
+  }
+
+  const alternateGateway = resolvePaymentGateway(alternateProvider);
+
+  try {
+    const alternateResult = await alternateGateway.verifyPayment({
+      paymentId: input.attempt.paymentId,
+      providerReference: input.attempt.providerReference ?? "",
+      transactionReference: input.transactionReference,
+      expectedAmountCents: input.attempt.amountCents,
+      expectedCurrency: input.attempt.currency,
+    });
+
+    if (!alternateResult.isPaid) {
+      return {
+        code: "tx_not_found_in_selected_provider",
+        selectedProvider: input.attempt.provider,
+        txReference: input.transactionReference,
+      };
+    }
+
+    return {
+      code: "provider_mismatch_possible",
+      selectedProvider: input.attempt.provider,
+      suggestedProvider: alternateProvider,
+      txReference: input.transactionReference,
+    };
+  } catch {
+    return {
+      code: "tx_not_found_in_selected_provider",
+      selectedProvider: input.attempt.provider,
+      txReference: input.transactionReference,
+    };
+  }
+}
+
+function isTransactionNotFoundInSelectedProvider(failureReason: string | undefined, provider: PaymentProvider) {
+  if (!failureReason) {
+    return false;
+  }
+
+  const normalized = failureReason.toLowerCase();
+
+  if (provider === "SHAM_CASH") {
+    return normalized.includes("did not find")
+      || normalized.includes("not find")
+      || normalized.includes("not found")
+      || normalized.includes("submitted transaction reference");
+  }
+
+  if (provider === "SYRIATEL_CASH") {
+    return normalized.includes("not found")
+      || normalized.includes("did not find")
+      || normalized.includes("not found in syriatel");
+  }
+
+  return false;
+}
+
+function getAlternateManualProvider(provider: PaymentProvider): PaymentProvider | undefined {
+  if (provider === "SHAM_CASH") return "SYRIATEL_CASH";
+  if (provider === "SYRIATEL_CASH") return "SHAM_CASH";
+  return undefined;
+}
+
+function buildFinalFailureReason(input: {
+  attemptProvider: PaymentProvider;
+  gatewayResultFailureReason?: string;
+  mismatchDiagnostic?: ProviderMismatchDiagnostic;
+}) {
+  if (input.mismatchDiagnostic?.code === "provider_mismatch_possible" && input.mismatchDiagnostic.suggestedProvider) {
+    if (input.attemptProvider === "SYRIATEL_CASH" && input.mismatchDiagnostic.suggestedProvider === "SHAM_CASH") {
+      return "لم يتم العثور على رقم العملية ضمن سجل Syriatel Cash. إذا كانت الدفعة أُرسلت عبر Sham Cash، اختر وسيلة Sham Cash وأدخل رقم العملية الخاص بها.";
+    }
+
+    if (input.attemptProvider === "SHAM_CASH" && input.mismatchDiagnostic.suggestedProvider === "SYRIATEL_CASH") {
+      return "لم يتم العثور على رقم العملية ضمن سجل Sham Cash. إذا كانت الدفعة أُرسلت عبر Syriatel Cash، اختر وسيلة Syriatel Cash وأدخل رقم العملية الخاص بها.";
+    }
+  }
+
+  if (input.mismatchDiagnostic?.code === "tx_not_found_in_selected_provider") {
+    if (input.attemptProvider === "SYRIATEL_CASH") {
+      return "لم يتم العثور على رقم العملية ضمن سجل Syriatel Cash. تأكد من رقم العملية ووسيلة الدفع المختارة ثم أعد المحاولة.";
+    }
+
+    if (input.attemptProvider === "SHAM_CASH") {
+      return "لم يتم العثور على رقم العملية ضمن سجل Sham Cash. تأكد من رقم العملية ووسيلة الدفع المختارة ثم أعد المحاولة.";
+    }
+  }
+
+  return input.gatewayResultFailureReason;
 }
 
 function sanitizePayloadForStorage(payload: Record<string, unknown> | undefined): Prisma.InputJsonValue | undefined {
@@ -742,6 +901,8 @@ function pickReconciliationCandidate(input: {
 export const __paymentServiceInternals = {
   classifyTransactionReferenceUsage,
   pickReconciliationCandidate,
+  isTransactionNotFoundInSelectedProvider,
+  buildFinalFailureReason,
 };
 
 async function ensureProviderReferenceIntegrity(input: {
