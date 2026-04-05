@@ -1,7 +1,15 @@
 import { API_ERROR_CODES, jsonError, parseJsonBody } from "@/lib/api-response";
 import { getCurrentUser } from "@/lib/auth-session";
+import { getClientIp } from "@/lib/observability/logger";
 import { applyPromoCodeToOrder, PromoError } from "@/lib/promos";
-import { enforceRateLimit, isSameOriginMutation, jsonNoStore, rejectCrossOriginMutation, rejectRateLimited } from "@/lib/security";
+import {
+  enforceRateLimit,
+  isSameOriginMutation,
+  jsonNoStore,
+  rejectCrossOriginMutation,
+  rejectRateLimitUnavailable,
+  rejectRateLimited,
+} from "@/lib/security";
 
 interface ApplyPromoBody {
   orderId?: string;
@@ -11,9 +19,19 @@ interface ApplyPromoBody {
 export async function POST(request: Request) {
   if (!isSameOriginMutation(request)) return rejectCrossOriginMutation();
 
-  const clientIp = request.headers.get("x-forwarded-for") ?? "local";
-  const rateLimit = await enforceRateLimit({ key: `checkout:promo:${clientIp}`, limit: 20, windowMs: 60_000 });
-  if (!rateLimit.allowed) return rejectRateLimited(rateLimit.retryAfterSeconds);
+  const clientIp = getClientIp(request);
+  const rateLimit = await enforceRateLimit({
+    key: `checkout:promo:${clientIp}`,
+    limit: 20,
+    windowMs: 60_000,
+    requireDistributedInProduction: true,
+  });
+  if (!rateLimit.allowed) {
+    if (rateLimit.reason === "RATE_LIMIT_BACKEND_UNAVAILABLE" || rateLimit.reason === "RATE_LIMIT_ENV_MISCONFIG") {
+      return rejectRateLimitUnavailable(rateLimit.reason);
+    }
+    return rejectRateLimited(rateLimit.retryAfterSeconds);
+  }
 
   const user = await getCurrentUser();
   if (!user) return jsonError(API_ERROR_CODES.unauthorized, "يجب تسجيل الدخول أولاً.", 401);
