@@ -211,13 +211,17 @@ export async function submitPaymentProof(input: SubmitPaymentProofInput) {
     paymentError(PAYMENT_ERROR_CODES.missingProviderReference);
   }
 
-  const existingTransactionReference = extractTransactionReference(attempt.requestPayload);
+  const existingCanonicalTransactionReference = resolveCanonicalTransactionReference({
+    transactionReference: attempt.transactionReference,
+    requestPayload: attempt.requestPayload,
+  });
+  const existingSubmittedTransactionReference = extractTransactionReference(attempt.requestPayload);
   const normalizedTransactionReference = input.transactionReference.trim();
-  const canonicalTransactionReference = normalizedTransactionReference.toLowerCase();
+  const canonicalTransactionReference = normalizeTransactionReference(input.transactionReference);
 
   if (
-    existingTransactionReference &&
-    existingTransactionReference.toLowerCase() !== normalizedTransactionReference.toLowerCase()
+    existingCanonicalTransactionReference &&
+    existingCanonicalTransactionReference !== canonicalTransactionReference
   ) {
     paymentError(PAYMENT_ERROR_CODES.paymentProofImmutable);
   }
@@ -256,7 +260,7 @@ export async function submitPaymentProof(input: SubmitPaymentProofInput) {
   const requestPayload: Prisma.InputJsonValue = {
     ...existingPayload,
     source: "api/payments/submit-proof",
-    transactionReference: existingTransactionReference ?? normalizedTransactionReference,
+    transactionReference: existingSubmittedTransactionReference ?? normalizedTransactionReference,
     proofNote: input.proofNote?.trim() || null,
     submittedAt: new Date().toISOString(),
   };
@@ -265,6 +269,7 @@ export async function submitPaymentProof(input: SubmitPaymentProofInput) {
     where: { id: attempt.id },
     data: {
       requestPayload,
+      transactionReference: canonicalTransactionReference,
     },
   });
 }
@@ -297,8 +302,13 @@ export async function verifyPayment(input: VerifyPaymentInput) {
     paymentError(PAYMENT_ERROR_CODES.orderNotPayable);
   }
 
-  const transactionReference = extractTransactionReference(attempt.requestPayload);
-  if (attempt.status === "FAILED" && !transactionReference) {
+  const canonicalTransactionReference = resolveCanonicalTransactionReference({
+    transactionReference: attempt.transactionReference,
+    requestPayload: attempt.requestPayload,
+  });
+  const submittedTransactionReference = extractTransactionReference(attempt.requestPayload) ?? canonicalTransactionReference;
+
+  if (attempt.status === "FAILED" && !canonicalTransactionReference) {
     return attempt;
   }
 
@@ -315,9 +325,9 @@ export async function verifyPayment(input: VerifyPaymentInput) {
 
   const providerReference = attempt.providerReference;
 
-  if (transactionReference) {
+  if (canonicalTransactionReference) {
     const relatedAttempts = await findAttemptsByTransactionReference({
-      transactionReferenceCanonical: transactionReference.toLowerCase(),
+      transactionReferenceCanonical: canonicalTransactionReference,
       excludeAttemptId: attempt.id,
     });
 
@@ -376,7 +386,7 @@ export async function verifyPayment(input: VerifyPaymentInput) {
       return await gateway.verifyPayment({
         paymentId: attempt.paymentId,
         providerReference,
-        transactionReference,
+        transactionReference: submittedTransactionReference,
         mockOutcome: input.mockOutcome,
         expectedAmountCents: attempt.amountCents,
         expectedCurrency: attempt.currency,
@@ -398,7 +408,7 @@ export async function verifyPayment(input: VerifyPaymentInput) {
 
   const mismatchDiagnostic = await diagnoseProviderMismatch({
     attempt,
-    transactionReference,
+    transactionReference: submittedTransactionReference,
     selectedProviderFailureReason: gatewayResult.failureReason,
     selectedProviderPaid: gatewayResult.isPaid,
   });
@@ -661,7 +671,7 @@ export async function reconcilePaymentByTransactionReference(input: {
   attemptId?: string;
   mockOutcome?: "paid" | "failed";
 }) {
-  const canonicalTransactionReference = input.transactionReference.trim().toLowerCase();
+  const canonicalTransactionReference = normalizeTransactionReference(input.transactionReference);
   if (!canonicalTransactionReference) {
     paymentError(PAYMENT_ERROR_CODES.invalidPaymentProofInput);
   }
@@ -780,6 +790,22 @@ function extractTransactionReference(payload: Prisma.JsonValue | null): string |
   return typeof value === "string" && value.trim().length > 0 ? value.trim() : undefined;
 }
 
+function normalizeTransactionReference(value: string) {
+  return value.trim().toLowerCase();
+}
+
+function resolveCanonicalTransactionReference(input: {
+  transactionReference: string | null;
+  requestPayload: Prisma.JsonValue | null;
+}): string | undefined {
+  if (input.transactionReference && input.transactionReference.trim().length > 0) {
+    return normalizeTransactionReference(input.transactionReference);
+  }
+
+  const legacyReference = extractTransactionReference(input.requestPayload);
+  return legacyReference ? normalizeTransactionReference(legacyReference) : undefined;
+}
+
 function buildPaymentUpdateData(input: {
   currentStatus: PaymentStatus;
   desiredStatus: PaymentStatus;
@@ -827,7 +853,11 @@ async function findAttemptsByTransactionReference(input: {
   const rows = await prisma.$queryRaw<Array<{ id: string }>>(Prisma.sql`
     SELECT "id"
     FROM "PaymentAttempt"
-    WHERE lower(coalesce("requestPayload"->>'transactionReference', '')) = ${input.transactionReferenceCanonical}
+    WHERE "transactionReference" = ${input.transactionReferenceCanonical}
+      OR (
+        "transactionReference" IS NULL
+        AND lower(coalesce("requestPayload"->>'transactionReference', '')) = ${input.transactionReferenceCanonical}
+      )
       ${excludeSql}
     ORDER BY "createdAt" DESC
   `);
@@ -903,6 +933,8 @@ export const __paymentServiceInternals = {
   pickReconciliationCandidate,
   isTransactionNotFoundInSelectedProvider,
   buildFinalFailureReason,
+  normalizeTransactionReference,
+  resolveCanonicalTransactionReference,
 };
 
 async function ensureProviderReferenceIntegrity(input: {

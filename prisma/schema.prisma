@@ -492,6 +492,7 @@ model PaymentAttempt {
   amountCents       Int
   currency          CurrencyCode         @default(SYP)
   providerReference String?
+  transactionReference String?
   requestPayload    Json?
   responsePayload   Json?
   failureReason     String?
@@ -507,6 +508,7 @@ model PaymentAttempt {
   @@index([paymentId, createdAt])
   @@index([orderId, status])
   @@index([provider, providerReference])
+  @@index([transactionReference, createdAt(sort: Desc)])
 }
 
 model PromoCode {
