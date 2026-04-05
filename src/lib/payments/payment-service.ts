@@ -211,16 +211,17 @@ export async function submitPaymentProof(input: SubmitPaymentProofInput) {
     paymentError(PAYMENT_ERROR_CODES.missingProviderReference);
   }
 
-  const existingTransactionReference = resolveCanonicalTransactionReference({
+  const existingCanonicalTransactionReference = resolveCanonicalTransactionReference({
     transactionReference: attempt.transactionReference,
     requestPayload: attempt.requestPayload,
   });
+  const existingSubmittedTransactionReference = extractTransactionReference(attempt.requestPayload);
   const normalizedTransactionReference = input.transactionReference.trim();
   const canonicalTransactionReference = normalizeTransactionReference(input.transactionReference);
 
   if (
-    existingTransactionReference &&
-    existingTransactionReference !== canonicalTransactionReference
+    existingCanonicalTransactionReference &&
+    existingCanonicalTransactionReference !== canonicalTransactionReference
   ) {
     paymentError(PAYMENT_ERROR_CODES.paymentProofImmutable);
   }
@@ -259,7 +260,7 @@ export async function submitPaymentProof(input: SubmitPaymentProofInput) {
   const requestPayload: Prisma.InputJsonValue = {
     ...existingPayload,
     source: "api/payments/submit-proof",
-    transactionReference: existingTransactionReference ?? normalizedTransactionReference,
+    transactionReference: existingSubmittedTransactionReference ?? normalizedTransactionReference,
     proofNote: input.proofNote?.trim() || null,
     submittedAt: new Date().toISOString(),
   };
@@ -301,11 +302,13 @@ export async function verifyPayment(input: VerifyPaymentInput) {
     paymentError(PAYMENT_ERROR_CODES.orderNotPayable);
   }
 
-  const transactionReference = resolveCanonicalTransactionReference({
+  const canonicalTransactionReference = resolveCanonicalTransactionReference({
     transactionReference: attempt.transactionReference,
     requestPayload: attempt.requestPayload,
   });
-  if (attempt.status === "FAILED" && !transactionReference) {
+  const submittedTransactionReference = extractTransactionReference(attempt.requestPayload) ?? canonicalTransactionReference;
+
+  if (attempt.status === "FAILED" && !canonicalTransactionReference) {
     return attempt;
   }
 
@@ -322,9 +325,9 @@ export async function verifyPayment(input: VerifyPaymentInput) {
 
   const providerReference = attempt.providerReference;
 
-  if (transactionReference) {
+  if (canonicalTransactionReference) {
     const relatedAttempts = await findAttemptsByTransactionReference({
-      transactionReferenceCanonical: transactionReference,
+      transactionReferenceCanonical: canonicalTransactionReference,
       excludeAttemptId: attempt.id,
     });
 
@@ -383,7 +386,7 @@ export async function verifyPayment(input: VerifyPaymentInput) {
       return await gateway.verifyPayment({
         paymentId: attempt.paymentId,
         providerReference,
-        transactionReference,
+        transactionReference: submittedTransactionReference,
         mockOutcome: input.mockOutcome,
         expectedAmountCents: attempt.amountCents,
         expectedCurrency: attempt.currency,
@@ -405,7 +408,7 @@ export async function verifyPayment(input: VerifyPaymentInput) {
 
   const mismatchDiagnostic = await diagnoseProviderMismatch({
     attempt,
-    transactionReference,
+    transactionReference: submittedTransactionReference,
     selectedProviderFailureReason: gatewayResult.failureReason,
     selectedProviderPaid: gatewayResult.isPaid,
   });
