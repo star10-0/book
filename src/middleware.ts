@@ -3,6 +3,14 @@ import { NextResponse } from "next/server";
 import { buildContentSecurityPolicy } from "./lib/security/csp";
 
 export function middleware(request: NextRequest) {
+  const isApiRequest = request.nextUrl.pathname.startsWith("/api");
+
+  if (isApiRequest) {
+    const response = NextResponse.next();
+    response.headers.set("X-Robots-Tag", "noindex, nofollow, noarchive");
+    return response;
+  }
+
   const isDevelopment = process.env.NODE_ENV === "development";
   const nonce = isDevelopment ? undefined : crypto.randomUUID().replace(/-/g, "");
   const requestHeaders = new Headers(request.headers);
@@ -29,5 +37,5 @@ export function middleware(request: NextRequest) {
 }
 
 export const config = {
-  matcher: ["/((?!api|_next/static|_next/image|favicon.ico|uploads/books).*)"],
+  matcher: ["/((?!_next/static|_next/image|favicon.ico|uploads/books).*)"],
 };
