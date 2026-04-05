@@ -91,6 +91,55 @@ test("validateServerEnv requires production deployment vars", () => {
   else delete process.env.DATABASE_URL;
 });
 
+test("validateServerEnv rejects ADMIN_SCOPES_LEGACY_ALLOW_EMPTY in production", () => {
+  const originalNodeEnv = (process.env as Record<string, string | undefined>).NODE_ENV;
+  const originalAuthSecret = process.env.AUTH_SECRET;
+  const originalDatabaseUrl = process.env.DATABASE_URL;
+  const originalAppBaseUrl = process.env.APP_BASE_URL;
+  const originalNextAuthUrl = process.env.NEXTAUTH_URL;
+  const originalPaymentMode = process.env.PAYMENT_GATEWAY_MODE;
+  const originalStorageProvider = process.env.BOOK_STORAGE_PROVIDER;
+  const originalLegacyFlag = process.env.ADMIN_SCOPES_LEGACY_ALLOW_EMPTY;
+
+  (process.env as Record<string, string | undefined>).NODE_ENV = "production";
+  process.env.AUTH_SECRET = "12345678901234567890123456789012";
+  process.env.DATABASE_URL = "postgresql://localhost:5432/book";
+  process.env.APP_BASE_URL = "https://book.example";
+  process.env.NEXTAUTH_URL = "https://book.example";
+  process.env.PAYMENT_GATEWAY_MODE = "mock";
+  process.env.BOOK_STORAGE_PROVIDER = "local";
+  process.env.ADMIN_SCOPES_LEGACY_ALLOW_EMPTY = "true";
+
+  const result = validateServerEnv();
+
+  assert.equal(result.isValid, false);
+  assert.ok(result.errors.some((issue) => issue.key === "ADMIN_SCOPES_LEGACY_ALLOW_EMPTY"));
+
+  if (typeof originalNodeEnv === "string") (process.env as Record<string, string | undefined>).NODE_ENV = originalNodeEnv;
+  else delete (process.env as Record<string, string | undefined>).NODE_ENV;
+
+  if (typeof originalAuthSecret === "string") process.env.AUTH_SECRET = originalAuthSecret;
+  else delete process.env.AUTH_SECRET;
+
+  if (typeof originalDatabaseUrl === "string") process.env.DATABASE_URL = originalDatabaseUrl;
+  else delete process.env.DATABASE_URL;
+
+  if (typeof originalAppBaseUrl === "string") process.env.APP_BASE_URL = originalAppBaseUrl;
+  else delete process.env.APP_BASE_URL;
+
+  if (typeof originalNextAuthUrl === "string") process.env.NEXTAUTH_URL = originalNextAuthUrl;
+  else delete process.env.NEXTAUTH_URL;
+
+  if (typeof originalPaymentMode === "string") process.env.PAYMENT_GATEWAY_MODE = originalPaymentMode;
+  else delete process.env.PAYMENT_GATEWAY_MODE;
+
+  if (typeof originalStorageProvider === "string") process.env.BOOK_STORAGE_PROVIDER = originalStorageProvider;
+  else delete process.env.BOOK_STORAGE_PROVIDER;
+
+  if (typeof originalLegacyFlag === "string") process.env.ADMIN_SCOPES_LEGACY_ALLOW_EMPTY = originalLegacyFlag;
+  else delete process.env.ADMIN_SCOPES_LEGACY_ALLOW_EMPTY;
+});
+
 test("validateServerEnv in live mode requires selected live provider env vars only", () => {
   const originalPaymentMode = process.env.PAYMENT_GATEWAY_MODE;
   const originalLiveProviders = process.env.PAYMENT_LIVE_PROVIDERS;

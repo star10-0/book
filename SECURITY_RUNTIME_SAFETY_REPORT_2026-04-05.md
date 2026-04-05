@@ -19,7 +19,7 @@ Scope reviewed:
 Plus targeted repository-wide searches for secret/token exposure vectors.
 
 ## Key conclusions
-- Legacy empty-admin-scope fallback still exists for non-break-glass scopes and is environment-controllable.
+- Admin authorization is deny-by-default when an admin has no assigned scopes.
 - Break-glass override is blocked in production unless both scope and production env gate are enabled; in non-production it is always enabled.
 - Metrics auth uses Authorization Bearer token only; query-string token is rejected when token auth is configured.
 - Promo/free checkout endpoints use normalized client IP and production-distributed rate limit requirement.
@@ -28,7 +28,6 @@ Plus targeted repository-wide searches for secret/token exposure vectors.
 - No tracked runtime .env files found; only .env.example templates are committed.
 
 ## Environment key state (repo-verifiable)
-- ADMIN_SCOPES_LEGACY_ALLOW_EMPTY: NOT_VERIFIABLE_FROM_REPO
 - BREAK_GLASS_PAYMENT_OVERRIDE_ENABLED: PRESENT
 - METRICS_TOKEN: PRESENT
 - AUTH_SECRET: PRESENT

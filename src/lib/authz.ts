@@ -1,15 +1,5 @@
 import { UserRole, type AdminScope } from "@prisma/client";
 
-function isTruthyFlag(value?: string) {
-  if (!value) return false;
-  const normalized = value.trim().toLowerCase();
-  return normalized === "1" || normalized === "true" || normalized === "yes" || normalized === "on";
-}
-
-export function allowLegacyEmptyAdminScopesFallback() {
-  return isTruthyFlag(process.env.ADMIN_SCOPES_LEGACY_ALLOW_EMPTY);
-}
-
 export function isAdminRole(role: UserRole) {
   return role === UserRole.ADMIN;
 }
@@ -25,17 +15,11 @@ export function isCurriculumManagerRole(role: UserRole) {
 export function hasAdminScope(input: {
   adminScopes?: AdminScope[] | null;
   required: AdminScope;
-  allowLegacyEmptyScopesFallback?: boolean;
 }) {
   const scopes = input.adminScopes ?? [];
-  const isBreakGlassScope = input.required === "BREAK_GLASS_PAYMENT_ADMIN";
 
   if (scopes.length === 0) {
-    if (isBreakGlassScope) {
-      return false;
-    }
-
-    return input.allowLegacyEmptyScopesFallback ?? allowLegacyEmptyAdminScopesFallback();
+    return false;
   }
 
   return scopes.includes("SUPER_ADMIN") || scopes.includes(input.required);
