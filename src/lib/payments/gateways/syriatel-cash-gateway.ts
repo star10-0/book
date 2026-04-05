@@ -1,4 +1,5 @@
 import { PaymentProvider } from "@prisma/client";
+import { logInfo } from "@/lib/observability/logger";
 import { createMockPaymentResult, verifyMockPaymentResult } from "@/lib/payments/gateways/mock-payment-gateway";
 import {
   extractFailureReason,
@@ -8,6 +9,7 @@ import {
   readOptionalTimeoutMs,
   readRequiredEnv,
   safeLogProviderResponse,
+  sanitizeForLogs,
 } from "@/lib/payments/gateways/provider-http";
 import { getSyriatelCashIntegrationConfig } from "@/lib/payments/gateways/provider-integration";
 import type {
@@ -60,13 +62,36 @@ function pickNumber(payload: Record<string, unknown>, keys: string[]) {
       return value;
     }
     if (typeof value === "string" && value.trim().length > 0) {
-      const parsed = Number.parseInt(value.trim(), 10);
+      const parsed = Number.parseFloat(value.trim());
       if (Number.isFinite(parsed)) {
         return parsed;
       }
     }
   }
   return undefined;
+}
+
+function normalizeAmountCents(input: {
+  majorAmount: number | undefined;
+  amountCents: number | undefined;
+}): number | undefined {
+  if (typeof input.amountCents === "number") {
+    const roundedCents = Math.round(input.amountCents);
+    if (Number.isSafeInteger(roundedCents)) {
+      return roundedCents;
+    }
+  }
+
+  if (typeof input.majorAmount !== "number") {
+    return undefined;
+  }
+
+  const converted = Math.round(input.majorAmount * 100);
+  if (!Number.isSafeInteger(converted)) {
+    return undefined;
+  }
+
+  return converted;
 }
 
 export class SyriatelCashGateway implements PaymentGateway {
@@ -130,19 +155,26 @@ export class SyriatelCashGateway implements PaymentGateway {
       transactionReference: input.transactionReference.trim(),
     });
 
-    const verifiedAmountCents = pickNumber(payload, ["amountCents", "amount"]);
+    const verifiedAmountCents = normalizeAmountCents({
+      amountCents: pickNumber(payload, ["amountCents"]),
+      majorAmount: pickNumber(payload, ["amount"]),
+    });
     const verifiedCurrency = pickString(payload, ["currency"]);
     const verifiedDestination = pickString(payload, ["to", "gsm", "destinationAccount", "receiverAccount", "merchantAccount"]);
+    const amountMatches = typeof verifiedAmountCents === "number" && verifiedAmountCents === input.expectedAmountCents;
+    const currencyMatches = typeof verifiedCurrency === "string" && verifiedCurrency.toUpperCase() === input.expectedCurrency.toUpperCase();
+    const destinationMatches = typeof verifiedDestination === "string" && verifiedDestination === config.destinationAccount;
 
-    if (typeof verifiedAmountCents === "number" && verifiedAmountCents !== input.expectedAmountCents) {
+    if (typeof verifiedAmountCents === "number" && !amountMatches) {
       throw new GatewayRequestError({
         provider: "syriatel_cash",
         phase: "verify",
-        message: "Syriatel Cash verify response amount does not match expected amount.",
+        statusCode: 409,
+        message: "قيمة عملية Syriatel Cash لا تطابق المبلغ المتوقع. (Syriatel Cash verify amount mismatch.)",
       });
     }
 
-    if (verifiedCurrency && verifiedCurrency.toUpperCase() !== input.expectedCurrency.toUpperCase()) {
+    if (verifiedCurrency && !currencyMatches) {
       throw new GatewayRequestError({
         provider: "syriatel_cash",
         phase: "verify",
@@ -150,7 +182,7 @@ export class SyriatelCashGateway implements PaymentGateway {
       });
     }
 
-    if (verifiedDestination && verifiedDestination !== config.destinationAccount) {
+    if (verifiedDestination && !destinationMatches) {
       throw new GatewayRequestError({
         provider: "syriatel_cash",
         phase: "verify",
@@ -159,6 +191,30 @@ export class SyriatelCashGateway implements PaymentGateway {
     }
 
     const isPaid = isPaidStatus(payload);
+    const failureReason = extractFailureReason(payload) ?? "Syriatel Cash reported an unsuccessful transaction status.";
+
+    logInfo("Syriatel Cash verification decision", {
+      provider: "syriatel_cash",
+      phase: "verify",
+      expected: {
+        amountCents: input.expectedAmountCents,
+        currency: input.expectedCurrency,
+        destinationAccount: config.destinationAccount,
+      },
+      normalizedValues: {
+        amountCents: verifiedAmountCents,
+        currency: verifiedCurrency,
+        destination: verifiedDestination,
+      },
+      comparisons: {
+        amountMatches,
+        currencyMatches,
+        destinationMatches,
+      },
+      isPaid,
+      failureReason: isPaid ? undefined : failureReason,
+      payload: sanitizeForLogs(payload),
+    });
 
     return {
       isPaid,
@@ -166,7 +222,7 @@ export class SyriatelCashGateway implements PaymentGateway {
         mode: "live",
         ...payload,
       },
-      failureReason: isPaid ? undefined : extractFailureReason(payload) ?? "Syriatel Cash reported an unsuccessful transaction status.",
+      failureReason: isPaid ? undefined : failureReason,
     };
   }
 }

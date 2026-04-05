@@ -51,7 +51,7 @@ test("SyriatelCashGateway verify rejects destination-account mismatch from find_
           transaction: {
             transaction_no: "TX-123",
             to: "wrong-destination",
-            amount: 1000,
+            amount: 10,
             currency: "SYP",
           },
           account: {
@@ -91,7 +91,7 @@ test("SyriatelCashGateway verify rejects mismatched amount from find_tx", async 
           transaction: {
             transaction_no: "TX-123",
             to: "dest-acc-1",
-            amount: 999,
+            amount: 9,
             currency: "SYP",
           },
           account: {
@@ -141,7 +141,7 @@ test("SyriatelCashGateway verify uses API SYRIA find_tx GET contract and returns
             date: "2026-03-30T10:00:00Z",
             from: "wallet-1",
             to: "dest-acc-1",
-            amount: 1000,
+            amount: 10,
           },
           account: {
             gsm: "dest-acc-1",
@@ -167,6 +167,47 @@ test("SyriatelCashGateway verify uses API SYRIA find_tx GET contract and returns
   );
   assert.equal(requestMethod, "GET");
   assert.equal(requestApiKey, "secret-key");
+  assert.equal(result.isPaid, true);
+
+  process.env = originalEnv;
+  global.fetch = originalFetch;
+});
+
+test("SyriatelCashGateway verify prefers amountCents over amount when both are present", async () => {
+  const originalFetch = global.fetch;
+  const originalEnv = { ...process.env };
+
+  setLiveEnv();
+
+  global.fetch = async () =>
+    new Response(
+      JSON.stringify({
+        success: true,
+        data: {
+          found: true,
+          transaction: {
+            transaction_no: "TX-777",
+            to: "dest-acc-1",
+            amount: 20,
+            amountCents: 1000,
+            currency: "SYP",
+          },
+          account: {
+            gsm: "dest-acc-1",
+          },
+        },
+      }),
+      { status: 200 },
+    );
+
+  const result = await gateway.verifyPayment({
+    paymentId: "p-1",
+    providerReference: "ref-1",
+    transactionReference: "TX-777",
+    expectedAmountCents: 1000,
+    expectedCurrency: "SYP",
+  });
+
   assert.equal(result.isPaid, true);
 
   process.env = originalEnv;

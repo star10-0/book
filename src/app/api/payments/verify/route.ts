@@ -107,9 +107,12 @@ export async function POST(request: Request) {
     }
 
     if (error instanceof GatewayRequestError) {
-      recordApiResponse({ route: "/api/payments/verify", status: 502 });
+      const status = typeof error.statusCode === "number" && error.statusCode >= 400 && error.statusCode < 600
+        ? error.statusCode
+        : 502;
+      recordApiResponse({ route: "/api/payments/verify", status });
       recordPaymentEvent({ flow: "verify", outcome: "failure", reason: "gateway_request_failed" });
-      return jsonNoStore({ message: getVerifyGatewayErrorMessage(error) }, { status: 502 });
+      return jsonNoStore({ message: getVerifyGatewayErrorMessage(error) }, { status });
     }
 
     recordApiResponse({ route: "/api/payments/verify", status: 500 });
