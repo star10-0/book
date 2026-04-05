@@ -40,6 +40,7 @@ export async function recoverOrderAccessGrantAction(formData: FormData) {
   revalidatePath("/admin/orders");
   revalidatePath("/admin/payments");
   revalidatePath(`/admin/users`);
+  return;
 }
 
 export async function recheckPromoIntegrityAction(formData: FormData) {
@@ -67,6 +68,7 @@ export async function recheckPromoIntegrityAction(formData: FormData) {
 
   revalidatePath("/admin/orders");
   revalidatePath("/admin/promo-codes");
+  return;
 }
 
 export async function resolveStaleRentalGrantsAction(formData: FormData) {
@@ -91,4 +93,5 @@ export async function resolveStaleRentalGrantsAction(formData: FormData) {
 
   revalidatePath("/admin/orders");
   revalidatePath("/admin/users");
+  return;
 }

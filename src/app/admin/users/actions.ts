@@ -45,6 +45,7 @@ export async function banUserAction(formData: FormData) {
 
   revalidatePath("/admin/users");
   revalidatePath(`/admin/users/${targetUserId}`);
+  return;
 }
 
 export async function unbanUserAction(formData: FormData) {
@@ -57,6 +58,7 @@ export async function unbanUserAction(formData: FormData) {
 
   revalidatePath("/admin/users");
   revalidatePath(`/admin/users/${targetUserId}`);
+  return;
 }
 
 export async function adminForceLogoutAllDevicesAction(formData: FormData) {
@@ -69,6 +71,7 @@ export async function adminForceLogoutAllDevicesAction(formData: FormData) {
 
   revalidatePath("/admin/users");
   revalidatePath(`/admin/users/${targetUserId}`);
+  return;
 }
 
 export async function forcePasswordResetAction(formData: FormData) {
@@ -81,6 +84,7 @@ export async function forcePasswordResetAction(formData: FormData) {
 
   revalidatePath("/admin/users");
   revalidatePath(`/admin/users/${targetUserId}`);
+  return;
 }
 
 export async function revokeTrustedDeviceAction(formData: FormData) {
@@ -112,6 +116,7 @@ export async function revokeTrustedDeviceAction(formData: FormData) {
 
   revalidatePath("/admin/users");
   revalidatePath(`/admin/users/${targetUserId}`);
+  return;
 }
 
 export async function requireTrustedDeviceRebindAction(formData: FormData) {
@@ -142,4 +147,5 @@ export async function requireTrustedDeviceRebindAction(formData: FormData) {
 
   revalidatePath("/admin/users");
   revalidatePath(`/admin/users/${targetUserId}`);
+  return;
 }

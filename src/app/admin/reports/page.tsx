@@ -1,5 +1,6 @@
 import { AdminPageCard, AdminPageHeader } from "@/components/admin/admin-page";
 import { requireAdmin } from "@/lib/auth-session";
+import { hasAdminScope } from "@/lib/authz";
 
 const reports = [
   {
@@ -25,13 +26,17 @@ const reports = [
 ] as const;
 
 export default async function AdminReportsPage() {
-  await requireAdmin({ callbackUrl: "/admin/reports" });
+  const admin = await requireAdmin({ callbackUrl: "/admin/reports" });
+  const visibleReports = reports.filter((report) => {
+    const neededScope = report.href.includes("users") || report.href.includes("suspicious-activity") ? "SUPPORT_ADMIN" : "PAYMENT_ADMIN";
+    return hasAdminScope({ adminScopes: admin.adminScopes, required: neededScope });
+  });
 
   return (
     <AdminPageCard>
       <AdminPageHeader title="التقارير والتصدير" description="تنزيل تقارير تشغيلية بصيغة CSV لدعم المراجعة، الامتثال، والتحليل الخارجي." />
       <div className="grid gap-3 sm:grid-cols-2">
-        {reports.map((report) => (
+        {visibleReports.map((report) => (
           <a
             key={report.href}
             href={report.href}

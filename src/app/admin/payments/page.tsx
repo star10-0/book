@@ -95,6 +95,10 @@ function recommendedPaymentAction(input: { incident: PaymentIncidentLabel | null
   return "تابع المسار الحالي مع تسجيل سبب الإجراء في سجل التدقيق.";
 }
 
+function canReconcileByTx(transactionReference?: string) {
+  return Boolean(transactionReference?.trim());
+}
+
 export default async function AdminPaymentsPage({ searchParams }: AdminPaymentsPageProps) {
   await requireAdminScope("PAYMENT_ADMIN", { callbackUrl: "/admin/payments" });
   const params = searchParams ? await searchParams : {};
@@ -218,9 +222,9 @@ export default async function AdminPaymentsPage({ searchParams }: AdminPaymentsP
             render: (row) => (
               <div className="flex flex-wrap gap-1 text-xs">
                 <form action={retryVerifyPaymentAction}><input type="hidden" name="attemptId" value={row.id} /><input type="hidden" name="userId" value={row.userId} /><input type="hidden" name="reason" value="retry verify from payments list" /><button className="rounded border px-2 py-1">إعادة تحقق</button></form>
-                <form action={reconcileByTxAction}><input type="hidden" name="attemptId" value={row.id} /><input type="hidden" name="userId" value={row.userId} /><input type="hidden" name="transactionReference" value={(row.requestPayload as { transactionReference?: string } | null)?.transactionReference || ""} /><input type="hidden" name="reason" value="reconcile by tx from list" /><button className="rounded border px-2 py-1">مطابقة بالمرجع</button></form>
+                <form action={reconcileByTxAction}><input type="hidden" name="attemptId" value={row.id} /><input type="hidden" name="userId" value={row.userId} /><input type="hidden" name="transactionReference" value={(row.requestPayload as { transactionReference?: string } | null)?.transactionReference || ""} /><input type="hidden" name="reason" value="reconcile by tx from list" /><button disabled={!canReconcileByTx((row.requestPayload as { transactionReference?: string } | null)?.transactionReference)} title={!canReconcileByTx((row.requestPayload as { transactionReference?: string } | null)?.transactionReference) ? "لا يمكن المطابقة لأن مرجع العملية غير متوفر." : undefined} className="rounded border px-2 py-1 disabled:cursor-not-allowed disabled:opacity-50">مطابقة بالمرجع</button></form>
                 <form action={recoverStuckAttemptAction}><input type="hidden" name="attemptId" value={row.id} /><input type="hidden" name="userId" value={row.userId} /><input type="hidden" name="transactionReference" value={(row.requestPayload as { transactionReference?: string } | null)?.transactionReference || ""} /><input type="hidden" name="reason" value="recover stuck attempt from list" /><button className="rounded border px-2 py-1">استرداد محاولة</button></form>
-                <form action={releasePaymentTxLockAction}><input type="hidden" name="attemptId" value={row.id} /><input type="hidden" name="reason" value="release tx lock from list" /><button className="rounded border px-2 py-1">تحرير قفل</button></form>
+                <form action={releasePaymentTxLockAction}><input type="hidden" name="attemptId" value={row.id} /><input type="hidden" name="reason" value="release tx lock from list" /><button disabled={row.status !== "VERIFYING"} title={row.status !== "VERIFYING" ? "تحرير القفل متاح فقط عند حالة VERIFYING." : undefined} className="rounded border px-2 py-1 disabled:cursor-not-allowed disabled:opacity-50">تحرير قفل</button></form>
               </div>
             ),
           },
