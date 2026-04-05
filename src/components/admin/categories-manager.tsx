@@ -61,6 +61,7 @@ function CreateCategoryForm() {
 
 function CategoryRowForm({ category }: { category: CategoryRow }) {
   const [state, formAction, isPending] = useActionState(updateCategoryAction.bind(null, category.id), initialState);
+  const deleteAction = deleteCategoryAction.bind(null, category.id);
 
   return (
     <form action={formAction} className="grid gap-3 rounded-xl border border-slate-200 p-4 md:grid-cols-[1fr_1fr_auto_auto]">
@@ -85,7 +86,7 @@ function CategoryRowForm({ category }: { category: CategoryRow }) {
       </div>
 
       <div className="flex items-end justify-end">
-        <CategoryDeleteButton categoryId={category.id} booksCount={category.booksCount} />
+        <CategoryDeleteButton deleteAction={deleteAction} booksCount={category.booksCount} />
       </div>
 
       <p className="text-xs text-slate-500 md:col-span-4">{`عدد الكتب المرتبطة: ${category.booksCount}`}</p>
@@ -96,18 +97,16 @@ function CategoryRowForm({ category }: { category: CategoryRow }) {
   );
 }
 
-function CategoryDeleteButton({ categoryId, booksCount }: { categoryId: string; booksCount: number }) {
+function CategoryDeleteButton({ deleteAction, booksCount }: { deleteAction: (formData: FormData) => void | Promise<void>; booksCount: number }) {
   return (
-    <form action={deleteCategoryAction}>
-      <input type="hidden" name="categoryId" value={categoryId} />
-      <button
-        type="submit"
-        disabled={booksCount > 0}
-        className="rounded-md border border-rose-300 px-3 py-2 text-xs font-semibold text-rose-700 disabled:cursor-not-allowed disabled:opacity-50"
-      >
-        حذف
-      </button>
-    </form>
+    <button
+      type="submit"
+      formAction={deleteAction}
+      disabled={booksCount > 0}
+      className="rounded-md border border-rose-300 px-3 py-2 text-xs font-semibold text-rose-700 disabled:cursor-not-allowed disabled:opacity-50"
+    >
+      حذف
+    </button>
   );
 }
 
