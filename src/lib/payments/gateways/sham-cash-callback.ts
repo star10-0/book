@@ -1,3 +1,4 @@
+import "server-only";
 import { createHmac, timingSafeEqual } from "node:crypto";
 import { GatewayConfigurationError } from "@/lib/payments/gateways/provider-http";
 

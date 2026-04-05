@@ -1,0 +1,20 @@
+title = "book gitleaks config"
+
+[extend]
+useDefault = true
+
+[allowlist]
+description = "allow test fixtures and documentation examples"
+paths = [
+  '''^src/lib/__tests__/''',
+  '''^src/app/api/.*/__tests__/''',
+  '''^SECURITY_.*\.md$''',
+  '''^DEPLOYMENT_.*\.md$''',
+  '''^BOOK2_REPO_REVIEW_.*\.md$''',
+]
+
+regexes = [
+  '''secret-key''',
+  '''test-secret''',
+  '''token-1''',
+]

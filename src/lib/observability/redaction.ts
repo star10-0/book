@@ -1,3 +1,4 @@
+import "server-only";
 const FULL_REDACTION_PATTERNS = [
   /authorization/i,
   /token/i,
@@ -61,7 +62,9 @@ function sanitizeString(value: string): string {
     return "Bearer [REDACTED]";
   }
 
-  return value;
+  return value
+    .replace(/([?&](?:token|api[_-]?key|secret|signature|password|authorization)=)[^&]+/gi, "$1[REDACTED]")
+    .replace(/(x-api-key[:=]\s*)[^\s,]+/gi, "$1[REDACTED]");
 }
 
 function redactInternal(value: unknown, depth: number, seen: WeakSet<object>): unknown {

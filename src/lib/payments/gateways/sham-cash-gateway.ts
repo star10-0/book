@@ -1,3 +1,4 @@
+import "server-only";
 import { PaymentProvider } from "@prisma/client";
 import { logInfo } from "@/lib/observability/logger";
 import { createMockPaymentResult, verifyMockPaymentResult } from "@/lib/payments/gateways/mock-payment-gateway";
@@ -224,7 +225,7 @@ export class ShamCashGateway implements PaymentGateway {
     logInfo("Sham Cash verification decision", {
       provider: "sham_cash",
       phase: "verify",
-      endpoint: verificationResponse.endpoint,
+      endpointBase: verificationResponse.endpointBase,
       responseStatus: verificationResponse.responseStatus,
       rawPayload: sanitizeForLogs(verificationResponse.rawPayload),
       normalizedPayload: sanitizeForLogs(payload),
@@ -265,7 +266,7 @@ async function findShamCashTransaction(input: {
   config: ReturnType<typeof getShamCashLiveConfig>;
   transactionReference: string;
 }): Promise<{
-  endpoint: string;
+  endpointBase: string;
   responseStatus: number;
   rawPayload: Record<string, unknown>;
   normalizedPayload: Record<string, unknown>;
@@ -284,7 +285,7 @@ async function findShamCashTransaction(input: {
     logInfo("Sham Cash verify request", {
       provider: "sham_cash",
       phase: "verify",
-      endpoint: endpoint.toString(),
+      endpointBase: endpoint.origin + endpoint.pathname,
       requestShape: {
         method: "GET",
         query: {
@@ -326,7 +327,7 @@ async function findShamCashTransaction(input: {
     }
 
     return {
-      endpoint: endpoint.toString(),
+      endpointBase: endpoint.origin + endpoint.pathname,
       responseStatus: response.status,
       rawPayload: payload,
       normalizedPayload,

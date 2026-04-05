@@ -22,7 +22,9 @@
     "pretypecheck": "prisma generate",
     "prisma:migrate:deploy": "prisma migrate deploy",
     "start:prod": "npm run start",
-    "prisma:reset-admin-password": "tsx prisma/reset-admin-password.ts"
+    "prisma:reset-admin-password": "tsx prisma/reset-admin-password.ts",
+    "security:scan:secrets": "gitleaks detect --config .gitleaks.toml --redact --verbose",
+    "security:scan:bundle": "node scripts/check-client-bundle-secrets.mjs"
   },
   "dependencies": {
     "@prisma/client": "6.19.2",
