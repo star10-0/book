@@ -17,6 +17,36 @@ function prettyJson(value: unknown) {
   return JSON.stringify(value ?? {}, null, 2);
 }
 
+function extractDiagnosticHint(payload: unknown): string | null {
+  if (!payload || typeof payload !== "object" || Array.isArray(payload)) {
+    return null;
+  }
+
+  const diagnostic = (payload as { diagnostic?: unknown }).diagnostic;
+  if (!diagnostic || typeof diagnostic !== "object" || Array.isArray(diagnostic)) {
+    return null;
+  }
+
+  const code = (diagnostic as { code?: string }).code;
+
+  if (code === "provider_mismatch_possible") {
+    const suggestedProvider = (diagnostic as { suggestedProvider?: string }).suggestedProvider;
+    if (suggestedProvider === "SHAM_CASH") {
+      return "مؤشر تشخيصي: رقم العملية يبدو أقرب إلى Sham Cash. لا تمنح وصولاً تلقائياً؛ اطلب إعادة الاختيار والتحقق عبر المزود الصحيح.";
+    }
+    if (suggestedProvider === "SYRIATEL_CASH") {
+      return "مؤشر تشخيصي: رقم العملية يبدو أقرب إلى Syriatel Cash. لا تمنح وصولاً تلقائياً؛ اطلب إعادة الاختيار والتحقق عبر المزود الصحيح.";
+    }
+    return "مؤشر تشخيصي: هناك احتمال عدم تطابق بين المزود المختار ورقم العملية.";
+  }
+
+  if (code === "tx_not_found_in_selected_provider") {
+    return "مؤشر تشخيصي: رقم العملية غير موجود ضمن المزود المختار في هذه المحاولة.";
+  }
+
+  return null;
+}
+
 export default async function AdminPaymentAttemptPage({ params }: PageProps) {
   const { attemptId } = await params;
 
@@ -51,6 +81,7 @@ export default async function AdminPaymentAttemptPage({ params }: PageProps) {
     hasTransactionReference: Boolean(txRef),
     providerReferenceMatchesPayment,
   });
+  const diagnosticHint = extractDiagnosticHint(attempt.responsePayload);
 
   return (
     <div className="space-y-4" dir="rtl">
@@ -74,6 +105,9 @@ export default async function AdminPaymentAttemptPage({ params }: PageProps) {
           <p>وصول ممنوح: {accessExists > 0 ? "نعم" : "لا"}</p>
           <p>providerRef متطابق: {providerReferenceMatchesPayment ? "نعم" : "لا"}</p>
         </div>
+        {diagnosticHint ? (
+          <p className="mt-3 rounded border border-amber-200 bg-amber-50 px-3 py-2 text-xs text-amber-900">{diagnosticHint}</p>
+        ) : null}
         <div className="mt-4 grid gap-2 sm:grid-cols-2">
           <form action={retryVerifyPaymentAction} className="rounded border p-3 text-xs"><input type="hidden" name="attemptId" value={attempt.id} /><input type="hidden" name="userId" value={attempt.userId} /><input name="reason" className="mb-2 w-full rounded border px-2 py-1" placeholder="سبب التدخل" required defaultValue="manual retry verify" /><button className="rounded border px-2 py-1">إعادة تحقق</button></form>
           <form action={reconcileByTxAction} className="rounded border p-3 text-xs"><input type="hidden" name="attemptId" value={attempt.id} /><input type="hidden" name="userId" value={attempt.userId} /><input name="transactionReference" className="mb-2 w-full rounded border px-2 py-1" required defaultValue={txRef} /><input name="reason" className="mb-2 w-full rounded border px-2 py-1" required defaultValue="manual tx reconcile" /><button className="rounded border px-2 py-1">مطابقة بالمرجع</button></form>
