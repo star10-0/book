@@ -16,6 +16,7 @@ interface OrderPaymentPanelProps {
   appliedPromoCode?: string;
   initialAttemptId?: string;
   initialAttemptStatus?: PaymentAttemptStatus;
+  initialTransactionReference?: string;
   shamCashDestinationAccount?: string;
   syriatelCashDestinationAccount?: string;
   enabledLiveProviders?: LiveProviderOption[];
@@ -52,7 +53,7 @@ const paymentOptions: Array<{
 
 const statusLabel: Record<UiStatus, string> = {
   idle: "جاهز للبدء",
-  pending: "بانتظار التحقق",
+  pending: "بانتظار المتابعة",
   verifying: "جاري التحقق",
   success: "الدفع مكتمل",
   failure: "تعذر تأكيد الدفع",
@@ -102,6 +103,7 @@ export function OrderPaymentPanel({
   appliedPromoCode,
   initialAttemptId,
   initialAttemptStatus,
+  initialTransactionReference,
   shamCashDestinationAccount,
   syriatelCashDestinationAccount,
   enabledLiveProviders,
@@ -109,7 +111,8 @@ export function OrderPaymentPanel({
   const router = useRouter();
   const [attemptId, setAttemptId] = useState<string | undefined>(initialAttemptId);
   const [attemptStatus, setAttemptStatus] = useState<PaymentAttemptStatus | undefined>(initialAttemptStatus);
-  const [transactionReference, setTransactionReference] = useState("");
+  const [transactionReference, setTransactionReference] = useState(initialTransactionReference ?? "");
+  const [hasSubmittedReference, setHasSubmittedReference] = useState(Boolean(initialTransactionReference?.trim()));
   const [proofNote, setProofNote] = useState("");
   const [promoCodeInput, setPromoCodeInput] = useState(appliedPromoCode ?? "");
   const [message, setMessage] = useState("");
@@ -144,21 +147,24 @@ export function OrderPaymentPanel({
   useEffect(() => {
     setAttemptId(initialAttemptId);
     setAttemptStatus(initialAttemptStatus);
+    setTransactionReference(initialTransactionReference ?? "");
+    setHasSubmittedReference(Boolean(initialTransactionReference?.trim()));
     if (initialAttemptStatus === "PAID") {
       setMessage("تم تأكيد الدفع بنجاح. يمكنك الآن الوصول إلى محتوى الطلب.");
       setMessageTone("success");
     }
-  }, [initialAttemptId, initialAttemptStatus]);
+  }, [initialAttemptId, initialAttemptStatus, initialTransactionReference]);
 
   useEffect(() => {
     setTransactionReference("");
+    setHasSubmittedReference(false);
     setProofNote("");
     setCopyFeedback("");
     if (attemptStatusRef.current !== "PAID") {
       setMessage("");
       setMessageTone("info");
     }
-  }, [selectedProvider, attemptStatus]);
+  }, [selectedProvider]);
 
   useEffect(() => {
     if (!copyFeedback) return;
@@ -175,6 +181,41 @@ export function OrderPaymentPanel({
     selectedProvider === PaymentProvider.SHAM_CASH ? shamDestinationLabel : syriatelDestinationLabel;
   const selectedDestinationMissing = selectedDestinationLabel === "غير متاح حالياً";
   const uiStatus = mapAttemptStatusToUiStatus(attemptStatus);
+
+  const isFreeOrder = totalCents === 0;
+  const paymentBlockedByOrderState = !isPayable;
+  const paymentProviderUnavailable = availablePaymentOptions.length === 0;
+  const isAttemptTerminal = attemptStatus === "PAID" || attemptStatus === "FAILED";
+
+  const canCreateAttempt = !isFreeOrder && !paymentBlockedByOrderState && !paymentProviderUnavailable && !selectedDestinationMissing && !isAttemptTerminal;
+  const canSubmitReference = Boolean(attemptId) && attemptStatus === "SUBMITTED";
+  const canVerifyAttempt = Boolean(attemptId) && attemptStatus === "SUBMITTED" && hasSubmittedReference;
+
+  const createAttemptDisabledReason = isFreeOrder
+    ? "الطلب مجاني بالكامل ولا يحتاج إلى محاولة دفع."
+    : paymentBlockedByOrderState
+      ? "لا يمكن إنشاء محاولة دفع لأن حالة الطلب لم تعد قابلة للدفع."
+      : paymentProviderUnavailable
+        ? "لا توجد وسيلة دفع مفعّلة حاليًا لهذا الطلب."
+        : selectedDestinationMissing
+          ? "حساب الاستلام للمزود المختار غير متاح حاليًا."
+          : isAttemptTerminal
+            ? "هذه المحاولة وصلت إلى حالة نهائية. أنشئ طلبًا جديدًا إذا احتجت إعادة الشراء."
+            : undefined;
+
+  const submitDisabledReason = !attemptId
+    ? "أنشئ محاولة دفع أولًا لتفعيل إرسال رقم العملية."
+    : attemptStatus !== "SUBMITTED"
+      ? "لا يمكن إرسال رقم العملية في الحالة الحالية."
+      : undefined;
+
+  const verifyDisabledReason = !attemptId
+    ? "أنشئ محاولة دفع أولًا."
+    : attemptStatus !== "SUBMITTED"
+      ? "التحقق متاح فقط بعد إنشاء المحاولة وفي حالة انتظار المرجع."
+      : !hasSubmittedReference
+        ? "أدخل رقم العملية أولًا ثم اضغط إرسال رقم العملية."
+        : undefined;
 
   const copyText = async (text: string, successMessage: string) => {
     if (!text.trim() || text === "غير متاح حالياً") return;
@@ -243,8 +284,8 @@ export function OrderPaymentPanel({
   };
 
   const createPaymentAttempt = () => {
-    if (selectedDestinationMissing) {
-      setMessage("بيانات حساب الاستلام لهذا المزود غير مهيأة على الخادم بعد.");
+    if (!canCreateAttempt) {
+      setMessage(createAttemptDisabledReason ?? "لا يمكن إنشاء محاولة دفع الآن.");
       setMessageTone("error");
       return;
     }
@@ -275,6 +316,7 @@ export function OrderPaymentPanel({
 
       setAttemptId(payload.attempt.id);
       setAttemptStatus(payload.attempt.status);
+      setHasSubmittedReference(false);
       setMessage(
         selectedProvider === PaymentProvider.SHAM_CASH
           ? "تم إنشاء محاولة الدفع عبر Sham Cash. حوّل المبلغ ثم أدخل رقم العملية."
@@ -324,6 +366,7 @@ export function OrderPaymentPanel({
       }
 
       setAttemptStatus(payload.attempt.status);
+      setHasSubmittedReference(true);
       setMessage("تم حفظ رقم العملية. يمكنك الآن التحقق من حالة الدفع.");
       setMessageTone("success");
       router.refresh();
@@ -333,6 +376,12 @@ export function OrderPaymentPanel({
   const verifyPaymentStatus = () => {
     if (!attemptId) {
       setMessage("لا توجد محاولة دفع نشطة للتحقق.");
+      setMessageTone("error");
+      return;
+    }
+
+    if (!hasSubmittedReference) {
+      setMessage("أدخل رقم العملية وأرسله أولًا قبل التحقق من حالة الدفع.");
       setMessageTone("error");
       return;
     }
@@ -380,12 +429,7 @@ export function OrderPaymentPanel({
     });
   };
 
-  const isFreeOrder = totalCents === 0;
-  const canCreateAttempt = isPayable && !selectedDestinationMissing;
-  const canSubmitReference = Boolean(attemptId) && attemptStatus === "SUBMITTED";
-  const canVerifyAttempt = Boolean(attemptId) && attemptStatus !== "PAID" && attemptStatus !== "FAILED";
-
-  const currentStep = !attemptId ? 1 : canSubmitReference ? 3 : canVerifyAttempt ? 4 : uiStatus === "success" ? 4 : 2;
+  const currentStep = !attemptId ? 1 : !hasSubmittedReference ? 3 : canVerifyAttempt ? 4 : uiStatus === "success" ? 4 : 2;
 
   return (
     <section className="space-y-5 rounded-3xl border border-slate-200 bg-white p-4 shadow-sm sm:p-6">
@@ -435,7 +479,7 @@ export function OrderPaymentPanel({
 
             {availablePaymentOptions.length === 0 ? (
               <div className="mt-4 rounded-xl border border-amber-200 bg-amber-50 p-4 text-sm text-amber-900">
-                لا توجد وسائل دفع مفعّلة حاليًا لهذا الطلب.
+                لا توجد وسائل دفع مفعّلة حاليًا لهذا الطلب. جرّب إتمامه لاحقًا أو تواصل مع الدعم.
               </div>
             ) : (
               <div className="mt-4 grid gap-3 sm:grid-cols-2">
@@ -477,7 +521,7 @@ export function OrderPaymentPanel({
 
               {selectedDestinationMissing ? (
                 <div className="rounded-xl border border-rose-200 bg-rose-50 p-3 text-sm text-rose-800">
-                  حساب الاستلام لهذا المزود غير متاح حاليًا. يرجى اختيار مزود آخر أو المحاولة لاحقًا.
+                  حساب الاستلام لهذا المزود غير متاح حاليًا. اختر مزودًا آخر أو أعد المحاولة لاحقًا.
                 </div>
               ) : null}
 
@@ -596,9 +640,12 @@ export function OrderPaymentPanel({
                   id="transaction-reference"
                   type="text"
                   value={transactionReference}
-                  onChange={(event) => setTransactionReference(event.target.value)}
+                  onChange={(event) => {
+                    setTransactionReference(event.target.value);
+                    setHasSubmittedReference(false);
+                  }}
                   placeholder="مثال: TXN-2026-0001"
-                  disabled={!attemptId}
+                  disabled={!attemptId || attemptStatus !== "SUBMITTED"}
                   className="w-full rounded-xl border border-slate-300 px-3 py-2 text-sm text-slate-900 outline-none focus:border-indigo-500 focus:ring-2 focus:ring-indigo-100"
                 />
 
@@ -611,11 +658,14 @@ export function OrderPaymentPanel({
                   onChange={(event) => setProofNote(event.target.value)}
                   rows={3}
                   placeholder="أدخل أي تفاصيل إضافية عن التحويل"
-                  disabled={!attemptId}
+                  disabled={!attemptId || attemptStatus !== "SUBMITTED"}
                   className="w-full rounded-xl border border-slate-300 px-3 py-2 text-sm text-slate-900 outline-none focus:border-indigo-500 focus:ring-2 focus:ring-indigo-100"
                 />
 
                 {!attemptId ? <p className="text-xs text-slate-500">أنشئ محاولة الدفع أولًا لتفعيل إدخال رقم العملية.</p> : null}
+                {attemptId && !hasSubmittedReference ? (
+                  <p className="text-xs text-amber-700">بعد إدخال الرقم، اضغط «إرسال رقم العملية» قبل التحقق من حالة الدفع.</p>
+                ) : null}
               </div>
             </section>
           ) : null}
@@ -650,14 +700,18 @@ export function OrderPaymentPanel({
             <p className="mt-1 text-sm text-slate-600">
               {!attemptId
                 ? "ابدأ بإنشاء محاولة الدفع لتفعيل بقية خطوات الإرسال والتحقق."
-                : canSubmitReference
-                  ? "أدخل رقم العملية الآن ثم أرسلها للتحقق."
+                : !hasSubmittedReference
+                  ? "أدخل رقم العملية الآن ثم أرسله قبل خطوة التحقق."
                   : canVerifyAttempt
                     ? "بعد الإرسال اضغط تحقق من حالة الدفع لإكمال الطلب."
                     : uiStatus === "success"
                       ? "تم التأكيد. يمكنك فتح مكتبتك أو متابعة التسوق."
                       : "تابع تحديث الحالة أو أنشئ محاولة جديدة عند الحاجة."}
             </p>
+
+            {createAttemptDisabledReason ? (
+              <p className="mt-3 rounded-lg border border-slate-200 bg-slate-50 px-3 py-2 text-xs text-slate-700">{createAttemptDisabledReason}</p>
+            ) : null}
 
             {isFreeOrder ? (
               <button
@@ -686,6 +740,7 @@ export function OrderPaymentPanel({
                 >
                   إرسال رقم العملية
                 </button>
+                {submitDisabledReason ? <p className="text-xs text-slate-500">{submitDisabledReason}</p> : null}
                 <button
                   type="button"
                   onClick={verifyPaymentStatus}
@@ -694,6 +749,7 @@ export function OrderPaymentPanel({
                 >
                   تحقق من حالة الدفع
                 </button>
+                {verifyDisabledReason ? <p className="text-xs text-slate-500">{verifyDisabledReason}</p> : null}
               </div>
             )}
           </section>

@@ -38,6 +38,7 @@ export default async function CheckoutPage({ params }: CheckoutPageProps) {
   }
 
   const latestAttempt = order.paymentAttempts[0];
+  const initialTransactionReference = readTransactionReferenceFromPayload(latestAttempt?.requestPayload);
   const shamCashDestinationAccount = process.env.SHAM_CASH_DESTINATION_ACCOUNT?.trim() || undefined;
   const syriatelCashDestinationAccount = process.env.SYRIATEL_CASH_DESTINATION_ACCOUNT?.trim() || undefined;
   const selectedLiveProviders = parseSelectedLiveProviders().selectedProviders;
@@ -74,6 +75,7 @@ export default async function CheckoutPage({ params }: CheckoutPageProps) {
           appliedPromoCode={order.promoCode?.code}
           initialAttemptId={latestAttempt?.id}
           initialAttemptStatus={latestAttempt?.status}
+          initialTransactionReference={initialTransactionReference}
           shamCashDestinationAccount={shamCashDestinationAccount}
           syriatelCashDestinationAccount={syriatelCashDestinationAccount}
           enabledLiveProviders={selectedLiveProviders}
@@ -95,4 +97,18 @@ export default async function CheckoutPage({ params }: CheckoutPageProps) {
       </div>
     </main>
   );
+}
+
+function readTransactionReferenceFromPayload(payload: unknown): string | undefined {
+  if (!payload || typeof payload !== "object" || Array.isArray(payload)) {
+    return undefined;
+  }
+
+  const value = (payload as Record<string, unknown>).transactionReference;
+  if (typeof value !== "string") {
+    return undefined;
+  }
+
+  const normalized = value.trim();
+  return normalized.length > 0 ? normalized : undefined;
 }

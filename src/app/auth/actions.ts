@@ -77,7 +77,7 @@ export async function signInAction(_prevState: AuthFormState, formData: FormData
   }
 
   if (!hasAuthSecretConfigured()) {
-    return { error: "إعدادات تسجيل الدخول غير مكتملة على الخادم (AUTH_SECRET). تواصل مع مسؤول النظام." };
+    return { error: "خدمة تسجيل الدخول غير مهيّأة بشكل كامل حالياً. يرجى المحاولة لاحقًا أو التواصل مع الدعم." };
   }
 
   try {
@@ -163,7 +163,7 @@ export async function signUpAction(_prevState: AuthFormState, formData: FormData
   }
 
   if (!hasAuthSecretConfigured()) {
-    return { error: "إعدادات إنشاء الحساب غير مكتملة على الخادم (AUTH_SECRET). تواصل مع مسؤول النظام." };
+    return { error: "خدمة إنشاء الحساب غير مهيّأة بشكل كامل حالياً. يرجى المحاولة لاحقًا أو التواصل مع الدعم." };
   }
 
   const existing = await prisma.user.findUnique({ where: { email }, select: { id: true } });

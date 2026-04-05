@@ -21,7 +21,7 @@ export default async function CartPage({ searchParams }: CartPageProps) {
   const cookieStore = await cookies();
   const cartItems = parseCartCookie(cookieStore.get(CART_COOKIE_NAME)?.value);
   const selectedFromQuery = bookId && offerId ? [{ bookId, offerId, quantity: 1 }] : [];
-  const itemsToLoad = [...cartItems, ...selectedFromQuery];
+  const itemsToLoad = dedupeCartItems([...cartItems, ...selectedFromQuery]);
 
   const [user, locale, offers] = await Promise.all([
     getCurrentUser(),
@@ -67,6 +67,9 @@ export default async function CartPage({ searchParams }: CartPageProps) {
       };
     })
     .filter((entry) => entry !== null);
+  const cartTotalCents = cartEntries.reduce((sum, entry) => sum + entry.selectedOffer.priceCents, 0);
+  const hasSingleCurrency = new Set(cartEntries.map((entry) => entry.selectedOffer.currency)).size <= 1;
+  const cartCurrency = cartEntries[0]?.selectedOffer.currency;
 
   const normalizedReturnTo = returnTo?.startsWith("/") ? returnTo : "/books";
 
@@ -85,6 +88,8 @@ export default async function CartPage({ searchParams }: CartPageProps) {
           unavailable: "This offer is no longer available. Please select a different book offer.",
           backToBook: "Back to book",
           quantity: "Quantity",
+          orderMode: "Each item creates a separate digital order.",
+          cartTotal: "Estimated total",
           empty: "Your cart is currently empty.",
         }
       : {
@@ -100,6 +105,8 @@ export default async function CartPage({ searchParams }: CartPageProps) {
           unavailable: "هذا العرض لم يعد متاحًا. اختر عرضًا آخر من صفحة الكتاب.",
           backToBook: "العودة إلى الكتاب",
           quantity: "الكمية",
+          orderMode: "كل عنصر في السلة يُنشئ طلبًا رقميًا مستقلًا.",
+          cartTotal: "الإجمالي التقديري",
           empty: "السلة فارغة حاليًا.",
         };
 
@@ -154,7 +161,7 @@ export default async function CartPage({ searchParams }: CartPageProps) {
 
                   <div className="flex items-center justify-between gap-2">
                     <dt className="text-slate-600">{copy.quantity}</dt>
-                    <dd className="font-semibold text-slate-900">{entry.quantity}</dd>
+                    <dd className="font-semibold text-slate-900">{locale === "en" ? "1 (digital item)" : "1 (نسخة رقمية)"}</dd>
                   </div>
 
                   <div className="flex items-center justify-between gap-2">
@@ -186,6 +193,19 @@ export default async function CartPage({ searchParams }: CartPageProps) {
                 </div>
               </article>
             ))}
+            <div className="rounded-xl border border-slate-200 bg-white p-4">
+              <p className="text-xs text-slate-600">{copy.orderMode}</p>
+              {hasSingleCurrency && cartCurrency ? (
+                <div className="mt-2 flex items-center justify-between gap-2 border-t border-slate-200 pt-2">
+                  <p className="text-sm font-semibold text-slate-800">{copy.cartTotal}</p>
+                  <p className="text-base font-black text-indigo-700">{formatArabicCurrency(cartTotalCents / 100, { currency: cartCurrency })}</p>
+                </div>
+              ) : (
+                <p className="mt-2 border-t border-slate-200 pt-2 text-xs text-slate-600">
+                  {locale === "en" ? "The cart includes multiple currencies; totals appear per item." : "تتضمن السلة أكثر من عملة؛ يظهر الإجمالي لكل عنصر على حدة."}
+                </p>
+              )}
+            </div>
 
             {normalizedReturnTo !== "/cart" ? (
               <div className="pt-1">
@@ -203,4 +223,17 @@ export default async function CartPage({ searchParams }: CartPageProps) {
       <SiteFooter />
     </main>
   );
+}
+
+function dedupeCartItems(items: Array<{ bookId: string; offerId: string; quantity: number }>) {
+  const unique = new Map<string, { bookId: string; offerId: string; quantity: number }>();
+
+  for (const item of items) {
+    const key = `${item.bookId}:${item.offerId}`;
+    if (!unique.has(key)) {
+      unique.set(key, item);
+    }
+  }
+
+  return [...unique.values()];
 }

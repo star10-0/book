@@ -20,7 +20,7 @@ export function parseCartCookie(rawValue: string | undefined): CartItem[] {
       return [];
     }
 
-    return parsed
+    const normalizedItems = parsed
       .map((entry) => {
         if (!entry || typeof entry !== "object") {
           return null;
@@ -28,9 +28,6 @@ export function parseCartCookie(rawValue: string | undefined): CartItem[] {
 
         const bookId = "bookId" in entry && typeof entry.bookId === "string" ? entry.bookId : "";
         const offerId = "offerId" in entry && typeof entry.offerId === "string" ? entry.offerId : "";
-        const quantityValue = "quantity" in entry && typeof entry.quantity === "number" ? entry.quantity : 1;
-        const quantity = Number.isFinite(quantityValue) ? Math.max(1, Math.floor(quantityValue)) : 1;
-
         if (!bookId || !offerId) {
           return null;
         }
@@ -38,10 +35,12 @@ export function parseCartCookie(rawValue: string | undefined): CartItem[] {
         return {
           bookId,
           offerId,
-          quantity,
+          quantity: 1,
         } satisfies CartItem;
       })
       .filter((entry): entry is CartItem => entry !== null);
+
+    return mergeUniqueCartItems(normalizedItems);
   } catch {
     return [];
   }
@@ -58,16 +57,22 @@ export function addItemToCart(items: CartItem[], bookId: string, offerId: string
     return [...items, { bookId, offerId, quantity: 1 }];
   }
 
-  return items.map((item, index) =>
-    index === targetIndex
-      ? {
-          ...item,
-          quantity: item.quantity + 1,
-        }
-      : item,
-  );
+  return items;
 }
 
 export function getCartItemsCount(items: CartItem[]): number {
-  return items.reduce((sum, item) => sum + item.quantity, 0);
+  return items.length;
+}
+
+function mergeUniqueCartItems(items: CartItem[]): CartItem[] {
+  const unique = new Map<string, CartItem>();
+
+  for (const item of items) {
+    const key = `${item.bookId}:${item.offerId}`;
+    if (!unique.has(key)) {
+      unique.set(key, { ...item, quantity: 1 });
+    }
+  }
+
+  return [...unique.values()];
 }
