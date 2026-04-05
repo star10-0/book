@@ -14,7 +14,7 @@ import { prisma } from "@/lib/prisma";
 import { jsonNoStore } from "@/lib/security";
 import { verifyProtectedAssetToken } from "@/lib/security/content-protection";
 import { logUserSecurityEvent } from "@/lib/security/suspicious-activity";
-import { sanitizeReaderHtml } from "@/lib/security/html-sanitizer";
+import { sanitizeEpubSections } from "@/lib/reader-epub-sections";
 
 export const runtime = "nodejs";
 
@@ -29,14 +29,6 @@ type EpubSection = {
   title: string;
   bodyHtml: string;
 };
-
-export function sanitizeEpubSections(sections: EpubSection[]) {
-  return sections.map((section) => ({
-    ...section,
-    title: section.title.trim() || "فصل بدون عنوان",
-    bodyHtml: sanitizeReaderHtml(section.bodyHtml),
-  }));
-}
 
 function resolveLocalAssetPath(storageKey: string) {
   const normalized = storageKey.replace(/^\/+/, "");
