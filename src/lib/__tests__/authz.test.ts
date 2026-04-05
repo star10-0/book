@@ -1,6 +1,6 @@
 import assert from "node:assert/strict";
 import test from "node:test";
-import { AdminScope, UserRole } from "@prisma/client";
+import { UserRole, type AdminScope } from "@prisma/client";
 import { canManageCreatorBook, hasAdminScope, isAdminRole, isCreatorOrAdminRole, isCurriculumManagerRole } from "@/lib/authz";
 
 test("isAdminRole enforces admin-only boundaries", () => {
@@ -51,7 +51,7 @@ test("canManageCreatorBook enforces creator ownership boundaries", () => {
 });
 
 test("hasAdminScope supports legacy full admin and scoped admins", () => {
-  assert.equal(hasAdminScope({ adminScopes: [], required: AdminScope.PAYMENT_ADMIN }), true);
-  assert.equal(hasAdminScope({ adminScopes: [AdminScope.SUPPORT_ADMIN], required: AdminScope.PAYMENT_ADMIN }), false);
-  assert.equal(hasAdminScope({ adminScopes: [AdminScope.SUPER_ADMIN], required: AdminScope.CONTENT_ADMIN }), true);
+  assert.equal(hasAdminScope({ adminScopes: [], required: "PAYMENT_ADMIN" as AdminScope }), true);
+  assert.equal(hasAdminScope({ adminScopes: ["SUPPORT_ADMIN" as AdminScope], required: "PAYMENT_ADMIN" as AdminScope }), false);
+  assert.equal(hasAdminScope({ adminScopes: ["SUPER_ADMIN" as AdminScope], required: "CONTENT_ADMIN" as AdminScope }), true);
 });

@@ -30,6 +30,14 @@ type EpubSection = {
   bodyHtml: string;
 };
 
+export function sanitizeEpubSections(sections: EpubSection[]) {
+  return sections.map((section) => ({
+    ...section,
+    title: section.title.trim() || "فصل بدون عنوان",
+    bodyHtml: sanitizeReaderHtml(section.bodyHtml),
+  }));
+}
+
 function resolveLocalAssetPath(storageKey: string) {
   const normalized = storageKey.replace(/^\/+/, "");
   const privateRoot = path.resolve(process.cwd(), "storage", "private", "uploads");
@@ -211,11 +219,7 @@ print(json.dumps({'sections': sections}, ensure_ascii=False))
   const parsed = JSON.parse(stdout) as { sections?: EpubSection[] };
   const sections = Array.isArray(parsed.sections) ? parsed.sections : [];
 
-  return sections.map((section) => ({
-    ...section,
-    title: section.title.trim() || "فصل بدون عنوان",
-    bodyHtml: sanitizeReaderHtml(section.bodyHtml),
-  }));
+  return sanitizeEpubSections(sections);
 }
 
 export async function GET(request: Request, { params }: ReaderEpubSectionsRouteParams) {

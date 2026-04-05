@@ -16,3 +16,15 @@ test("buildPendingOrderAdvisoryLockKeys changes when user or offer changes", () 
   assert.notDeepEqual(base, otherUser);
   assert.notDeepEqual(base, otherOffer);
 });
+
+test("buildPendingOrderAdvisoryLockKeys returns signed int32 key parts", () => {
+  const [key1, key2] = buildPendingOrderAdvisoryLockKeys({
+    userId: "user-cly0000000000000000000001",
+    offerId: "offer-cly0000000000000000000002",
+  });
+
+  assert.equal(Number.isInteger(key1), true);
+  assert.equal(Number.isInteger(key2), true);
+  assert.equal(key1 >= -2147483648 && key1 <= 2147483647, true);
+  assert.equal(key2 >= -2147483648 && key2 <= 2147483647, true);
+});

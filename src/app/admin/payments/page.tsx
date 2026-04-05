@@ -79,20 +79,42 @@ function scopeDescription(scope: PaymentsScope) {
 
 function incidentLabelText(label: PaymentIncidentLabel | null) {
   if (!label) return "—";
-  if (label === "verification_failed") return "verification_failed";
-  if (label === "grant_missing") return "grant_missing";
-  if (label === "provider_mismatch") return "provider_mismatch";
-  if (label === "tx_conflict") return "tx_conflict";
-  return "recoverable_stuck_attempt";
+  if (label === "verification_failed") return "فشل التحقق";
+  if (label === "grant_missing") return "وصول مفقود بعد دفع ناجح";
+  if (label === "provider_mismatch") return "عدم تطابق المزود";
+  if (label === "tx_conflict") return "تعارض مرجع العملية";
+  return "محاولة عالقة قابلة للاسترداد";
 }
 
 function recommendedPaymentAction(input: { incident: PaymentIncidentLabel | null; status: PaymentAttemptStatus }) {
-  if (input.incident === "tx_conflict") return "طابق مرجع العملية عبر reconcile-by-tx قبل أي منح وصول.";
-  if (input.incident === "grant_missing") return "نفّذ force grant access بعد التحقق من حالة الدفع النهائية.";
-  if (input.incident === "provider_mismatch") return "أوقف المعالجة وراجع providerRef بين payment وattempt.";
-  if (input.incident === "recoverable_stuck_attempt") return "استخدم recover stuck attempt ثم أعد التحقق.";
+  if (input.incident === "tx_conflict") return "طابق مرجع العملية يدويًا قبل أي منح وصول.";
+  if (input.incident === "grant_missing") return "نفّذ منح وصول قسري بعد التحقق من حالة الدفع النهائية.";
+  if (input.incident === "provider_mismatch") return "أوقف المعالجة وراجع تطابق مرجع المزود بين الدفع والمحاولة.";
+  if (input.incident === "recoverable_stuck_attempt") return "نفّذ استرداد المحاولة العالقة ثم أعد التحقق.";
   if (input.status === "FAILED") return "راجع إثبات الدفع أو أعد إنشاء محاولة جديدة للمستخدم.";
   return "تابع المسار الحالي مع تسجيل سبب الإجراء في سجل التدقيق.";
+}
+
+
+function resolveAttemptIncident(input: {
+  attemptStatus: PaymentAttemptStatus;
+  paymentStatus: PaymentStatus;
+  orderStatus: "PENDING" | "PAID" | "CANCELLED" | "REFUNDED";
+  failureReason: string | null;
+  accessCount: number;
+  transactionReference?: string;
+  providerRef?: string | null;
+  attemptProviderReference?: string | null;
+}) {
+  return classifyPaymentIncident({
+    attemptStatus: input.attemptStatus,
+    paymentStatus: input.paymentStatus,
+    orderStatus: input.orderStatus,
+    hasAccessGrant: input.accessCount > 0,
+    failureReason: input.failureReason,
+    hasTransactionReference: Boolean(input.transactionReference),
+    providerReferenceMatchesPayment: !input.providerRef || input.providerRef === input.attemptProviderReference,
+  });
 }
 
 function canReconcileByTx(transactionReference?: string) {
@@ -164,8 +186,8 @@ export default async function AdminPaymentsPage({ searchParams }: AdminPaymentsP
         emptyMessage="لا توجد محاولات دفع ضمن هذا النطاق حالياً."
         columns={[
           { key: "id", title: "المحاولة", render: (row) => <Link className="font-mono text-xs text-indigo-700" href={`/admin/payments/${row.id}`}>{row.id}</Link> },
-          { key: "paymentId", title: "payment", render: (row) => <span className="font-mono text-[11px]">{row.paymentId}</span> },
-          { key: "tx", title: "tx", render: (row) => <span className="font-mono text-[11px]">{(row.requestPayload as { transactionReference?: string } | null)?.transactionReference ?? "—"}</span> },
+          { key: "paymentId", title: "معرّف الدفع", render: (row) => <span className="font-mono text-[11px]">{row.paymentId}</span> },
+          { key: "tx", title: "مرجع العملية", render: (row) => <span className="font-mono text-[11px]">{(row.requestPayload as { transactionReference?: string } | null)?.transactionReference ?? "—"}</span> },
           { key: "provider", title: "البوابة", render: (row) => <div><p>{providerLabel(row.provider)}</p><p className="font-mono text-[11px] text-slate-500">{row.providerReference ?? "—"}</p></div> },
           { key: "providerRefPayment", title: "providerRef (payment)", render: (row) => <span className="font-mono text-[11px]">{row.payment.providerRef ?? "—"}</span> },
           { key: "status", title: "الحالة", render: (row) => <div><p>المحاولة: {paymentAttemptStatusLabels[row.status]}</p><p className="text-xs">الدفع: {paymentStatusLabel(row.payment.status)}</p><p className="text-xs">الطلب: {row.order.status}</p></div> },
@@ -174,17 +196,17 @@ export default async function AdminPaymentsPage({ searchParams }: AdminPaymentsP
           { key: "failureReason", title: "سبب الفشل", render: (row) => <span className="text-xs">{row.failureReason ?? "—"}</span> },
           {
             key: "incident",
-            title: "incident",
+            title: "التشخيص",
             render: (row) => {
-              const hasAccessGrant = (accessCountsByAttemptId.get(row.id) ?? 0) > 0;
-              const incident = classifyPaymentIncident({
+              const incident = resolveAttemptIncident({
                 attemptStatus: row.status,
                 paymentStatus: row.payment.status,
                 orderStatus: row.order.status,
-                hasAccessGrant,
                 failureReason: row.failureReason,
-                hasTransactionReference: Boolean((row.requestPayload as { transactionReference?: string } | null)?.transactionReference),
-                providerReferenceMatchesPayment: !row.payment.providerRef || row.payment.providerRef === row.providerReference,
+                accessCount: accessCountsByAttemptId.get(row.id) ?? 0,
+                transactionReference: (row.requestPayload as { transactionReference?: string } | null)?.transactionReference,
+                providerRef: row.payment.providerRef,
+                attemptProviderReference: row.providerReference,
               });
               return <span className="text-xs font-medium">{incidentLabelText(incident)}</span>;
             },
@@ -193,15 +215,15 @@ export default async function AdminPaymentsPage({ searchParams }: AdminPaymentsP
             key: "recommended",
             title: "الإجراء الموصى",
             render: (row) => {
-              const hasAccessGrant = (accessCountsByAttemptId.get(row.id) ?? 0) > 0;
-              const incident = classifyPaymentIncident({
+              const incident = resolveAttemptIncident({
                 attemptStatus: row.status,
                 paymentStatus: row.payment.status,
                 orderStatus: row.order.status,
-                hasAccessGrant,
                 failureReason: row.failureReason,
-                hasTransactionReference: Boolean((row.requestPayload as { transactionReference?: string } | null)?.transactionReference),
-                providerReferenceMatchesPayment: !row.payment.providerRef || row.payment.providerRef === row.providerReference,
+                accessCount: accessCountsByAttemptId.get(row.id) ?? 0,
+                transactionReference: (row.requestPayload as { transactionReference?: string } | null)?.transactionReference,
+                providerRef: row.payment.providerRef,
+                attemptProviderReference: row.providerReference,
               });
               return <span className="text-xs">{recommendedPaymentAction({ incident, status: row.status })}</span>;
             },
