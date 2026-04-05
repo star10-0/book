@@ -72,14 +72,9 @@ export async function updateCategoryAction(categoryId: string, _prevState: Categ
   return { success: "تم تحديث التصنيف." };
 }
 
-export async function deleteCategoryAction(formData: FormData) {
+export async function deleteCategoryAction(categoryId: string) {
   await requireAdmin({ callbackUrl: "/admin/categories" });
-
-  const categoryId = formData.get("categoryId");
-
-  if (typeof categoryId !== "string" || !categoryId) {
-    return;
-  }
+  if (!categoryId) return;
 
   const booksCount = await prisma.book.count({ where: { categoryId } });
 
