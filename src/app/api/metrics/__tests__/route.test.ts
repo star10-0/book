@@ -1,6 +1,6 @@
 import assert from "node:assert/strict";
 import test from "node:test";
-import { evaluateMetricsAuth } from "@/app/api/metrics/route";
+import { evaluateMetricsAuth } from "@/lib/metrics-auth";
 
 test("metrics auth fails closed in production when token is missing", () => {
   const original = { ...process.env };

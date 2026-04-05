@@ -1,7 +1,8 @@
 import assert from "node:assert/strict";
 import test from "node:test";
 import { NextRequest } from "next/server";
-import { GET, resolveLocaleFromPostPayload, resolveLocaleRedirect } from "@/app/api/locale/route";
+import { GET } from "@/app/api/locale/route";
+import { resolveLocaleFromPostPayload, resolveLocaleRedirect } from "@/lib/locale-route";
 
 test("resolveLocaleRedirect normalizes locale and blocks unsafe redirect", () => {
   const result = resolveLocaleRedirect("https://book.example/api/locale?lang=en&redirect=https://evil.example/phish");

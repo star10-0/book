@@ -1,6 +1,6 @@
 import assert from "node:assert/strict";
 import test from "node:test";
-import { sanitizeEpubSections } from "@/app/api/reader-epub/[fileId]/sections/route";
+import { sanitizeEpubSections } from "@/lib/reader-epub-sections";
 
 test("sanitizeEpubSections strips dangerous html and normalizes missing title", () => {
   const sections = sanitizeEpubSections([
