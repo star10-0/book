@@ -1,13 +1,14 @@
 "use server";
 
 import { revalidatePath } from "next/cache";
-import { requireAdmin } from "@/lib/auth-session";
+import { requireAdmin, requireAdminScope } from "@/lib/auth-session";
 import { createAdminAuditLog } from "@/lib/admin/audit-log";
 import {
   recoverMissingGrantsForPaidOrder,
   recheckPromoRedemptionLinkage,
   resolveStaleRentalGrants,
 } from "@/lib/admin/order-integrity";
+import { validateBreakGlassForceGrantInput } from "@/lib/admin/payment-admin";
 
 function val(formData: FormData, key: string) {
   const value = formData.get(key);
@@ -15,11 +16,21 @@ function val(formData: FormData, key: string) {
 }
 
 export async function recoverOrderAccessGrantAction(formData: FormData) {
-  const admin = await requireAdmin({ callbackUrl: "/admin/orders" });
+  const admin = await requireAdminScope("BREAK_GLASS_PAYMENT_ADMIN", { callbackUrl: "/admin/orders" });
   const orderId = val(formData, "orderId");
   const reason = val(formData, "reason");
+  const incidentTicketId = val(formData, "incidentTicketId");
 
-  if (!orderId || reason.length < 5) {
+  if (!orderId) {
+    return;
+  }
+
+  const validation = validateBreakGlassForceGrantInput({ reason, incidentTicketId });
+  if (!validation.allowed) {
+    return;
+  }
+
+  if (reason.length < 5) {
     return;
   }
 
@@ -32,8 +43,12 @@ export async function recoverOrderAccessGrantAction(formData: FormData) {
     orderId,
     metadata: {
       source: "admin/orders",
+      mode: "break_glass",
+      bypassesProviderSettlement: true,
+      incidentTicketId: validation.normalizedIncidentTicketId,
       integrityRecovery: true,
       ...result,
+      immutable: true,
     },
   });
 

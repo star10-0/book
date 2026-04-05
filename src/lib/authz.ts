@@ -28,7 +28,13 @@ export function hasAdminScope(input: {
   allowLegacyEmptyScopesFallback?: boolean;
 }) {
   const scopes = input.adminScopes ?? [];
+  const isBreakGlassScope = input.required === "BREAK_GLASS_PAYMENT_ADMIN";
+
   if (scopes.length === 0) {
+    if (isBreakGlassScope) {
+      return false;
+    }
+
     return input.allowLegacyEmptyScopesFallback ?? allowLegacyEmptyAdminScopesFallback();
   }
 

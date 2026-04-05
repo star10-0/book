@@ -76,9 +76,10 @@ export default async function AdminOrdersPage() {
               <p className="text-slate-600">{anomaly.details}</p>
               <p className="mt-1 text-slate-700">إجراء موصى: {recommendedIntegrityAction(anomaly.kind)}</p>
               {anomaly.kind === "paid_order_missing_grants" ? (
-                <form action={recoverOrderAccessGrantAction} className="mt-2 flex gap-2">
+                <form action={recoverOrderAccessGrantAction} className="mt-2 space-y-2">
                   <input type="hidden" name="orderId" value={anomaly.orderId} />
-                  <input type="hidden" name="reason" value="recover missing access for paid order from anomaly list" />
+                  <input name="incidentTicketId" required className="w-full rounded border px-2 py-1" placeholder="INC-1234" />
+                  <input name="reason" required className="w-full rounded border px-2 py-1" defaultValue="recover missing access for paid order from anomaly list" />
                   <button className="rounded border px-2 py-1">استعادة منح الوصول</button>
                 </form>
               ) : null}
@@ -124,7 +125,8 @@ export default async function AdminOrdersPage() {
                 <div className="flex flex-wrap gap-1 text-xs">
                   <form action={recoverOrderAccessGrantAction}>
                     <input type="hidden" name="orderId" value={row.id} />
-                    <input type="hidden" name="reason" value="manual order grant recovery from orders table" />
+                    <input name="incidentTicketId" required className="mb-1 rounded border px-2 py-1" placeholder="INC-1234" />
+                    <input name="reason" required className="mb-1 rounded border px-2 py-1" defaultValue="manual order grant recovery from orders table" />
                     <button className="rounded border px-2 py-1">استعادة وصول</button>
                   </form>
                   <form action={recheckPromoIntegrityAction}>
