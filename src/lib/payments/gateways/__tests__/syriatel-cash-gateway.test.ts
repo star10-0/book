@@ -173,6 +173,46 @@ test("SyriatelCashGateway verify uses API SYRIA find_tx GET contract and returns
   global.fetch = originalFetch;
 });
 
+test("SyriatelCashGateway verify normalizes major-unit string amount into cents", async () => {
+  const originalFetch = global.fetch;
+  const originalEnv = { ...process.env };
+
+  setLiveEnv();
+
+  global.fetch = async () =>
+    new Response(
+      JSON.stringify({
+        success: true,
+        data: {
+          found: true,
+          transaction: {
+            transaction_no: "TX-100",
+            to: "dest-acc-1",
+            amount: "100",
+            currency: "SYP",
+          },
+          account: {
+            gsm: "dest-acc-1",
+          },
+        },
+      }),
+      { status: 200 },
+    );
+
+  const result = await gateway.verifyPayment({
+    paymentId: "p-1",
+    providerReference: "ref-1",
+    transactionReference: "TX-100",
+    expectedAmountCents: 10000,
+    expectedCurrency: "SYP",
+  });
+
+  assert.equal(result.isPaid, true);
+
+  process.env = originalEnv;
+  global.fetch = originalFetch;
+});
+
 test("SyriatelCashGateway verify prefers amountCents over amount when both are present", async () => {
   const originalFetch = global.fetch;
   const originalEnv = { ...process.env };

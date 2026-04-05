@@ -94,6 +94,11 @@ function normalizeAmountCents(input: {
   return converted;
 }
 
+function formatMinorAmountForReason(amountCents: number): string {
+  const major = (amountCents / 100).toFixed(2);
+  return `${amountCents} cents (${major})`;
+}
+
 export class SyriatelCashGateway implements PaymentGateway {
   readonly provider = PaymentProvider.SYRIATEL_CASH;
 
@@ -155,9 +160,10 @@ export class SyriatelCashGateway implements PaymentGateway {
       transactionReference: input.transactionReference.trim(),
     });
 
+    const transactionPayload = asRecord(payload.transaction);
     const verifiedAmountCents = normalizeAmountCents({
-      amountCents: pickNumber(payload, ["amountCents"]),
-      majorAmount: pickNumber(payload, ["amount"]),
+      amountCents: pickNumber(transactionPayload, ["amountCents"]) ?? pickNumber(payload, ["amountCents"]),
+      majorAmount: pickNumber(transactionPayload, ["amount"]) ?? pickNumber(payload, ["amount"]),
     });
     const verifiedCurrency = pickString(payload, ["currency"]);
     const verifiedDestination = pickString(payload, ["to", "gsm", "destinationAccount", "receiverAccount", "merchantAccount"]);
@@ -166,11 +172,13 @@ export class SyriatelCashGateway implements PaymentGateway {
     const destinationMatches = typeof verifiedDestination === "string" && verifiedDestination === config.destinationAccount;
 
     if (typeof verifiedAmountCents === "number" && !amountMatches) {
+      const expectedDisplay = formatMinorAmountForReason(input.expectedAmountCents);
+      const receivedDisplay = formatMinorAmountForReason(verifiedAmountCents);
       throw new GatewayRequestError({
         provider: "syriatel_cash",
         phase: "verify",
         statusCode: 409,
-        message: "قيمة عملية Syriatel Cash لا تطابق المبلغ المتوقع. (Syriatel Cash verify amount mismatch.)",
+        message: `قيمة عملية Syriatel Cash لا تطابق المبلغ المتوقع. المتوقع: ${expectedDisplay}، والمستلم: ${receivedDisplay}. (Syriatel Cash verify amount mismatch: expected ${input.expectedAmountCents} cents, received ${verifiedAmountCents} cents.)`,
       });
     }
 
@@ -178,6 +186,7 @@ export class SyriatelCashGateway implements PaymentGateway {
       throw new GatewayRequestError({
         provider: "syriatel_cash",
         phase: "verify",
+        statusCode: 409,
         message: "Syriatel Cash verify response currency does not match expected currency.",
       });
     }
@@ -186,6 +195,7 @@ export class SyriatelCashGateway implements PaymentGateway {
       throw new GatewayRequestError({
         provider: "syriatel_cash",
         phase: "verify",
+        statusCode: 409,
         message: "Syriatel Cash verify response destination account mismatch.",
       });
     }
