@@ -66,3 +66,71 @@ test("getVerifyGatewayErrorMessage returns a clear message for amount mismatch i
     delete env.NODE_ENV;
   }
 });
+
+test("getVerifyGatewayErrorMessage returns transaction-not-found guidance", () => {
+  const env = process.env as Record<string, string | undefined>;
+  const originalNodeEnv = env.NODE_ENV;
+  env.NODE_ENV = "production";
+
+  const message = getVerifyGatewayErrorMessage(new GatewayRequestError({
+    provider: "sham_cash",
+    phase: "verify",
+    message: "Sham Cash did not find the submitted transaction reference.",
+  }));
+
+  assert.equal(
+    message,
+    "لم يتم العثور على رقم العملية لدى مزود الدفع المحدد. تأكد من رقم العملية ووسيلة الدفع المختارة ثم أعد المحاولة.",
+  );
+
+  if (typeof originalNodeEnv === "string") {
+    env.NODE_ENV = originalNodeEnv;
+  } else {
+    delete env.NODE_ENV;
+  }
+});
+
+test("getVerifyGatewayErrorMessage returns provider-auth guidance", () => {
+  const env = process.env as Record<string, string | undefined>;
+  const originalNodeEnv = env.NODE_ENV;
+  env.NODE_ENV = "production";
+
+  const message = getVerifyGatewayErrorMessage(new GatewayRequestError({
+    provider: "syriatel_cash",
+    phase: "verify",
+    statusCode: 401,
+    message: "Provider API request failed with status 401.",
+  }));
+
+  assert.equal(
+    message,
+    "تعذر التواصل مع مزود الدفع بسبب مشكلة مصادقة أو صلاحيات. يرجى المحاولة لاحقًا أو التواصل مع الدعم.",
+  );
+
+  if (typeof originalNodeEnv === "string") {
+    env.NODE_ENV = originalNodeEnv;
+  } else {
+    delete env.NODE_ENV;
+  }
+});
+
+test("getVerifyGatewayErrorMessage returns temporary provider outage guidance", () => {
+  const env = process.env as Record<string, string | undefined>;
+  const originalNodeEnv = env.NODE_ENV;
+  env.NODE_ENV = "production";
+
+  const message = getVerifyGatewayErrorMessage(new GatewayRequestError({
+    provider: "syriatel_cash",
+    phase: "verify",
+    statusCode: 503,
+    message: "Provider API request failed with status 503.",
+  }));
+
+  assert.equal(message, "خدمة مزود الدفع غير مستقرة حالياً. يرجى الانتظار قليلًا ثم إعادة المحاولة.");
+
+  if (typeof originalNodeEnv === "string") {
+    env.NODE_ENV = originalNodeEnv;
+  } else {
+    delete env.NODE_ENV;
+  }
+});

@@ -21,6 +21,7 @@ type AddToCartButtonProps = {
 
 export function AddToCartButton({ bookId, offerId, className, label }: AddToCartButtonProps) {
   const [feedbackVisible, setFeedbackVisible] = useState(false);
+  const [feedbackText, setFeedbackText] = useState("تمت الإضافة إلى السلة");
 
   useEffect(() => {
     if (!feedbackVisible) {
@@ -33,11 +34,13 @@ export function AddToCartButton({ bookId, offerId, className, label }: AddToCart
 
   const handleAddToCart = () => {
     const existing = parseCartCookie(readCookie(CART_COOKIE_NAME));
+    const alreadyInCart = existing.some((item) => item.bookId === bookId && item.offerId === offerId);
     const updated = addItemToCart(existing, bookId, offerId);
 
     document.cookie = `${CART_COOKIE_NAME}=${serializeCartCookie(updated)}; path=/; max-age=${CART_COOKIE_MAX_AGE_SECONDS}; samesite=lax`;
     window.dispatchEvent(new CustomEvent(CART_UPDATED_EVENT, { detail: { count: getCartItemsCount(updated) } }));
 
+    setFeedbackText(alreadyInCart ? "العرض موجود بالفعل في السلة" : "تمت الإضافة إلى السلة");
     setFeedbackVisible(true);
   };
 
@@ -47,7 +50,7 @@ export function AddToCartButton({ bookId, offerId, className, label }: AddToCart
         {label}
       </button>
       <p aria-live="polite" className={`text-[11px] font-medium text-emerald-700 transition ${feedbackVisible ? "opacity-100" : "opacity-0"}`}>
-        تمت الإضافة إلى السلة
+        {feedbackText}
       </p>
     </div>
   );
