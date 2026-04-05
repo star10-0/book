@@ -7,6 +7,7 @@ import { hashPassword, verifyPassword } from "@/lib/auth-password";
 import { endUserSession, getCurrentUser, startUserSession } from "@/lib/auth-session";
 import { buildPolicyAcceptanceUpdate } from "@/lib/policy";
 import { prisma } from "@/lib/prisma";
+import { authErrorMessages } from "@/lib/auth-error-messages";
 import { checkRateLimit } from "@/lib/security/rate-limit";
 import { invalidateUserSessions, updatePasswordAndInvalidateSessions } from "@/lib/session-invalidation";
 import { enforceTrustedDeviceOnLogin } from "@/lib/trusted-device";
@@ -59,7 +60,7 @@ export async function signInAction(_prevState: AuthFormState, formData: FormData
   }
 
   if (Object.keys(fieldErrors).length > 0) {
-    return { error: "تحقق من الحقول المطلوبة ثم أعد المحاولة.", fieldErrors };
+    return { error: authErrorMessages.requiredFields, fieldErrors };
   }
 
   const signInRateLimit = await checkRateLimit({
@@ -71,13 +72,13 @@ export async function signInAction(_prevState: AuthFormState, formData: FormData
 
   if (!signInRateLimit.allowed) {
     if (signInRateLimit.reason === "RATE_LIMIT_BACKEND_UNAVAILABLE") {
-      return { error: "خدمة الأمان غير متاحة مؤقتًا. يرجى المحاولة لاحقًا." };
+      return { error: authErrorMessages.authBackendUnavailable };
     }
-    return { error: "تم تجاوز عدد محاولات تسجيل الدخول. يرجى الانتظار ثم إعادة المحاولة." };
+    return { error: authErrorMessages.signInRateLimited };
   }
 
   if (!hasAuthSecretConfigured()) {
-    return { error: "خدمة تسجيل الدخول غير مهيّأة بشكل كامل حالياً. يرجى المحاولة لاحقًا أو التواصل مع الدعم." };
+    return { error: authErrorMessages.signInServiceUnavailable };
   }
 
   try {
@@ -92,13 +93,13 @@ export async function signInAction(_prevState: AuthFormState, formData: FormData
     });
 
     if (!user || !user.passwordHash || !user.isActive) {
-      return { error: "بيانات الدخول غير صحيحة أو الحساب غير مفعل." };
+      return { error: authErrorMessages.invalidCredentials };
     }
 
     const isValidPassword = await verifyPassword(password, user.passwordHash);
 
     if (!isValidPassword) {
-      return { error: "بيانات الدخول غير صحيحة أو الحساب غير مفعل." };
+      return { error: authErrorMessages.invalidCredentials };
     }
 
     const requestHeaders = await headers();
@@ -111,13 +112,13 @@ export async function signInAction(_prevState: AuthFormState, formData: FormData
     if (!trustedDevice.allowed) {
       return {
         error:
-          "تم رفض تسجيل الدخول من جهاز غير موثوق. الحساب مخصص لجهاز موثوق واحد، راجع الدعم أو اطلب من الإدارة مراجعة الجلسات.",
+          authErrorMessages.untrustedDevice,
       };
     }
 
     await startUserSession(user.id);
   } catch {
-    return { error: "تعذر تسجيل الدخول حاليًا بسبب خطأ داخلي. يرجى المحاولة لاحقًا." };
+    return { error: authErrorMessages.signInInternal };
   }
 
   redirect(callbackUrl);
@@ -145,7 +146,7 @@ export async function signUpAction(_prevState: AuthFormState, formData: FormData
   }
 
   if (Object.keys(fieldErrors).length > 0) {
-    return { error: "تحقق من الحقول المطلوبة ثم أعد المحاولة.", fieldErrors };
+    return { error: authErrorMessages.requiredFields, fieldErrors };
   }
 
   const signUpRateLimit = await checkRateLimit({
@@ -157,21 +158,21 @@ export async function signUpAction(_prevState: AuthFormState, formData: FormData
 
   if (!signUpRateLimit.allowed) {
     if (signUpRateLimit.reason === "RATE_LIMIT_BACKEND_UNAVAILABLE") {
-      return { error: "خدمة الأمان غير متاحة مؤقتًا. يرجى المحاولة لاحقًا." };
+      return { error: authErrorMessages.authBackendUnavailable };
     }
-    return { error: "تم تجاوز عدد محاولات إنشاء الحساب. يرجى الانتظار ثم إعادة المحاولة." };
+    return { error: authErrorMessages.signUpRateLimited };
   }
 
   if (!hasAuthSecretConfigured()) {
-    return { error: "خدمة إنشاء الحساب غير مهيّأة بشكل كامل حالياً. يرجى المحاولة لاحقًا أو التواصل مع الدعم." };
+    return { error: authErrorMessages.signUpServiceUnavailable };
   }
 
   const existing = await prisma.user.findUnique({ where: { email }, select: { id: true } });
 
   if (existing) {
     return {
-      error: "هذا البريد الإلكتروني مسجل بالفعل.",
-      fieldErrors: { email: "هذا البريد الإلكتروني مستخدم مسبقًا." },
+      error: authErrorMessages.emailAlreadyUsed,
+      fieldErrors: { email: authErrorMessages.emailAlreadyUsedField },
     };
   }
 
@@ -261,13 +262,13 @@ export async function changePasswordAction(
   }
 
   if (Object.keys(fieldErrors).length > 0) {
-    return { error: "تحقق من الحقول المطلوبة ثم أعد المحاولة.", fieldErrors };
+    return { error: authErrorMessages.requiredFields, fieldErrors };
   }
 
   const currentUser = await getCurrentUser();
 
   if (!currentUser) {
-    return { error: "يجب تسجيل الدخول أولاً." };
+    return { error: authErrorMessages.mustSignInFirst };
   }
 
   const user = await prisma.user.findUnique({

@@ -32,3 +32,20 @@ test("resolveSafeRelativeRedirect blocks paths containing backslashes/control ch
   assert.equal(withSlash, "/");
   assert.equal(withControl, "/");
 });
+
+test("resolveSafeRelativeRedirect preserves query and hash for same-origin absolute urls", () => {
+  const path = resolveSafeRelativeRedirect({
+    redirectParam: "https://book.example/account/orders?tab=paid#latest",
+    requestUrl,
+  });
+
+  assert.equal(path, "/account/orders?tab=paid#latest");
+});
+
+test("resolveSafeRelativeRedirect rejects whitespace-only and newline-injected redirects", () => {
+  const whitespace = resolveSafeRelativeRedirect({ redirectParam: "   ", requestUrl });
+  const withNewline = resolveSafeRelativeRedirect({ redirectParam: "/account\n/orders", requestUrl });
+
+  assert.equal(whitespace, "/");
+  assert.equal(withNewline, "/");
+});

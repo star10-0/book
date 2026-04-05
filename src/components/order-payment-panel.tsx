@@ -6,6 +6,7 @@ import Link from "next/link";
 import { useRouter } from "next/navigation";
 import { useEffect, useMemo, useRef, useState, useTransition } from "react";
 import { formatArabicCurrency } from "@/lib/formatters/intl";
+import { mapAttemptStatusToUiStatus, toArabicPaymentFailureMessage, type PaymentUiStatus } from "@/lib/payments/ui-state";
 
 interface OrderPaymentPanelProps {
   orderId: string;
@@ -22,7 +23,6 @@ interface OrderPaymentPanelProps {
   enabledLiveProviders?: LiveProviderOption[];
 }
 
-type UiStatus = "idle" | "pending" | "verifying" | "success" | "failure";
 type LiveProviderOption = "SHAM_CASH" | "SYRIATEL_CASH";
 
 type CheckoutStep = {
@@ -51,7 +51,7 @@ const paymentOptions: Array<{
   },
 ];
 
-const statusLabel: Record<UiStatus, string> = {
+const statusLabel: Record<PaymentUiStatus, string> = {
   idle: "جاهز للبدء",
   pending: "بانتظار المتابعة",
   verifying: "جاري التحقق",
@@ -66,28 +66,7 @@ const checkoutSteps: CheckoutStep[] = [
   { id: 4, title: "تحقق من الحالة", description: "أكمل التأكيد النهائي ومنح الوصول." },
 ];
 
-function mapAttemptStatusToUiStatus(status?: PaymentAttemptStatus): UiStatus {
-  if (!status) return "idle";
-  if (status === "PAID") return "success";
-  if (status === "FAILED") return "failure";
-  if (status === "VERIFYING") return "verifying";
-  if (status === "SUBMITTED" || status === "PENDING") return "pending";
-  return "idle";
-}
-
-function toArabicFailureMessage(reason?: string | null): string {
-  if (!reason) return "تعذر تأكيد الدفع حاليًا. راجع رقم العملية وحاول مجددًا.";
-
-  const normalized = reason.trim();
-  const hasArabicCharacters = /[\u0600-\u06FF]/.test(normalized);
-  if (hasArabicCharacters) {
-    return normalized;
-  }
-
-  return "تعذر تأكيد الدفع لدى مزود الخدمة الآن. راجع البيانات ثم أعد المحاولة.";
-}
-
-function statusToneClasses(uiStatus: UiStatus) {
+function statusToneClasses(uiStatus: PaymentUiStatus) {
   if (uiStatus === "success") return "border-emerald-200 bg-emerald-50 text-emerald-900";
   if (uiStatus === "failure") return "border-rose-200 bg-rose-50 text-rose-900";
   if (uiStatus === "verifying") return "border-amber-200 bg-amber-50 text-amber-900";
@@ -418,7 +397,7 @@ export function OrderPaymentPanel({
         setMessage("تم تأكيد الدفع بنجاح. أصبح طلبك جاهزًا ويمكنك المتابعة.");
         setMessageTone("success");
       } else if (payload.attempt.status === "FAILED") {
-        setMessage(toArabicFailureMessage(payload.attempt.failureReason));
+        setMessage(toArabicPaymentFailureMessage(payload.attempt.failureReason));
         setMessageTone("error");
       } else {
         setMessage("تم تحديث الحالة، وما زال الدفع قيد المتابعة.");

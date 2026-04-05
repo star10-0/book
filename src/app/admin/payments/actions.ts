@@ -17,6 +17,7 @@ import {
 import { prisma } from "@/lib/prisma";
 import { reconcilePaymentByTransactionReference, recoverPaymentAttempt, verifyPayment } from "@/lib/payments/payment-service";
 
+
 function val(formData: FormData, key: string) {
   const value = formData.get(key);
   return typeof value === "string" ? value.trim() : "";
@@ -141,6 +142,10 @@ export async function forceGrantPaymentAccessAction(formData: FormData) {
   );
   revalidatePath("/admin/payments");
   revalidatePath(`/admin/payments/${attemptId}`);
+  if (operationResult.reason === "attempt_not_found") {
+    return;
+  }
+
   if (operationResult.reason === "inconsistent_state") {
     return;
   }

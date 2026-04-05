@@ -38,3 +38,31 @@ test("promo/books/curriculum operations write admin audit logs", () => {
   assert.equal(bookSource.includes('action: "BOOK_MUTATION"'), true);
   assert.equal(curriculumSource.includes('action: "CURRICULUM_MUTATION"'), true);
 });
+
+test("payment admin server actions enforce PAYMENT_ADMIN scope", () => {
+  const source = readFileSync("src/app/admin/payments/actions.ts", "utf8");
+
+  const actionNames = [
+    "retryVerifyPaymentAction",
+    "reconcileByTxAction",
+    "forceGrantPaymentAccessAction",
+    "releasePaymentTxLockAction",
+    "recoverStuckAttemptAction",
+  ];
+
+  for (const actionName of actionNames) {
+    const start = source.indexOf(`export async function ${actionName}`);
+    assert.notEqual(start, -1);
+    const end = source.indexOf("export async function", start + 10);
+    const body = source.slice(start, end === -1 ? undefined : end);
+
+    assert.equal(body.includes('requireAdminScope("PAYMENT_ADMIN"'), true);
+  }
+});
+
+test("force-grant and recovery write payment admin audit trail actions", () => {
+  const source = readFileSync("src/app/admin/payments/actions.ts", "utf8");
+  assert.equal(source.includes('"PAYMENT_FORCE_GRANT_ACCESS"'), true);
+  assert.equal(source.includes('"PAYMENT_RETRY_VERIFY"'), true);
+  assert.equal(source.includes('"PAYMENT_TX_LOCK_RELEASED"'), true);
+});

@@ -10,14 +10,24 @@ function setLocaleCookie(response: NextResponse, locale: string) {
   });
 }
 
-export async function GET(request: NextRequest) {
-  const { searchParams } = new URL(request.url);
+export function resolveLocaleRedirect(requestUrl: string) {
+  const { searchParams } = new URL(requestUrl);
   const lang = normalizeStoreLocale(searchParams.get("lang"));
   const redirectPath = resolveSafeRelativeRedirect({
     redirectParam: searchParams.get("redirect"),
-    requestUrl: request.url,
+    requestUrl,
     fallbackPath: "/",
   });
+
+  return { lang, redirectPath };
+}
+
+export function resolveLocaleFromPostPayload(payload: { lang?: string } | null) {
+  return normalizeStoreLocale(payload?.lang);
+}
+
+export async function GET(request: NextRequest) {
+  const { lang, redirectPath } = resolveLocaleRedirect(request.url);
 
   const response = NextResponse.redirect(new URL(redirectPath, request.url));
   setLocaleCookie(response, lang);
@@ -27,7 +37,7 @@ export async function GET(request: NextRequest) {
 
 export async function POST(request: NextRequest) {
   const payload = (await request.json().catch(() => null)) as { lang?: string } | null;
-  const lang = normalizeStoreLocale(payload?.lang);
+  const lang = resolveLocaleFromPostPayload(payload);
 
   const response = NextResponse.json({ ok: true, locale: lang });
   setLocaleCookie(response, lang);

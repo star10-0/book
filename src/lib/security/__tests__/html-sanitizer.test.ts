@@ -37,3 +37,12 @@ test("sanitizeReaderHtml drops dangerous container tags with content", () => {
   assert.equal(output.includes("svg"), false);
   assert.equal(output.includes("safe"), true);
 });
+
+test("sanitizeReaderHtml removes inline style payloads and data urls", () => {
+  const input = `<p style="background:url(javascript:alert(1));color:red">hello</p><img src="data:text/html;base64,PHNjcmlwdD4=" alt="x"/>`;
+  const output = sanitizeReaderHtml(input);
+
+  assert.equal(output.includes("style="), false);
+  assert.equal(output.includes("data:text/html"), false);
+  assert.equal(output.includes("<p>hello</p>"), true);
+});

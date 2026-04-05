@@ -457,3 +457,30 @@ npm run lint
 npm run typecheck
 npm run test
 ```
+
+## Final stabilization checklist (Phase 4)
+
+Run these commands after pulling latest fixes:
+
+```bash
+npm install
+npm run prisma:generate
+npm run prisma:migrate:deploy
+npm run lint
+npm run typecheck
+npm test
+```
+
+Optional targeted hardening checks:
+
+```bash
+npx tsx --test src/lib/security/__tests__/html-sanitizer.test.ts
+npx tsx --test src/lib/security/__tests__/safe-redirect.test.ts
+npx tsx --test src/lib/orders/__tests__/pending-order-lock.test.ts
+npx tsx --test src/lib/__tests__/admin-phase2-safety.test.ts
+npx tsx --test src/lib/payments/__tests__/ui-state.test.ts
+```
+
+Notes:
+- Hydration warnings caused only by browser extensions (for example injected attributes like `fdprocessedid`) are intentionally deferred and should not be treated as app defects unless reproducible in a clean browser profile.
+- No additional schema migration is required specifically for this hardening pass beyond running normal `prisma:migrate:deploy`.
