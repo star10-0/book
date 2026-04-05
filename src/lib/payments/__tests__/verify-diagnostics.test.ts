@@ -42,3 +42,27 @@ test("getVerifyGatewayErrorMessage keeps user-friendly message outside developme
     delete env.NODE_ENV;
   }
 });
+
+test("getVerifyGatewayErrorMessage returns a clear message for amount mismatch integrity failures", () => {
+  const env = process.env as Record<string, string | undefined>;
+  const originalNodeEnv = env.NODE_ENV;
+  env.NODE_ENV = "production";
+
+  const message = getVerifyGatewayErrorMessage(new GatewayRequestError({
+    provider: "syriatel_cash",
+    phase: "verify",
+    statusCode: 409,
+    message: "قيمة عملية Syriatel Cash لا تطابق المبلغ المتوقع. (Syriatel Cash verify amount mismatch.)",
+  }));
+
+  assert.equal(
+    message,
+    "تعذر تأكيد الدفع: قيمة الحوالة لا تطابق القيمة المطلوبة. يرجى التحقق من المبلغ ثم إعادة المحاولة.",
+  );
+
+  if (typeof originalNodeEnv === "string") {
+    env.NODE_ENV = originalNodeEnv;
+  } else {
+    delete env.NODE_ENV;
+  }
+});
