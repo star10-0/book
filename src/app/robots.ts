@@ -2,12 +2,15 @@ import type { MetadataRoute } from "next";
 import { getAppBaseUrl, getNodeEnv } from "@/lib/env";
 
 export default function robots(): MetadataRoute.Robots {
+  const isProduction = getNodeEnv() === "production";
+
   const rules: MetadataRoute.Robots["rules"] = {
     userAgent: "*",
-    allow: "/",
+    allow: isProduction ? "/" : "",
+    disallow: isProduction ? "" : "/",
   };
 
-  if (getNodeEnv() !== "production") {
+  if (!isProduction) {
     return { rules };
   }
 

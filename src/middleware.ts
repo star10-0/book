@@ -1,16 +1,37 @@
-import type { NextRequest } from "next/server";
+import type { NextRequest, NextResponse as NextResponseType } from "next/server";
 import { NextResponse } from "next/server";
 import { buildContentSecurityPolicy } from "./lib/security/csp";
 
-export function middleware(request: NextRequest) {
-  const isApiRequest = request.nextUrl.pathname.startsWith("/api");
+function applySecurityHeaders({
+  response,
+  isDevelopment,
+  nonce,
+  pathname,
+}: {
+  response: NextResponseType;
+  isDevelopment: boolean;
+  nonce?: string;
+  pathname: string;
+}) {
+  response.headers.set(
+    "Content-Security-Policy",
+    buildContentSecurityPolicy({
+      isDevelopment,
+      nonce,
+    }),
+  );
 
-  if (isApiRequest) {
-    const response = NextResponse.next();
+  response.headers.set("Referrer-Policy", "strict-origin-when-cross-origin");
+  response.headers.set("X-Content-Type-Options", "nosniff");
+  response.headers.set("X-Frame-Options", "DENY");
+
+  if (pathname.startsWith("/api") || pathname.startsWith("/uploads/books")) {
     response.headers.set("X-Robots-Tag", "noindex, nofollow, noarchive");
-    return response;
   }
+}
 
+export function middleware(request: NextRequest) {
+  const pathname = request.nextUrl.pathname;
   const isDevelopment = process.env.NODE_ENV === "development";
   const nonce = isDevelopment ? undefined : crypto.randomUUID().replace(/-/g, "");
   const requestHeaders = new Headers(request.headers);
@@ -25,17 +46,16 @@ export function middleware(request: NextRequest) {
     },
   });
 
-  response.headers.set(
-    "Content-Security-Policy",
-    buildContentSecurityPolicy({
-      isDevelopment,
-      nonce,
-    }),
-  );
+  applySecurityHeaders({
+    response,
+    isDevelopment,
+    nonce,
+    pathname,
+  });
 
   return response;
 }
 
 export const config = {
-  matcher: ["/((?!_next/static|_next/image|favicon.ico|uploads/books).*)"],
+  matcher: ["/((?!_next/static|_next/image|favicon.ico).*)"],
 };
