@@ -23,7 +23,7 @@
     "prisma:migrate:deploy": "prisma migrate deploy",
     "start:prod": "npm run start",
     "prisma:reset-admin-password": "tsx prisma/reset-admin-password.ts",
-    "security:scan:secrets": "gitleaks detect --config .gitleaks.toml --redact --verbose",
+    "security:scan:secrets": "bash scripts/scan-secrets.sh",
     "security:scan:bundle": "node scripts/check-client-bundle-secrets.mjs"
   },
   "dependencies": {

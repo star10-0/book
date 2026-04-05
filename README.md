@@ -191,7 +191,8 @@ Recommended local verification commands:
 # 1) Build to generate client bundle artifacts
 npm run build
 
-# 2) Secret scan repository history/worktree (requires gitleaks binary installed locally)
+# 2) Secret scan repository history/worktree
+#    (uses local gitleaks if installed; otherwise Docker image fallback)
 npm run security:scan:secrets
 
 # 3) Check built client bundle for secret indicators
@@ -202,6 +203,8 @@ npm run lint
 npm run typecheck
 npm test
 ```
+
+False-positive handling policy: keep allowlists narrow and value-based in `.gitleaks.toml`; avoid broad path exclusions that can hide real leaks.
 
 ---
 

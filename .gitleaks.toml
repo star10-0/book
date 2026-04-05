@@ -4,14 +4,7 @@ title = "book gitleaks config"
 useDefault = true
 
 [allowlist]
-description = "allow test fixtures and documentation examples"
-paths = [
-  '''^src/lib/__tests__/''',
-  '''^src/app/api/.*/__tests__/''',
-  '''^SECURITY_.*\.md$''',
-  '''^DEPLOYMENT_.*\.md$''',
-  '''^BOOK2_REPO_REVIEW_.*\.md$''',
-]
+description = "allow known non-sensitive test placeholders only"
 
 regexes = [
   '''secret-key''',
