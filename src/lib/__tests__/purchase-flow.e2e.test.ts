@@ -96,21 +96,21 @@ test("e2e happy path: sign in -> order -> payment completion -> grant -> reader"
       },
     },
     accessGrant: {
-      async findFirst(args: {
+      async findMany(args: {
         where: {
           userId: string;
-          bookId: string;
-          type: AccessGrantType;
+          bookId: { in: string[] };
           status: AccessGrantStatus;
-          OR?: Array<{ expiresAt: null } | { expiresAt: { gt: Date } }>;
+          OR?: Array<
+            { type: AccessGrantType } | { type: AccessGrantType; OR: Array<{ expiresAt: null } | { expiresAt: { gt: Date } }> }
+          >;
         };
       }) {
-        return (
-          grants.find((grant) => {
+        return grants
+          .filter((grant) => {
             if (
               grant.userId !== args.where.userId ||
-              grant.bookId !== args.where.bookId ||
-              grant.type !== args.where.type ||
+              !args.where.bookId.in.includes(grant.bookId) ||
               grant.status !== args.where.status
             ) {
               return false;
@@ -121,18 +121,35 @@ test("e2e happy path: sign in -> order -> payment completion -> grant -> reader"
             }
 
             return args.where.OR.some((condition) => {
-              if ("expiresAt" in condition && condition.expiresAt === null) {
-                return grant.expiresAt === null;
+              if (!("type" in condition) || condition.type !== grant.type) {
+                return false;
               }
 
-              if ("expiresAt" in condition && condition.expiresAt && "gt" in condition.expiresAt) {
-                return grant.expiresAt !== null && grant.expiresAt > condition.expiresAt.gt;
+              if (!("OR" in condition) || !condition.OR) {
+                return true;
               }
 
-              return false;
+              return condition.OR.some((rentalCondition) => {
+                if ("expiresAt" in rentalCondition && rentalCondition.expiresAt === null) {
+                  return grant.expiresAt === null;
+                }
+
+                if ("expiresAt" in rentalCondition && rentalCondition.expiresAt && "gt" in rentalCondition.expiresAt) {
+                  return grant.expiresAt !== null && grant.expiresAt > rentalCondition.expiresAt.gt;
+                }
+
+                return false;
+              });
             });
-          }) ?? null
-        );
+          })
+          .sort((a, b) => a.startsAt.getTime() - b.startsAt.getTime() || a.id.localeCompare(b.id))
+          .map((grant) => ({
+            id: grant.id,
+            bookId: grant.bookId,
+            type: grant.type,
+            startsAt: grant.startsAt,
+            expiresAt: grant.expiresAt,
+          }));
       },
       async upsert(args: {
         where: { userId_orderItemId_type: { userId: string; orderItemId: string; type: AccessGrantType } };

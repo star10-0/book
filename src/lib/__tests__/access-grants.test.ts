@@ -16,29 +16,25 @@ type GrantRecord = {
 
 function createTxStub(orderItems: Array<{ id: string; bookId: string; offerType: OfferType; rentalDays: number | null }>) {
   const created: GrantRecord[] = [];
+  let accessGrantFindManyCalls = 0;
 
   return {
     created,
+    getAccessGrantFindManyCalls: () => accessGrantFindManyCalls,
     tx: {
       orderItem: {
         findMany: async () => orderItems,
       },
       accessGrant: {
-        findFirst: async ({ where }: { where: Record<string, unknown> }) => {
+        findMany: async ({ where }: { where: Record<string, unknown> }) => {
+          accessGrantFindManyCalls += 1;
+          const bookIdFilter = where.bookId as { in: string[] } | undefined;
           const matches = created.filter((grant) => {
             if (where.userId && grant.userId !== where.userId) {
               return false;
             }
 
-            if (where.bookId && grant.bookId !== where.bookId) {
-              return false;
-            }
-
-            if (where.orderItemId && grant.orderItemId !== where.orderItemId) {
-              return false;
-            }
-
-            if (where.type && grant.type !== where.type) {
+            if (bookIdFilter && !bookIdFilter.in.includes(grant.bookId)) {
               return false;
             }
 
@@ -46,19 +42,31 @@ function createTxStub(orderItems: Array<{ id: string; bookId: string; offerType:
               return false;
             }
 
-            const or = where.OR as Array<{ expiresAt?: { gt?: Date } | null }> | undefined;
+            const or = where.OR as
+              | Array<{ type: AccessGrantType } | { type: AccessGrantType; OR: Array<{ expiresAt: null } | { expiresAt: { gt: Date } }> }>
+              | undefined;
 
             if (or && or.length > 0) {
               const anyMatches = or.some((condition) => {
-                if (condition.expiresAt === null) {
-                  return grant.expiresAt == null;
+                if (!("type" in condition) || condition.type !== grant.type) {
+                  return false;
                 }
 
-                if (condition.expiresAt && condition.expiresAt.gt) {
-                  return !!grant.expiresAt && grant.expiresAt > condition.expiresAt.gt;
+                if (!("OR" in condition) || !condition.OR) {
+                  return true;
                 }
 
-                return false;
+                return condition.OR.some((rentalCondition) => {
+                  if (rentalCondition.expiresAt === null) {
+                    return grant.expiresAt == null;
+                  }
+
+                  if (rentalCondition.expiresAt.gt) {
+                    return !!grant.expiresAt && grant.expiresAt > rentalCondition.expiresAt.gt;
+                  }
+
+                  return false;
+                });
               });
 
               if (!anyMatches) {
@@ -69,7 +77,23 @@ function createTxStub(orderItems: Array<{ id: string; bookId: string; offerType:
             return true;
           });
 
-          return matches[0] ? { id: matches[0].id, expiresAt: matches[0].expiresAt ?? null } : null;
+          return matches
+            .slice()
+            .sort((a, b) => {
+              const aStarts = a.startsAt?.getTime() ?? 0;
+              const bStarts = b.startsAt?.getTime() ?? 0;
+              if (aStarts !== bStarts) {
+                return aStarts - bStarts;
+              }
+              return a.id.localeCompare(b.id);
+            })
+            .map((grant) => ({
+              id: grant.id,
+              bookId: grant.bookId,
+              type: grant.type,
+              startsAt: grant.startsAt ?? new Date(0),
+              expiresAt: grant.expiresAt ?? null,
+            }));
         },
         create: async ({ data }: { data: Omit<GrantRecord, "id"> }) => {
           const saved: GrantRecord = {
@@ -125,7 +149,7 @@ function createTxStub(orderItems: Array<{ id: string; bookId: string; offerType:
 
 test("grantAccessForPaidOrder creates grants for purchase and rental items", async () => {
   const baseDate = new Date("2026-01-01T10:00:00.000Z");
-  const { created, tx } = createTxStub([
+  const { created, tx, getAccessGrantFindManyCalls } = createTxStub([
     { id: "i-p", bookId: "b-1", offerType: OfferType.PURCHASE, rentalDays: null },
     { id: "i-r", bookId: "b-2", offerType: OfferType.RENTAL, rentalDays: 7 },
   ]);
@@ -141,6 +165,7 @@ test("grantAccessForPaidOrder creates grants for purchase and rental items", asy
   assert.equal(created[0].expiresAt, undefined);
   assert.equal(created[1].type, AccessGrantType.RENTAL);
   assert.equal(created[1].expiresAt?.toISOString(), new Date("2026-01-08T10:00:00.000Z").toISOString());
+  assert.equal(getAccessGrantFindManyCalls(), 1);
 });
 
 test("grantAccessForPaidOrder extends existing active rentals instead of creating duplicates", async () => {
