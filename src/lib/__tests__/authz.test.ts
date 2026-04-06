@@ -59,6 +59,8 @@ test("canManageCreatorBook enforces creator ownership boundaries", () => {
 test("hasAdminScope denies empty scopes by default", () => {
   assert.equal(hasAdminScope({ adminScopes: [], required: "PAYMENT_ADMIN" as AdminScope }), false);
   assert.equal(hasAdminScope({ adminScopes: [], required: "BREAK_GLASS_PAYMENT_ADMIN" as AdminScope }), false);
+  assert.equal(hasAdminScope({ adminScopes: undefined, required: "PAYMENT_ADMIN" as AdminScope }), false);
+  assert.equal(hasAdminScope({ adminScopes: null, required: "PAYMENT_ADMIN" as AdminScope }), false);
 });
 
 test("hasAdminScope allows SUPER_ADMIN for any required admin scope", () => {
