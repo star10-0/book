@@ -63,7 +63,7 @@ function sanitizeString(value: string): string {
   }
 
   return value
-    .replace(/([?&](?:token|api[_-]?key|secret|signature|password|authorization)=)[^&]+/gi, "$1[REDACTED]")
+    .replace(/([?&](?:token|api[_-]?key|secret|signature|password|authorization|tx|transaction_id|gsm|provider_reference|transaction_reference)=)[^&]+/gi, "$1[REDACTED]")
     .replace(/(x-api-key[:=]\s*)[^\s,]+/gi, "$1[REDACTED]");
 }
 

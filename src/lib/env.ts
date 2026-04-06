@@ -130,6 +130,24 @@ function validateEnvironment(): EnvIssue[] {
     });
   }
 
+  const allowMockModeBypass = (readEnv("PAYMENT_ALLOW_MOCK_MODE_IN_PRODUCTION_BYPASS") ?? "false").toLowerCase();
+  if (nodeEnv === "production" && paymentMode === "mock") {
+    if (allowMockModeBypass !== "true") {
+      issues.push({
+        severity: "error",
+        key: "PAYMENT_GATEWAY_MODE",
+        message:
+          "PAYMENT_GATEWAY_MODE=mock is blocked in production. Use live providers, or explicitly set PAYMENT_ALLOW_MOCK_MODE_IN_PRODUCTION_BYPASS=true for emergency-only rollback windows.",
+      });
+    } else {
+      issues.push({
+        severity: "warning",
+        key: "PAYMENT_ALLOW_MOCK_MODE_IN_PRODUCTION_BYPASS",
+        message: "Emergency bypass enabled: PAYMENT_GATEWAY_MODE=mock in production must be temporary and audited.",
+      });
+    }
+  }
+
   if (nodeEnv === "production" && Object.prototype.hasOwnProperty.call(process.env, "ADMIN_SCOPES_LEGACY_ALLOW_EMPTY")) {
     issues.push({
       severity: "error",

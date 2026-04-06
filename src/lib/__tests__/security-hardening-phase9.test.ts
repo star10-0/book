@@ -27,18 +27,53 @@ test("CSV export cells are sanitized against formula injection", () => {
   assert.equal(sanitizeCsvCell("-10"), "'-10");
   assert.equal(sanitizeCsvCell("@cmd"), "'@cmd");
   assert.equal(escapeCsvCell('=cmd|\"x\"'), '"\'=cmd|\"\"x\"\""');
+  assert.equal(sanitizeCsvCell("\t=cmd"), "'\t=cmd");
+  assert.equal(sanitizeCsvCell("   -100"), "'   -100");
 });
 
-test("public version API does not expose full commit SHA field", () => {
+test("public version API is minimal and does not expose diagnostic timestamps or full commit SHA", () => {
   const source = readFileSync("src/app/api/version/route.ts", "utf8");
   assert.equal(source.includes("commitSha"), false);
-  assert.equal(source.includes("buildId"), true);
+  assert.equal(source.includes("generatedAt"), false);
+  assert.equal(source.includes("ok: true"), true);
+  assert.equal(source.includes("build:"), true);
 });
 
-test("protected asset URLs use handoff endpoint and token can be resolved from cookie/bearer", () => {
+test("protected asset URLs use handoff endpoint and do not allow direct query-token fallback by default", () => {
   const source = readFileSync("src/lib/security/content-protection.ts", "utf8");
   assert.equal(source.includes("/handoff`"), true);
-  assert.equal(source.includes("resolveProtectedAssetToken"), true);
-  assert.equal(source.includes("authorization"), true);
+  assert.equal(source.includes("allowQueryToken"), true);
+  assert.equal(source.includes("readBearerToken(request) ?? readCookieToken(request)"), true);
   assert.equal(source.includes("__Host-book-pa"), true);
+  assert.equal(source.includes("__Host-book-pa-nonce"), true);
+});
+
+test("admin content operations enforce CONTENT_ADMIN scope across authors/categories/promo flows", () => {
+  const authorsPage = readFileSync("src/app/admin/authors/page.tsx", "utf8");
+  const authorsActions = readFileSync("src/app/admin/authors/actions.ts", "utf8");
+  const categoriesPage = readFileSync("src/app/admin/categories/page.tsx", "utf8");
+  const categoriesActions = readFileSync("src/app/admin/categories/actions.ts", "utf8");
+  const promoPage = readFileSync("src/app/admin/promo-codes/page.tsx", "utf8");
+  const promoActions = readFileSync("src/app/admin/promo-codes/actions.ts", "utf8");
+
+  assert.equal(authorsPage.includes('requireAdminScope("CONTENT_ADMIN"'), true);
+  assert.equal(authorsActions.includes('requireAdminScope("CONTENT_ADMIN"'), true);
+  assert.equal(categoriesPage.includes('requireAdminScope("CONTENT_ADMIN"'), true);
+  assert.equal(categoriesActions.includes('requireAdminScope("CONTENT_ADMIN"'), true);
+  assert.equal(promoPage.includes('requireAdminScope("CONTENT_ADMIN"'), true);
+  assert.equal(promoActions.includes('requireAdminScope("CONTENT_ADMIN"'), true);
+});
+
+test("admin order integrity operations enforce PAYMENT_ADMIN and BREAK_GLASS scopes", () => {
+  const ordersPage = readFileSync("src/app/admin/orders/page.tsx", "utf8");
+  const ordersActions = readFileSync("src/app/admin/orders/actions.ts", "utf8");
+
+  assert.equal(ordersPage.includes('requireAdminScope("PAYMENT_ADMIN"'), true);
+  assert.equal(ordersActions.includes('requireAdminScope("PAYMENT_ADMIN"'), true);
+  assert.equal(ordersActions.includes('requireAdminScope("BREAK_GLASS_PAYMENT_ADMIN"'), true);
+});
+
+test("admin diagnostics version endpoint requires SUPER_ADMIN scope", () => {
+  const source = readFileSync("src/app/api/admin/version/route.ts", "utf8");
+  assert.equal(source.includes('requireAdminScope("SUPER_ADMIN"'), true);
 });

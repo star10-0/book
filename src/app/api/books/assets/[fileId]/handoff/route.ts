@@ -1,6 +1,11 @@
 import { getCurrentUser } from "@/lib/auth-session";
 import { jsonNoStore } from "@/lib/security";
-import { getProtectedAssetTokenCookieName, verifyProtectedAssetToken } from "@/lib/security/content-protection";
+import {
+  getProtectedAssetNonceCookieName,
+  getProtectedAssetTokenCookieName,
+  resolveProtectedAssetToken,
+  verifyProtectedAssetToken,
+} from "@/lib/security/content-protection";
 
 export const runtime = "nodejs";
 
@@ -13,9 +18,10 @@ export async function GET(request: Request, { params }: BookAssetHandoffParams) 
   const url = new URL(request.url);
   const disposition = url.searchParams.get("download") === "1" ? "attachment" : "inline";
   const user = await getCurrentUser();
+  const token = resolveProtectedAssetToken(request, url, { allowQueryToken: true });
 
   const tokenResult = verifyProtectedAssetToken({
-    token: url.searchParams.get("t"),
+    token,
     fileId,
     disposition,
     currentUserId: user?.id,
@@ -33,8 +39,13 @@ export async function GET(request: Request, { params }: BookAssetHandoffParams) 
   response.headers.set("X-Content-Type-Options", "nosniff");
   response.headers.append(
     "Set-Cookie",
-    `${getProtectedAssetTokenCookieName()}=${encodeURIComponent(url.searchParams.get("t") ?? "")}; Path=/api; Max-Age=240; HttpOnly; SameSite=Strict; Secure`,
+    `${getProtectedAssetTokenCookieName()}=${encodeURIComponent(token ?? "")}; Path=/api; Max-Age=90; HttpOnly; SameSite=Strict; Secure`,
   );
+  response.headers.append(
+    "Set-Cookie",
+    `${getProtectedAssetNonceCookieName()}=${encodeURIComponent(tokenResult.payload.jti)}; Path=/api; Max-Age=90; HttpOnly; SameSite=Strict; Secure`,
+  );
+  response.headers.set("Cross-Origin-Resource-Policy", "same-origin");
 
   return response;
 }

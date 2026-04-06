@@ -6,7 +6,7 @@ export async function GET() {
   recordApiResponse({ route: "/api/version", status: 200 });
 
   return jsonNoStore({
-    buildId: getPublicBuildId(),
-    generatedAt: new Date().toISOString(),
+    ok: true,
+    build: getPublicBuildId(),
   });
 }

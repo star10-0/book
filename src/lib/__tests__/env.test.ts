@@ -326,6 +326,50 @@ test("validateServerEnv blocks local storage in production without explicit bypa
   else delete process.env.BOOK_STORAGE_ALLOW_LOCAL_IN_PRODUCTION_BYPASS;
 });
 
+test("validateServerEnv blocks PAYMENT_GATEWAY_MODE=mock in production without explicit bypass", () => {
+  const originalNodeEnv = (process.env as Record<string, string | undefined>).NODE_ENV;
+  const originalMode = process.env.PAYMENT_GATEWAY_MODE;
+  const originalBypass = process.env.PAYMENT_ALLOW_MOCK_MODE_IN_PRODUCTION_BYPASS;
+
+  (process.env as Record<string, string | undefined>).NODE_ENV = "production";
+  process.env.PAYMENT_GATEWAY_MODE = "mock";
+  delete process.env.PAYMENT_ALLOW_MOCK_MODE_IN_PRODUCTION_BYPASS;
+
+  const result = validateServerEnv();
+  assert.ok(result.errors.some((issue) => issue.key === "PAYMENT_GATEWAY_MODE" && issue.message.includes("blocked in production")));
+
+  if (typeof originalNodeEnv === "string") (process.env as Record<string, string | undefined>).NODE_ENV = originalNodeEnv;
+  else delete (process.env as Record<string, string | undefined>).NODE_ENV;
+
+  if (typeof originalMode === "string") process.env.PAYMENT_GATEWAY_MODE = originalMode;
+  else delete process.env.PAYMENT_GATEWAY_MODE;
+
+  if (typeof originalBypass === "string") process.env.PAYMENT_ALLOW_MOCK_MODE_IN_PRODUCTION_BYPASS = originalBypass;
+  else delete process.env.PAYMENT_ALLOW_MOCK_MODE_IN_PRODUCTION_BYPASS;
+});
+
+test("validateServerEnv warns when PAYMENT_GATEWAY_MODE=mock production bypass is enabled", () => {
+  const originalNodeEnv = (process.env as Record<string, string | undefined>).NODE_ENV;
+  const originalMode = process.env.PAYMENT_GATEWAY_MODE;
+  const originalBypass = process.env.PAYMENT_ALLOW_MOCK_MODE_IN_PRODUCTION_BYPASS;
+
+  (process.env as Record<string, string | undefined>).NODE_ENV = "production";
+  process.env.PAYMENT_GATEWAY_MODE = "mock";
+  process.env.PAYMENT_ALLOW_MOCK_MODE_IN_PRODUCTION_BYPASS = "true";
+
+  const result = validateServerEnv();
+  assert.ok(result.warnings.some((issue) => issue.key === "PAYMENT_ALLOW_MOCK_MODE_IN_PRODUCTION_BYPASS"));
+
+  if (typeof originalNodeEnv === "string") (process.env as Record<string, string | undefined>).NODE_ENV = originalNodeEnv;
+  else delete (process.env as Record<string, string | undefined>).NODE_ENV;
+
+  if (typeof originalMode === "string") process.env.PAYMENT_GATEWAY_MODE = originalMode;
+  else delete process.env.PAYMENT_GATEWAY_MODE;
+
+  if (typeof originalBypass === "string") process.env.PAYMENT_ALLOW_MOCK_MODE_IN_PRODUCTION_BYPASS = originalBypass;
+  else delete process.env.PAYMENT_ALLOW_MOCK_MODE_IN_PRODUCTION_BYPASS;
+});
+
 test("validateServerEnv allows local storage in production only with explicit emergency bypass", () => {
   const originalNodeEnv = (process.env as Record<string, string | undefined>).NODE_ENV;
   const originalProvider = process.env.BOOK_STORAGE_PROVIDER;

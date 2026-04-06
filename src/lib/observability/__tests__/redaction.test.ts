@@ -48,12 +48,12 @@ test("redactSensitiveData sanitizes bearer token strings in values", () => {
 
 test("redactSensitiveData sanitizes sensitive query/header-like string segments", () => {
   const result = redactSensitiveData({
-    endpoint: "https://pay.example/verify?tx=123&token=abc123xyz&api_key=super-secret",
+    endpoint: "https://pay.example/verify?tx=123&gsm=0999999&token=abc123xyz&api_key=super-secret",
     diagnostic: "x-api-key: top-secret-value",
   });
 
   assert.deepEqual(result, {
-    endpoint: "https://pay.example/verify?tx=123&token=[REDACTED]&api_key=[REDACTED]",
+    endpoint: "https://pay.example/verify?tx=[REDACTED]&gsm=[REDACTED]&token=[REDACTED]&api_key=[REDACTED]",
     diagnostic: "x-api-key: [REDACTED]",
   });
 });

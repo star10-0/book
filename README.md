@@ -127,6 +127,7 @@ Startup validation runs via `src/instrumentation.ts` and `src/lib/env.ts`.
 - `BOOK_STORAGE_PROVIDER` (`s3` | `r2` in normal production; `local` is blocked unless emergency bypass is explicitly enabled)
 - `BOOK_STORAGE_ALLOW_LOCAL_IN_PRODUCTION_BYPASS=false` (optional emergency-only override; never enable by default)
 - `PAYMENT_GATEWAY_MODE` (`mock` | `live`)
+- `PAYMENT_ALLOW_MOCK_MODE_IN_PRODUCTION_BYPASS=false` (optional emergency-only override; keep unset/false during normal operation)
 - `PAYMENT_LIVE_PROVIDERS` (comma-separated: `SHAM_CASH`, `SYRIATEL_CASH`) when live mode is used. If omitted, live mode defaults to `SHAM_CASH`.
 - `ALLOW_MOCK_PAYMENTS=false` in production
 - `ALLOW_MOCK_PAYMENT_VERIFICATION=false` in production
@@ -178,6 +179,7 @@ Exposure response requirements:
 4. Review logs/audit trails for suspicious usage during the exposure window.
 
 Use `SECURITY_SECRET_ROTATION.md` for exact per-secret procedures and impact notes.
+Use `SECURITY_DEPLOYMENT_CHECKLIST.md` for launch gates, prohibited production defaults, and emergency override policy.
 
 ### Secret leak prevention checks (local + CI)
 
@@ -238,7 +240,7 @@ To quickly detect deployment drift versus local/main code:
    git log --oneline --decorate --max-count=20 HEAD..origin/main
    ```
 
-`/api/version` returns a minimal public build identifier (`buildId`, first 8 chars of commit SHA when available) plus timestamp to reduce fingerprinting risk. Full commit SHA + diagnostics stay in `/api/admin/version` for authenticated admins only.
+`/api/version` is intentionally minimal and returns only `{ ok, build }` (short build id when available) to reduce fingerprinting. Full commit SHA + diagnostics stay in `/api/admin/version` for `SUPER_ADMIN` only.
 
 ---
 

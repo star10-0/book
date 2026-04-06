@@ -5,6 +5,7 @@ import { readOptionalServerEnv, readRequiredServerEnv } from "@/lib/env";
 export type ProtectedDisposition = "inline" | "attachment";
 
 const PROTECTED_ASSET_TOKEN_COOKIE = "__Host-book-pa";
+const PROTECTED_ASSET_HANDOFF_NONCE_COOKIE = "__Host-book-pa-nonce";
 
 type ProtectedAssetTokenPayload = {
   fid: string;
@@ -92,8 +93,39 @@ function readCookieToken(request: Request) {
   return null;
 }
 
-export function resolveProtectedAssetToken(request: Request, url: URL) {
-  return readBearerToken(request) ?? readCookieToken(request) ?? url.searchParams.get("t");
+function readNamedCookie(request: Request, cookieName: string) {
+  const rawCookie = request.headers.get("cookie");
+  if (!rawCookie) {
+    return null;
+  }
+
+  for (const entry of rawCookie.split(";")) {
+    const [name, ...valueParts] = entry.trim().split("=");
+    if (name === cookieName) {
+      const value = valueParts.join("=").trim();
+      if (!value) return null;
+      try {
+        return decodeURIComponent(value);
+      } catch {
+        return value;
+      }
+    }
+  }
+
+  return null;
+}
+
+export function resolveProtectedAssetToken(request: Request, url: URL, options?: { allowQueryToken?: boolean }) {
+  const fromHeaderOrCookie = readBearerToken(request) ?? readCookieToken(request);
+  if (fromHeaderOrCookie) {
+    return fromHeaderOrCookie;
+  }
+
+  return options?.allowQueryToken ? url.searchParams.get("t") : null;
+}
+
+export function resolveProtectedAssetNonce(request: Request) {
+  return readNamedCookie(request, PROTECTED_ASSET_HANDOFF_NONCE_COOKIE);
 }
 
 export function createProtectedAssetToken(input: {
@@ -124,6 +156,7 @@ export function verifyProtectedAssetToken(input: {
   fileId: string;
   disposition: ProtectedDisposition;
   currentUserId?: string | null;
+  expectedNonce?: string | null;
 }) {
   if (!input.token) {
     return { valid: false as const, reason: "MISSING_TOKEN" as const };
@@ -157,6 +190,10 @@ export function verifyProtectedAssetToken(input: {
 
     if (payload.uid && input.currentUserId && payload.uid !== input.currentUserId) {
       return { valid: false as const, reason: "WRONG_USER" as const };
+    }
+
+    if (input.expectedNonce && payload.jti !== input.expectedNonce) {
+      return { valid: false as const, reason: "NONCE_MISMATCH" as const };
     }
 
     return { valid: true as const, payload };
@@ -204,4 +241,8 @@ export function buildProtectedAssetUrl(input: {
 
 export function getProtectedAssetTokenCookieName() {
   return PROTECTED_ASSET_TOKEN_COOKIE;
+}
+
+export function getProtectedAssetNonceCookieName() {
+  return PROTECTED_ASSET_HANDOFF_NONCE_COOKIE;
 }

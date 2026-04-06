@@ -2,9 +2,9 @@ services:
   db:
     image: postgres:16-alpine
     environment:
-      POSTGRES_DB: ${POSTGRES_DB:-book}
-      POSTGRES_USER: ${POSTGRES_USER:-book}
-      POSTGRES_PASSWORD: ${POSTGRES_PASSWORD:-book}
+      POSTGRES_DB: ${POSTGRES_DB:?set POSTGRES_DB in .env.production}
+      POSTGRES_USER: ${POSTGRES_USER:?set POSTGRES_USER in .env.production}
+      POSTGRES_PASSWORD: ${POSTGRES_PASSWORD:?set POSTGRES_PASSWORD in .env.production}
     volumes:
       - ${POSTGRES_DATA_PATH:-./volumes/postgres-data}:/var/lib/postgresql/data
     healthcheck:
@@ -43,7 +43,7 @@ services:
       migrate:
         condition: service_completed_successfully
     ports:
-      - "${APP_PORT:-3000}:3000"
+      - "${APP_PORT:?set APP_PORT in .env.production}:3000"
     volumes:
       - ${PUBLIC_UPLOADS_PATH:-./volumes/public-uploads}:/app/public/uploads
       - ${PRIVATE_UPLOADS_PATH:-./volumes/private-uploads}:/app/storage/private/uploads
