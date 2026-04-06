@@ -27,7 +27,7 @@
     "security:scan:bundle": "node scripts/check-client-bundle-secrets.mjs"
   },
   "dependencies": {
-    "@prisma/client": "6.19.2",
+    "@prisma/client": "^6.19.3",
     "next": "15.5.14",
     "react": "19.2.4",
     "react-dom": "19.2.4"
@@ -41,7 +41,7 @@
     "eslint": "^9",
     "eslint-config-next": "15.5.14",
     "postcss": "^8.5.8",
-    "prisma": "6.19.2",
+    "prisma": "^6.19.3",
     "tailwindcss": "^3.4.17",
     "tsx": "^4.19.3",
     "typescript": "^5"
