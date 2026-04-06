@@ -1,8 +1,11 @@
 import { AdminPageCard, AdminPageHeader } from "@/components/admin/admin-page";
 import { AuthorsManager } from "@/components/admin/authors-manager";
+import { requireAdminScope } from "@/lib/auth-session";
 import { prisma } from "@/lib/prisma";
 
 export default async function AdminAuthorsPage() {
+  await requireAdminScope("CONTENT_ADMIN", { callbackUrl: "/admin/authors" });
+
   const authors = await prisma.author.findMany({
     select: {
       id: true,

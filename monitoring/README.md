@@ -49,8 +49,8 @@ docker compose \
 
 ```env
 # Grafana
-GRAFANA_ADMIN_USER=admin
-GRAFANA_ADMIN_PASSWORD=change-this
+GRAFANA_ADMIN_USER=replace-admin-user
+GRAFANA_ADMIN_PASSWORD=replace-with-strong-password
 GRAFANA_PORT=3300
 GRAFANA_ROOT_URL=https://grafana.example.com
 
@@ -66,6 +66,8 @@ METRICS_TOKEN=
 # Optional for managed PG if no local `db` service exists
 POSTGRES_EXPORTER_DSN=postgresql://user:pass@host:5432/dbname?sslmode=require
 ```
+
+> Security note: `docker-compose.monitoring.yml` now fails fast if Grafana credentials/ports are not explicitly set in `.env.production`.
 
 ## Endpoints / ports
 

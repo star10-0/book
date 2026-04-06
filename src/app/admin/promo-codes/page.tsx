@@ -1,12 +1,12 @@
 import { PromoCodeAppliesTo, PromoCodeAudience, PromoCodeType } from "@prisma/client";
 import { AdminPageCard, AdminPageHeader } from "@/components/admin/admin-page";
 import { formatArabicDate } from "@/lib/formatters/intl";
-import { requireAdmin } from "@/lib/auth-session";
+import { requireAdminScope } from "@/lib/auth-session";
 import { prisma } from "@/lib/prisma";
 import { createPromoCodeAction, togglePromoCodeAction, updatePromoCodeAction } from "./actions";
 
 export default async function AdminPromoCodesPage() {
-  await requireAdmin({ callbackUrl: "/admin/promo-codes" });
+  await requireAdminScope("CONTENT_ADMIN", { callbackUrl: "/admin/promo-codes" });
 
   const [codes, organizations, creators] = await Promise.all([
     prisma.promoCode.findMany({

@@ -11,7 +11,7 @@ if command -v docker >/dev/null 2>&1; then
   exec docker run --rm \
     -v "$(pwd):/repo" \
     -w /repo \
-    zricethezav/gitleaks:latest \
+    ghcr.io/gitleaks/gitleaks:v8.24.2 \
     detect --config "$CONFIG_PATH" --redact --verbose
 fi
 

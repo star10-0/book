@@ -30,8 +30,8 @@ services:
   grafana:
     image: grafana/grafana:11.5.2
     environment:
-      GF_SECURITY_ADMIN_USER: ${GRAFANA_ADMIN_USER:-admin}
-      GF_SECURITY_ADMIN_PASSWORD: ${GRAFANA_ADMIN_PASSWORD:-change-me}
+      GF_SECURITY_ADMIN_USER: ${GRAFANA_ADMIN_USER:?set GRAFANA_ADMIN_USER in .env.production}
+      GF_SECURITY_ADMIN_PASSWORD: ${GRAFANA_ADMIN_PASSWORD:?set GRAFANA_ADMIN_PASSWORD in .env.production}
       GF_SERVER_ROOT_URL: ${GRAFANA_ROOT_URL:-http://localhost:3300}
       GF_SERVER_SERVE_FROM_SUB_PATH: "false"
       GF_USERS_DEFAULT_THEME: light
@@ -46,7 +46,7 @@ services:
       - prometheus
       - loki
     ports:
-      - "${GRAFANA_PORT:-3300}:3000"
+      - "${GRAFANA_PORT:?set GRAFANA_PORT in .env.production}:3000"
     restart: unless-stopped
 
   loki:
@@ -75,7 +75,7 @@ services:
     volumes:
       - ./volumes/monitoring/uptime-kuma:/app/data
     ports:
-      - "${UPTIME_KUMA_PORT:-3301}:3001"
+      - "${UPTIME_KUMA_PORT:?set UPTIME_KUMA_PORT in .env.production}:3001"
     restart: unless-stopped
 
   cadvisor:
@@ -109,7 +109,7 @@ services:
   postgres-exporter:
     image: prometheuscommunity/postgres-exporter:v0.16.0
     environment:
-      DATA_SOURCE_NAME: ${POSTGRES_EXPORTER_DSN:-postgresql://${POSTGRES_USER:-book}:${POSTGRES_PASSWORD:-book}@db:5432/${POSTGRES_DB:-book}?sslmode=disable}
+      DATA_SOURCE_NAME: ${POSTGRES_EXPORTER_DSN:-postgresql://${POSTGRES_USER:?set POSTGRES_USER in .env.production}:${POSTGRES_PASSWORD:?set POSTGRES_PASSWORD in .env.production}@db:5432/${POSTGRES_DB:?set POSTGRES_DB in .env.production}?sslmode=disable}
     restart: unless-stopped
 
   blackbox-exporter:
