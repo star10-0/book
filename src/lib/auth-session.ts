@@ -5,15 +5,18 @@ import { redirect } from "next/navigation";
 import { type AdminScope } from "@prisma/client";
 import { hasAcceptedCurrentDevicePolicy } from "@/lib/policy";
 import { hasAdminScope, isAdminRole, isCreatorOrAdminRole } from "@/lib/authz";
-import { assertServerEnv, readRequiredServerEnv } from "@/lib/env";
+import { readOptionalServerEnv, readRequiredServerEnv } from "@/lib/env";
 import { prisma } from "@/lib/prisma";
 
 const SESSION_COOKIE_NAME = "book_session";
 const SESSION_DURATION_SECONDS = 60 * 60 * 24 * 7;
 
 function getAuthSecret() {
-  assertServerEnv();
   return readRequiredServerEnv("AUTH_SECRET");
+}
+
+function getAuthSecretOrNull() {
+  return readOptionalServerEnv("AUTH_SECRET") ?? null;
 }
 
 function base64UrlEncode(input: string) {
@@ -29,7 +32,12 @@ function signPayload(payload: string) {
 }
 
 function verifySignature(payload: string, signature: string) {
-  const expected = signPayload(payload);
+  const secret = getAuthSecretOrNull();
+  if (!secret) {
+    return false;
+  }
+
+  const expected = createHmac("sha256", secret).update(payload).digest("base64url");
   const expectedBuffer = Buffer.from(expected);
   const signatureBuffer = Buffer.from(signature);
 

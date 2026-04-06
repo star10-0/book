@@ -4,6 +4,7 @@ import { deleteBookAction, publishBookAction, unpublishBookAction } from "@/app/
 import { AdminPageCard, AdminPageHeader } from "@/components/admin/admin-page";
 import { AdminTable } from "@/components/admin/admin-table";
 import { loadContentOperationsSnapshot, type ContentOperationalBook, type ContentOperationalSignal } from "@/lib/admin/content-operations";
+import { requireAdminScope } from "@/lib/auth-session";
 import { prisma } from "@/lib/prisma";
 
 const signalLabels: Record<ContentOperationalSignal, string> = {
@@ -66,6 +67,7 @@ type AdminBooksPageProps = {
 };
 
 export default async function AdminBooksPage({ searchParams }: AdminBooksPageProps) {
+  await requireAdminScope("CONTENT_ADMIN", { callbackUrl: "/admin/books" });
   const query = searchParams ? await searchParams : undefined;
 
   const [books, opsSnapshot] = await Promise.all([

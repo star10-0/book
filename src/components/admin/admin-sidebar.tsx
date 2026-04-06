@@ -3,36 +3,38 @@
 import Link from "next/link";
 import { usePathname } from "next/navigation";
 
-const navItems = [
-  { href: "/admin", label: "نظرة عامة" },
-  { href: "/admin/payments?scope=issues", label: "تنبيهات الدفع", quick: true },
-  { href: "/admin/users?scope=suspicious", label: "حسابات مشبوهة", quick: true },
-  { href: "/admin/books?status=PENDING_REVIEW", label: "مراجعة الكتب", quick: true },
-  { href: "/admin/books", label: "الكتب" },
-  { href: "/admin/books/new", label: "+ إضافة كتاب", highlight: true },
-  { href: "/admin/categories", label: "التصنيفات" },
-  { href: "/admin/authors", label: "المؤلفون" },
-  { href: "/admin/orders", label: "الطلبات" },
-  { href: "/admin/orders?focus=integrity", label: "نزاهة الطلبات", quick: true },
-  { href: "/admin/payments", label: "المدفوعات" },
-  { href: "/admin/promo-codes", label: "أكواد الخصم" },
-  { href: "/admin/curriculum", label: "المنهاج" },
-  { href: "/admin/users", label: "المستخدمون" },
-  { href: "/admin/reports", label: "التقارير" },
-];
+type AdminSidebarProps = {
+  canManageContent: boolean;
+};
 
-function isCurrentPath(pathname: string, href: string) {
-  const baseHref = href.split("?")[0];
-
-  if (baseHref === "/admin") {
-    return pathname === baseHref;
-  }
-
-  return pathname.startsWith(`${baseHref}/`) || pathname === baseHref;
-}
-
-export function AdminSidebar() {
+export function AdminSidebar({ canManageContent }: AdminSidebarProps) {
   const pathname = usePathname();
+
+  const navItems = [
+    { href: "/admin", label: "نظرة عامة" },
+    { href: "/admin/payments?scope=issues", label: "تنبيهات الدفع", quick: true },
+    { href: "/admin/users?scope=suspicious", label: "حسابات مشبوهة", quick: true },
+    ...(canManageContent
+      ? [
+          { href: "/admin/books?status=PENDING_REVIEW", label: "مراجعة الكتب", quick: true },
+          { href: "/admin/books", label: "الكتب" },
+          { href: "/admin/books/new", label: "+ إضافة كتاب", highlight: true },
+          { href: "/admin/categories", label: "التصنيفات" },
+          { href: "/admin/authors", label: "المؤلفون" },
+        ]
+      : []),
+    { href: "/admin/orders", label: "الطلبات" },
+    { href: "/admin/orders?focus=integrity", label: "نزاهة الطلبات", quick: true },
+    { href: "/admin/payments", label: "المدفوعات" },
+    ...(canManageContent
+      ? [
+          { href: "/admin/promo-codes", label: "أكواد الخصم" },
+          { href: "/admin/curriculum", label: "المنهاج" },
+        ]
+      : []),
+    { href: "/admin/users", label: "المستخدمون" },
+    { href: "/admin/reports", label: "التقارير" },
+  ];
 
   return (
     <aside className="rounded-2xl border border-slate-200 bg-white p-4 shadow-sm">
@@ -40,7 +42,8 @@ export function AdminSidebar() {
       <nav aria-label="روابط الإدارة">
         <ul className="space-y-1">
           {navItems.map((item) => {
-            const active = isCurrentPath(pathname, item.href);
+            const baseHref = item.href.split("?")[0];
+            const active = baseHref === "/admin" ? pathname === baseHref : pathname.startsWith(`${baseHref}/`) || pathname === baseHref;
             const highlight = "highlight" in item && item.highlight;
             const quick = "quick" in item && item.quick;
 

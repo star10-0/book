@@ -124,7 +124,8 @@ Startup validation runs via `src/instrumentation.ts` and `src/lib/env.ts`.
 - `AUTH_SECRET` (minimum 32 chars)
 - `NEXTAUTH_URL` (absolute URL)
 - `APP_BASE_URL` (absolute URL)
-- `BOOK_STORAGE_PROVIDER` (`local` | `s3` | `r2`)
+- `BOOK_STORAGE_PROVIDER` (`s3` | `r2` in normal production; `local` is blocked unless emergency bypass is explicitly enabled)
+- `BOOK_STORAGE_ALLOW_LOCAL_IN_PRODUCTION_BYPASS=false` (optional emergency-only override; never enable by default)
 - `PAYMENT_GATEWAY_MODE` (`mock` | `live`)
 - `PAYMENT_LIVE_PROVIDERS` (comma-separated: `SHAM_CASH`, `SYRIATEL_CASH`) when live mode is used. If omitted, live mode defaults to `SHAM_CASH`.
 - `ALLOW_MOCK_PAYMENTS=false` in production
@@ -237,7 +238,7 @@ To quickly detect deployment drift versus local/main code:
    git log --oneline --decorate --max-count=20 HEAD..origin/main
    ```
 
-`/api/version` reports the commit SHA/branch when your platform exposes them (for example Vercel, Railway, Render), and also reports payment mode/provider selection to speed up checkout troubleshooting.
+`/api/version` returns a minimal public build identifier (`buildId`, first 8 chars of commit SHA when available) plus timestamp to reduce fingerprinting risk. Full commit SHA + diagnostics stay in `/api/admin/version` for authenticated admins only.
 
 ---
 

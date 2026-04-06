@@ -1,7 +1,7 @@
 import { FileKind } from "@prisma/client";
 import { NextResponse } from "next/server";
 
-import { requireAdmin } from "@/lib/auth-session";
+import { requireAdminScope } from "@/lib/auth-session";
 import { isSupportedAdminBookAssetKind } from "@/lib/files/book-asset-metadata";
 import { BookStorageService, mapStorageProviderEnumToKey, mapStorageProviderKeyToEnum } from "@/lib/files/book-storage-service";
 import { createStorageProvider } from "@/lib/files/storage-provider";
@@ -27,7 +27,7 @@ function parseKind(input: string | null): FileKind | null {
 }
 
 export async function GET(request: Request) {
-  await requireAdmin();
+  await requireAdminScope("CONTENT_ADMIN");
 
   const url = new URL(request.url);
   const bookId = url.searchParams.get("bookId");
@@ -57,7 +57,7 @@ export async function GET(request: Request) {
 }
 
 export async function POST(request: Request) {
-  await requireAdmin();
+  await requireAdminScope("CONTENT_ADMIN");
 
   if (!isSameOriginMutation(request)) {
     return rejectCrossOriginMutation();
@@ -189,7 +189,7 @@ export async function POST(request: Request) {
 }
 
 export async function DELETE(request: Request) {
-  await requireAdmin();
+  await requireAdminScope("CONTENT_ADMIN");
 
   if (!isSameOriginMutation(request)) {
     return rejectCrossOriginMutation();

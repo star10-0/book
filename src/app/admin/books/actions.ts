@@ -3,7 +3,7 @@
 import { BookStatus } from "@prisma/client";
 import { revalidatePath } from "next/cache";
 import { redirect } from "next/navigation";
-import { requireAdmin } from "@/lib/auth-session";
+import { requireAdminScope } from "@/lib/auth-session";
 import { createAdminAuditLog } from "@/lib/admin/audit-log";
 import { prisma } from "@/lib/prisma";
 import {
@@ -23,7 +23,7 @@ export type BookFormState = {
 };
 
 export async function createBookAction(_prevState: BookFormState, formData: FormData): Promise<BookFormState> {
-  const admin = await requireAdmin({ callbackUrl: "/admin/books/new" });
+  const admin = await requireAdminScope("CONTENT_ADMIN", { callbackUrl: "/admin/books/new" });
 
   const values = buildBookValues(formData, {
     publicationStatus: "draft",
@@ -72,7 +72,7 @@ export async function updateAdminBookTextContentAction(
   _prevState: AdminBookTextContentState,
   formData: FormData,
 ): Promise<AdminBookTextContentState> {
-  const admin = await requireAdmin({ callbackUrl: `/admin/books/${bookId}/edit` });
+  const admin = await requireAdminScope("CONTENT_ADMIN", { callbackUrl: `/admin/books/${bookId}/edit` });
 
   const parsed = parseTextContentForm(formData);
   if (parsed.error) {
@@ -102,7 +102,7 @@ export async function updateAdminBookTextContentAction(
 }
 
 export async function updateBookAction(bookId: string, _prevState: BookFormState, formData: FormData): Promise<BookFormState> {
-  const admin = await requireAdmin({ callbackUrl: `/admin/books/${bookId}/edit` });
+  const admin = await requireAdminScope("CONTENT_ADMIN", { callbackUrl: `/admin/books/${bookId}/edit` });
 
   const values = buildBookValues(formData, {
     publicationStatus: "draft",
@@ -154,7 +154,7 @@ export async function updateBookAction(bookId: string, _prevState: BookFormState
 }
 
 export async function deleteBookAction(formData: FormData) {
-  const admin = await requireAdmin({ callbackUrl: "/admin/books" });
+  const admin = await requireAdminScope("CONTENT_ADMIN", { callbackUrl: "/admin/books" });
 
   const bookId = formData.get("bookId");
 
@@ -178,7 +178,7 @@ export async function deleteBookAction(formData: FormData) {
 }
 
 export async function publishBookAction(formData: FormData) {
-  const admin = await requireAdmin({ callbackUrl: "/admin/books" });
+  const admin = await requireAdminScope("CONTENT_ADMIN", { callbackUrl: "/admin/books" });
 
   const bookId = formData.get("bookId");
 
@@ -198,7 +198,7 @@ export async function publishBookAction(formData: FormData) {
 }
 
 export async function unpublishBookAction(formData: FormData) {
-  const admin = await requireAdmin({ callbackUrl: "/admin/books" });
+  const admin = await requireAdminScope("CONTENT_ADMIN", { callbackUrl: "/admin/books" });
 
   const bookId = formData.get("bookId");
 
