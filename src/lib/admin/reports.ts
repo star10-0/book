@@ -1,18 +1,9 @@
 import { PaymentAttemptStatus, Prisma } from "@prisma/client";
 import { suspiciousSecurityEventTypes } from "@/lib/admin/security-signals";
 import { prisma } from "@/lib/prisma";
+import { escapeCsvCell } from "@/lib/security/csv";
 
 export type ReportKind = "users" | "suspicious-activity" | "failed-payments" | "payment-incidents";
-
-function csvEscape(value: unknown) {
-  if (value === null || value === undefined) return "";
-  const normalized = String(value).replace(/\r?\n/g, " ");
-  if (!/[",]/.test(normalized)) {
-    return normalized;
-  }
-
-  return `"${normalized.replace(/"/g, '""')}"`;
-}
 
 function buildCsv(rows: Array<Record<string, unknown>>) {
   if (rows.length === 0) return "";
@@ -20,7 +11,7 @@ function buildCsv(rows: Array<Record<string, unknown>>) {
   const lines = [headers.join(",")];
 
   for (const row of rows) {
-    lines.push(headers.map((key) => csvEscape(row[key])).join(","));
+    lines.push(headers.map((key) => escapeCsvCell(row[key])).join(","));
   }
 
   return lines.join("\n");

@@ -303,3 +303,48 @@ test("validateServerEnv warns when deprecated Syriatel legacy env keys are set",
   if (typeof originalVerifyPath === "string") process.env.SYRIATEL_CASH_VERIFY_PAYMENT_PATH = originalVerifyPath;
   else delete process.env.SYRIATEL_CASH_VERIFY_PAYMENT_PATH;
 });
+
+test("validateServerEnv blocks local storage in production without explicit bypass", () => {
+  const originalNodeEnv = (process.env as Record<string, string | undefined>).NODE_ENV;
+  const originalProvider = process.env.BOOK_STORAGE_PROVIDER;
+  const originalBypass = process.env.BOOK_STORAGE_ALLOW_LOCAL_IN_PRODUCTION_BYPASS;
+
+  (process.env as Record<string, string | undefined>).NODE_ENV = "production";
+  process.env.BOOK_STORAGE_PROVIDER = "local";
+  delete process.env.BOOK_STORAGE_ALLOW_LOCAL_IN_PRODUCTION_BYPASS;
+
+  const result = validateServerEnv();
+  assert.ok(result.errors.some((issue) => issue.key === "BOOK_STORAGE_PROVIDER" && issue.message.includes("blocked in production")));
+
+  if (typeof originalNodeEnv === "string") (process.env as Record<string, string | undefined>).NODE_ENV = originalNodeEnv;
+  else delete (process.env as Record<string, string | undefined>).NODE_ENV;
+
+  if (typeof originalProvider === "string") process.env.BOOK_STORAGE_PROVIDER = originalProvider;
+  else delete process.env.BOOK_STORAGE_PROVIDER;
+
+  if (typeof originalBypass === "string") process.env.BOOK_STORAGE_ALLOW_LOCAL_IN_PRODUCTION_BYPASS = originalBypass;
+  else delete process.env.BOOK_STORAGE_ALLOW_LOCAL_IN_PRODUCTION_BYPASS;
+});
+
+test("validateServerEnv allows local storage in production only with explicit emergency bypass", () => {
+  const originalNodeEnv = (process.env as Record<string, string | undefined>).NODE_ENV;
+  const originalProvider = process.env.BOOK_STORAGE_PROVIDER;
+  const originalBypass = process.env.BOOK_STORAGE_ALLOW_LOCAL_IN_PRODUCTION_BYPASS;
+
+  (process.env as Record<string, string | undefined>).NODE_ENV = "production";
+  process.env.BOOK_STORAGE_PROVIDER = "local";
+  process.env.BOOK_STORAGE_ALLOW_LOCAL_IN_PRODUCTION_BYPASS = "true";
+
+  const result = validateServerEnv();
+  assert.equal(result.errors.some((issue) => issue.key === "BOOK_STORAGE_PROVIDER" && issue.message.includes("blocked in production")), false);
+  assert.ok(result.warnings.some((issue) => issue.key === "BOOK_STORAGE_ALLOW_LOCAL_IN_PRODUCTION_BYPASS"));
+
+  if (typeof originalNodeEnv === "string") (process.env as Record<string, string | undefined>).NODE_ENV = originalNodeEnv;
+  else delete (process.env as Record<string, string | undefined>).NODE_ENV;
+
+  if (typeof originalProvider === "string") process.env.BOOK_STORAGE_PROVIDER = originalProvider;
+  else delete process.env.BOOK_STORAGE_PROVIDER;
+
+  if (typeof originalBypass === "string") process.env.BOOK_STORAGE_ALLOW_LOCAL_IN_PRODUCTION_BYPASS = originalBypass;
+  else delete process.env.BOOK_STORAGE_ALLOW_LOCAL_IN_PRODUCTION_BYPASS;
+});

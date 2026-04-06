@@ -104,12 +104,13 @@ export function ReaderViewport({
           throw new Error("missing_epub_file_id");
         }
 
-        const token = parsedUrl.searchParams.get("t");
-        const sectionsUrl = token
-          ? `/api/reader-epub/${fileId}/sections?t=${encodeURIComponent(token)}`
-          : `/api/reader-epub/${fileId}/sections`;
+        await fetch(source.publicUrl, {
+          cache: "no-store",
+          credentials: "same-origin",
+          redirect: "follow",
+        });
 
-        const response = await fetch(sectionsUrl, {
+        const response = await fetch(`/api/reader-epub/${fileId}/sections`, {
           cache: "no-store",
           credentials: "same-origin",
         });

@@ -12,7 +12,7 @@ import { canAccessProtectedAsset, canReadPubliclyByPolicy, resolveAssetDispositi
 import { createStorageProvider } from "@/lib/files/storage-provider";
 import { prisma } from "@/lib/prisma";
 import { jsonNoStore } from "@/lib/security";
-import { verifyProtectedAssetToken } from "@/lib/security/content-protection";
+import { resolveProtectedAssetToken, verifyProtectedAssetToken } from "@/lib/security/content-protection";
 import { logUserSecurityEvent } from "@/lib/security/suspicious-activity";
 import { sanitizeEpubSections } from "@/lib/reader-epub-sections";
 
@@ -250,7 +250,7 @@ export async function GET(request: Request, { params }: ReaderEpubSectionsRouteP
 
   if (!canReadPubliclyByPolicy(file.book.contentAccessPolicy)) {
     const tokenResult = verifyProtectedAssetToken({
-      token: url.searchParams.get("t"),
+      token: resolveProtectedAssetToken(request, url),
       fileId,
       disposition: requestedDisposition,
       currentUserId: user?.id,

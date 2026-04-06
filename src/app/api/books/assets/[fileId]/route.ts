@@ -9,7 +9,7 @@ import { canAccessProtectedAsset, canReadPubliclyByPolicy, resolveAssetDispositi
 import { createStorageProvider } from "@/lib/files/storage-provider";
 import { prisma } from "@/lib/prisma";
 import { jsonNoStore } from "@/lib/security";
-import { buildWatermarkText, verifyProtectedAssetToken } from "@/lib/security/content-protection";
+import { buildWatermarkText, resolveProtectedAssetToken, verifyProtectedAssetToken } from "@/lib/security/content-protection";
 import { logUserSecurityEvent } from "@/lib/security/suspicious-activity";
 
 export const runtime = "nodejs";
@@ -120,7 +120,7 @@ export async function GET(request: Request, { params }: BookAssetRouteParams) {
 
   if (!isPubliclyReadable) {
     const tokenResult = verifyProtectedAssetToken({
-      token: url.searchParams.get("t"),
+      token: resolveProtectedAssetToken(request, url),
       fileId,
       disposition: requestedDisposition,
       currentUserId: user?.id,
@@ -202,6 +202,7 @@ export async function GET(request: Request, { params }: BookAssetRouteParams) {
           "X-Book-Watermark-Hook": watermark ?? "",
           "X-Content-Type-Options": "nosniff",
           "Referrer-Policy": "same-origin",
+          "Cross-Origin-Resource-Policy": "same-origin",
         },
       });
     } catch {
@@ -231,6 +232,7 @@ export async function GET(request: Request, { params }: BookAssetRouteParams) {
       "Cache-Control": "private, no-store",
       "X-Content-Type-Options": "nosniff",
       "Referrer-Policy": "same-origin",
+          "Cross-Origin-Resource-Policy": "same-origin",
       "X-Book-Watermark-Hook": watermark ?? "",
     },
   });

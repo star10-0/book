@@ -4,6 +4,8 @@ import { readOptionalServerEnv, readRequiredServerEnv } from "@/lib/env";
 
 export type ProtectedDisposition = "inline" | "attachment";
 
+const PROTECTED_ASSET_TOKEN_COOKIE = "__Host-book-pa";
+
 type ProtectedAssetTokenPayload = {
   fid: string;
   exp: number;
@@ -53,6 +55,47 @@ function secureEqual(left: string, right: string) {
   return timingSafeEqual(leftBuffer, rightBuffer);
 }
 
+function clampTokenLifetime(seconds: number | undefined) {
+  return Math.max(30, Math.min(seconds ?? 180, 300));
+}
+
+function readBearerToken(request: Request) {
+  const header = request.headers.get("authorization") ?? request.headers.get("Authorization");
+  if (!header || !header.toLowerCase().startsWith("bearer ")) {
+    return null;
+  }
+
+  const token = header.slice("bearer ".length).trim();
+  return token.length > 0 ? token : null;
+}
+
+function readCookieToken(request: Request) {
+  const rawCookie = request.headers.get("cookie");
+  if (!rawCookie) {
+    return null;
+  }
+
+  const entries = rawCookie.split(";");
+  for (const entry of entries) {
+    const [name, ...valueParts] = entry.trim().split("=");
+    if (name === PROTECTED_ASSET_TOKEN_COOKIE) {
+      const value = valueParts.join("=").trim();
+      if (!value) return null;
+      try {
+        return decodeURIComponent(value);
+      } catch {
+        return value;
+      }
+    }
+  }
+
+  return null;
+}
+
+export function resolveProtectedAssetToken(request: Request, url: URL) {
+  return readBearerToken(request) ?? readCookieToken(request) ?? url.searchParams.get("t");
+}
+
 export function createProtectedAssetToken(input: {
   fileId: string;
   disposition: ProtectedDisposition;
@@ -68,7 +111,7 @@ export function createProtectedAssetToken(input: {
     aid: input.accessGrantId,
     dsp: input.disposition,
     wm: input.watermarkText,
-    exp: nowSeconds + Math.max(30, Math.min(input.expiresInSeconds ?? 300, 900)),
+    exp: nowSeconds + clampTokenLifetime(input.expiresInSeconds),
     jti: randomUUID(),
   };
 
@@ -154,5 +197,11 @@ export function buildProtectedAssetUrl(input: {
     watermarkText: input.watermarkText ?? undefined,
   });
 
-  return `/api/books/assets/${input.fileId}?t=${encodeURIComponent(token)}`;
+  const handoffPath = `/api/books/assets/${input.fileId}/handoff`;
+  const dispositionQuery = input.disposition === "attachment" ? "&download=1" : "";
+  return `${handoffPath}?t=${encodeURIComponent(token)}${dispositionQuery}`;
+}
+
+export function getProtectedAssetTokenCookieName() {
+  return PROTECTED_ASSET_TOKEN_COOKIE;
 }

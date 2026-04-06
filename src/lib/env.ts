@@ -211,12 +211,21 @@ function validateEnvironment(): EnvIssue[] {
     });
   }
 
+  const allowLocalStorageProductionBypass = (readEnv("BOOK_STORAGE_ALLOW_LOCAL_IN_PRODUCTION_BYPASS") ?? "false").toLowerCase();
   if (nodeEnv === "production" && storageProvider === "local") {
-    issues.push({
-      severity: "warning",
-      key: "BOOK_STORAGE_PROVIDER",
-      message: "Using local storage in production can lose files on ephemeral hosts. Prefer object storage.",
-    });
+    if (allowLocalStorageProductionBypass !== "true") {
+      issues.push({
+        severity: "error",
+        key: "BOOK_STORAGE_PROVIDER",
+        message: "BOOK_STORAGE_PROVIDER=local is blocked in production. Use s3/r2 or explicitly set BOOK_STORAGE_ALLOW_LOCAL_IN_PRODUCTION_BYPASS=true for temporary emergency-only deployments.",
+      });
+    } else {
+      issues.push({
+        severity: "warning",
+        key: "BOOK_STORAGE_ALLOW_LOCAL_IN_PRODUCTION_BYPASS",
+        message: "Emergency bypass enabled: local storage in production increases risk of irreversible content loss.",
+      });
+    }
   }
 
   if (storageProvider === "s3" || storageProvider === "r2") {

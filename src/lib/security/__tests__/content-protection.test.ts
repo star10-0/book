@@ -62,7 +62,7 @@ test("protected asset token is rejected for a different user", () => withAuthSec
 
 test("buildProtectedAssetUrl generates signed short-lived URLs", () => withAuthSecret(() => {
   const url = buildProtectedAssetUrl({ fileId: "file-1", disposition: "inline", userId: "user-1" });
-  assert.equal(url.startsWith("/api/books/assets/file-1?t="), true);
+  assert.equal(url.startsWith("/api/books/assets/file-1/handoff?t="), true);
 }));
 
 test("watermark text links content to user context", () => {
