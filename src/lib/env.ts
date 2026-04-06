@@ -309,6 +309,12 @@ export function assertServerEnv() {
 
   if (!result.isValid) {
     const keys = result.errors.map((issue) => issue.key).join(", ");
+
+    if (process.env.NEXT_PHASE === "phase-production-build") {
+      console.warn(`[env] Skipping hard failure during production build phase. Missing/invalid keys: ${keys}`);
+      return result;
+    }
+
     throw new Error(`Invalid server environment configuration. Missing or invalid keys: ${keys}`);
   }
 
@@ -335,6 +341,11 @@ export function validateServerEnvOnce(logger?: Pick<Console, "warn" | "error">) 
 
     if (getNodeEnv() === "production") {
       const keys = result.errors.map((issue) => issue.key).join(", ");
+      if (process.env.NEXT_PHASE === "phase-production-build") {
+        output.warn(`[env] Skipping hard failure during production build phase. Missing/invalid keys: ${keys}`);
+        return;
+      }
+
       throw new Error(`Invalid server environment configuration. Missing or invalid keys: ${keys}`);
     }
   }

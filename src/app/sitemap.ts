@@ -7,40 +7,48 @@ const STATIC_PUBLIC_ROUTES = ["", "/books", "/about", "/contact", "/help", "/pol
 export default async function sitemap(): Promise<MetadataRoute.Sitemap> {
   const appBaseUrl = getAppBaseUrl();
 
-  const [publishedBooks, publicCurriculumLevels, creatorProfiles] = await Promise.all([
-    prisma.book.findMany({
-      where: {
-        status: "PUBLISHED",
-        format: "DIGITAL",
-      },
-      select: {
-        slug: true,
-        updatedAt: true,
-      },
-    }),
-    prisma.curriculumLevel.findMany({
-      where: {
-        isActive: true,
-      },
-      select: {
-        slug: true,
-        updatedAt: true,
-      },
-    }),
-    prisma.creatorProfile.findMany({
-      select: {
-        slug: true,
-        updatedAt: true,
-      },
-    }),
-  ]);
-
   const staticEntries: MetadataRoute.Sitemap = STATIC_PUBLIC_ROUTES.map((path) => ({
     url: `${appBaseUrl}${path}`,
     lastModified: new Date(),
     changeFrequency: path === "" ? "daily" : "weekly",
     priority: path === "" ? 1 : 0.7,
   }));
+
+  let publishedBooks: { slug: string; updatedAt: Date }[] = [];
+  let publicCurriculumLevels: { slug: string; updatedAt: Date }[] = [];
+  let creatorProfiles: { slug: string; updatedAt: Date }[] = [];
+
+  try {
+    [publishedBooks, publicCurriculumLevels, creatorProfiles] = await Promise.all([
+      prisma.book.findMany({
+        where: {
+          status: "PUBLISHED",
+          format: "DIGITAL",
+        },
+        select: {
+          slug: true,
+          updatedAt: true,
+        },
+      }),
+      prisma.curriculumLevel.findMany({
+        where: {
+          isActive: true,
+        },
+        select: {
+          slug: true,
+          updatedAt: true,
+        },
+      }),
+      prisma.creatorProfile.findMany({
+        select: {
+          slug: true,
+          updatedAt: true,
+        },
+      }),
+    ]);
+  } catch {
+    return staticEntries;
+  }
 
   const bookEntries: MetadataRoute.Sitemap = publishedBooks.map((book) => ({
     url: `${appBaseUrl}/books/${book.slug}`,

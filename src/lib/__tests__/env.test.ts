@@ -348,3 +348,28 @@ test("validateServerEnv allows local storage in production only with explicit em
   if (typeof originalBypass === "string") process.env.BOOK_STORAGE_ALLOW_LOCAL_IN_PRODUCTION_BYPASS = originalBypass;
   else delete process.env.BOOK_STORAGE_ALLOW_LOCAL_IN_PRODUCTION_BYPASS;
 });
+
+test("assertServerEnv skips hard failure during Next production build phase", async () => {
+  const { assertServerEnv } = await import("@/lib/env");
+
+  const originalPhase = process.env.NEXT_PHASE;
+  const originalAuthSecret = process.env.AUTH_SECRET;
+  const originalDatabaseUrl = process.env.DATABASE_URL;
+
+  process.env.NEXT_PHASE = "phase-production-build";
+  delete process.env.AUTH_SECRET;
+  delete process.env.DATABASE_URL;
+
+  assert.doesNotThrow(() => {
+    assertServerEnv();
+  });
+
+  if (typeof originalPhase === "string") process.env.NEXT_PHASE = originalPhase;
+  else delete process.env.NEXT_PHASE;
+
+  if (typeof originalAuthSecret === "string") process.env.AUTH_SECRET = originalAuthSecret;
+  else delete process.env.AUTH_SECRET;
+
+  if (typeof originalDatabaseUrl === "string") process.env.DATABASE_URL = originalDatabaseUrl;
+  else delete process.env.DATABASE_URL;
+});
