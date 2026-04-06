@@ -115,6 +115,11 @@ test("validateServerEnv rejects ADMIN_SCOPES_LEGACY_ALLOW_EMPTY in production", 
   assert.equal(result.isValid, false);
   assert.ok(result.errors.some((issue) => issue.key === "ADMIN_SCOPES_LEGACY_ALLOW_EMPTY"));
 
+  process.env.ADMIN_SCOPES_LEGACY_ALLOW_EMPTY = "";
+  const resultWithEmptyValue = validateServerEnv();
+  assert.equal(resultWithEmptyValue.isValid, false);
+  assert.ok(resultWithEmptyValue.errors.some((issue) => issue.key === "ADMIN_SCOPES_LEGACY_ALLOW_EMPTY"));
+
   if (typeof originalNodeEnv === "string") (process.env as Record<string, string | undefined>).NODE_ENV = originalNodeEnv;
   else delete (process.env as Record<string, string | undefined>).NODE_ENV;
 
