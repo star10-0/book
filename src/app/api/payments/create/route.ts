@@ -5,6 +5,7 @@ import { logError, getClientIp, getRequestId } from "@/lib/observability/logger"
 import { recordApiResponse, recordPaymentEvent } from "@/lib/observability/metrics";
 import { GatewayConfigurationError, GatewayRequestError } from "@/lib/payments/gateways/provider-http";
 import { getProviderIntegrationConfig, parseSelectedLiveProviders } from "@/lib/payments/gateways/provider-integration";
+import { toPublicOperationNumber } from "@/lib/payments/public-operation-number";
 import { isPaymentError, PAYMENT_ERROR_CODES } from "@/lib/payments/errors";
 import { createPaymentForOrder } from "@/lib/payments/payment-service";
 import { enforceRateLimit, isSameOriginMutation, jsonNoStore, rejectCrossOriginMutation, rejectRateLimitUnavailable, rejectRateLimited } from "@/lib/security";
@@ -131,16 +132,10 @@ export async function POST(request: Request) {
     return jsonNoStore(
       {
         message: result.reused ? "تم استرجاع محاولة دفع جارية." : "تم إنشاء محاولة الدفع.",
-        payment: {
-          id: result.payment.id,
-          status: result.payment.status,
-          provider: result.payment.provider,
-        },
         attempt: {
-          id: result.attempt.id,
           status: result.attempt.status,
+          operationNumber: toPublicOperationNumber(result.attempt.id),
         },
-        checkoutUrl: result.checkoutUrl,
       },
       { status: result.reused ? 200 : 201 },
     );

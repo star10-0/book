@@ -3,11 +3,12 @@ import { getCurrentUser } from "@/lib/auth-session";
 import { logError, getClientIp, getRequestId } from "@/lib/observability/logger";
 import { recordApiResponse, recordPaymentEvent } from "@/lib/observability/metrics";
 import { isPaymentError, PAYMENT_ERROR_CODES } from "@/lib/payments/errors";
+import { resolveAttemptIdFromOperationNumber } from "@/lib/payments/public-operation-number";
 import { submitPaymentProof } from "@/lib/payments/payment-service";
 import { enforceRateLimit, isSameOriginMutation, jsonNoStore, rejectCrossOriginMutation, rejectRateLimitUnavailable, rejectRateLimited } from "@/lib/security";
 
 interface SubmitPaymentProofRequestBody {
-  attemptId?: string;
+  operationNumber?: string;
   transactionReference?: string;
   proofNote?: string;
 }
@@ -34,10 +35,10 @@ export async function POST(request: Request) {
   }
   const body = parsedBody.data;
 
-  const attemptId = body.attemptId?.trim();
+  const operationNumber = body.operationNumber?.trim();
   const transactionReference = body.transactionReference?.trim();
 
-  if (!attemptId || !transactionReference) {
+  if (!operationNumber || !transactionReference) {
     return jsonError(API_ERROR_CODES.invalid_request, "بيانات إثبات الدفع غير مكتملة.", 400);
   }
 
@@ -45,6 +46,11 @@ export async function POST(request: Request) {
 
   if (!user) {
     return jsonError(API_ERROR_CODES.unauthorized, "يجب تسجيل الدخول أولاً.", 401);
+  }
+
+  const attemptId = await resolveAttemptIdFromOperationNumber({ userId: user.id, operationNumber });
+  if (!attemptId) {
+    return jsonNoStore({ message: "رقم العملية العام غير صالح." }, { status: 404 });
   }
 
   try {
@@ -60,7 +66,6 @@ export async function POST(request: Request) {
     return jsonNoStore({
       message: "تم إرسال مرجع الدفع بنجاح.",
       attempt: {
-        id: attempt.id,
         status: attempt.status,
       },
     });

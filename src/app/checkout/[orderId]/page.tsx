@@ -4,6 +4,7 @@ import { OrderDetailsCard } from "@/components/order-details";
 import { OrderPaymentPanel } from "@/components/order-payment-panel";
 import { requireUser } from "@/lib/auth-session";
 import { parseSelectedLiveProviders } from "@/lib/payments/gateways/provider-integration";
+import { toPublicOperationNumber } from "@/lib/payments/public-operation-number";
 import { prisma } from "@/lib/prisma";
 
 type CheckoutPageProps = {
@@ -39,7 +40,7 @@ export default async function CheckoutPage({ params }: CheckoutPageProps) {
 
   const latestAttempt = order.paymentAttempts[0];
   const initialTransactionReference = readTransactionReferenceFromPayload(latestAttempt?.requestPayload);
-  const shamCashDestinationAccount = process.env.SHAM_CASH_DESTINATION_ACCOUNT?.trim() || undefined;
+  const initialOperationNumber = latestAttempt ? toPublicOperationNumber(latestAttempt.id) : undefined;
   const syriatelCashDestinationAccount = process.env.SYRIATEL_CASH_DESTINATION_ACCOUNT?.trim() || undefined;
   const selectedLiveProviders = parseSelectedLiveProviders().selectedProviders;
 
@@ -71,12 +72,10 @@ export default async function CheckoutPage({ params }: CheckoutPageProps) {
           isPayable={order.status === "PENDING"}
           totalCents={order.totalCents}
           currency={order.currency}
-          discountCents={order.discountCents}
           appliedPromoCode={order.promoCode?.code}
-          initialAttemptId={latestAttempt?.id}
+          initialOperationNumber={initialOperationNumber}
           initialAttemptStatus={latestAttempt?.status}
           initialTransactionReference={initialTransactionReference}
-          shamCashDestinationAccount={shamCashDestinationAccount}
           syriatelCashDestinationAccount={syriatelCashDestinationAccount}
           enabledLiveProviders={selectedLiveProviders}
         />

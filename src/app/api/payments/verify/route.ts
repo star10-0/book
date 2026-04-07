@@ -4,12 +4,13 @@ import { logError, getClientIp, getRequestId } from "@/lib/observability/logger"
 import { recordApiResponse, recordPaymentEvent } from "@/lib/observability/metrics";
 import { GatewayConfigurationError, GatewayRequestError } from "@/lib/payments/gateways/provider-http";
 import { isPaymentError, PAYMENT_ERROR_CODES } from "@/lib/payments/errors";
+import { resolveAttemptIdFromOperationNumber } from "@/lib/payments/public-operation-number";
 import { verifyPayment } from "@/lib/payments/payment-service";
 import { getVerifyGatewayErrorMessage } from "@/lib/payments/verify-diagnostics";
 import { enforceRateLimit, isSameOriginMutation, jsonNoStore, rejectCrossOriginMutation, rejectRateLimitUnavailable, rejectRateLimited } from "@/lib/security";
 
 interface VerifyPaymentRequestBody {
-  attemptId?: string;
+  operationNumber?: string;
 }
 
 export async function POST(request: Request) {
@@ -34,16 +35,21 @@ export async function POST(request: Request) {
   }
   const body = parsedBody.data;
 
-  const attemptId = body.attemptId?.trim();
+  const operationNumber = body.operationNumber?.trim();
 
-  if (!attemptId) {
-    return jsonError(API_ERROR_CODES.invalid_request, "معرف محاولة الدفع مطلوب.", 400);
+  if (!operationNumber) {
+    return jsonError(API_ERROR_CODES.invalid_request, "رقم العملية العام مطلوب.", 400);
   }
 
   const user = await getCurrentUser();
 
   if (!user) {
     return jsonError(API_ERROR_CODES.unauthorized, "يجب تسجيل الدخول أولاً.", 401);
+  }
+
+  const attemptId = await resolveAttemptIdFromOperationNumber({ userId: user.id, operationNumber });
+  if (!attemptId) {
+    return jsonNoStore({ message: "رقم العملية العام غير صالح." }, { status: 404 });
   }
 
   try {
@@ -57,7 +63,6 @@ export async function POST(request: Request) {
     return jsonNoStore({
       message: "تم التحقق من حالة الدفع لدى مزود الخدمة.",
       attempt: {
-        id: attempt.id,
         status: attempt.status,
         verifiedAt: attempt.verifiedAt,
         failureReason: attempt.failureReason,
