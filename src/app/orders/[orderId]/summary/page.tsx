@@ -47,6 +47,7 @@ export default async function OrderSummaryPage({ params }: OrderSummaryPageProps
 
       <OrderDetailsCard
         orderId={order.id}
+        publicOrderNumber={order.publicOrderNumber}
         status={order.status}
         currency={order.currency}
         subtotalCents={order.subtotalCents}

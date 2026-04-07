@@ -10,12 +10,14 @@ import { mapAttemptStatusToUiStatus, toArabicPaymentFailureMessage, type Payment
 
 interface OrderPaymentPanelProps {
   orderId: string;
+  publicOrderNumber: string;
   isPayable: boolean;
   totalCents: number;
   currency: "SYP" | "USD";
   discountCents: number;
   appliedPromoCode?: string;
   initialAttemptId?: string;
+  initialAttemptPublicReference?: string;
   initialAttemptStatus?: PaymentAttemptStatus;
   initialTransactionReference?: string;
   shamCashDestinationAccount?: string;
@@ -75,6 +77,7 @@ function statusToneClasses(uiStatus: PaymentUiStatus) {
 
 export function OrderPaymentPanel({
   orderId,
+  publicOrderNumber,
   isPayable,
   totalCents,
   currency,
@@ -82,6 +85,7 @@ export function OrderPaymentPanel({
   appliedPromoCode,
   initialAttemptId,
   initialAttemptStatus,
+  initialAttemptPublicReference,
   initialTransactionReference,
   shamCashDestinationAccount,
   syriatelCashDestinationAccount,
@@ -90,6 +94,7 @@ export function OrderPaymentPanel({
   const router = useRouter();
   const [attemptId, setAttemptId] = useState<string | undefined>(initialAttemptId);
   const [attemptStatus, setAttemptStatus] = useState<PaymentAttemptStatus | undefined>(initialAttemptStatus);
+  const [attemptPublicReference, setAttemptPublicReference] = useState<string | undefined>(initialAttemptPublicReference);
   const [transactionReference, setTransactionReference] = useState(initialTransactionReference ?? "");
   const [hasSubmittedReference, setHasSubmittedReference] = useState(Boolean(initialTransactionReference?.trim()));
   const [proofNote, setProofNote] = useState("");
@@ -125,13 +130,14 @@ export function OrderPaymentPanel({
   useEffect(() => {
     setAttemptId(initialAttemptId);
     setAttemptStatus(initialAttemptStatus);
+    setAttemptPublicReference(initialAttemptPublicReference);
     setTransactionReference(initialTransactionReference ?? "");
     setHasSubmittedReference(Boolean(initialTransactionReference?.trim()));
     if (initialAttemptStatus === "PAID") {
       setMessage("تم تأكيد الدفع بنجاح. يمكنك الآن الوصول إلى محتوى الطلب.");
       setMessageTone("success");
     }
-  }, [initialAttemptId, initialAttemptStatus, initialTransactionReference]);
+  }, [initialAttemptId, initialAttemptPublicReference, initialAttemptStatus, initialTransactionReference]);
 
   useEffect(() => {
     setTransactionReference("");
@@ -266,7 +272,7 @@ export function OrderPaymentPanel({
 
       const payload = (await response.json()) as {
         message?: string;
-        attempt?: { id: string; status: PaymentAttemptStatus };
+        attempt?: { id: string; publicPaymentReference?: string; status: PaymentAttemptStatus };
       };
 
       if (!response.ok || !payload.attempt) {
@@ -277,6 +283,7 @@ export function OrderPaymentPanel({
 
       setAttemptId(payload.attempt.id);
       setAttemptStatus(payload.attempt.status);
+      setAttemptPublicReference(payload.attempt.publicPaymentReference);
       setHasSubmittedReference(false);
       setMessage(
         selectedProvider === PaymentProvider.SHAM_CASH
@@ -317,7 +324,7 @@ export function OrderPaymentPanel({
 
       const payload = (await response.json()) as {
         message?: string;
-        attempt?: { status: PaymentAttemptStatus };
+        attempt?: { publicPaymentReference?: string; status: PaymentAttemptStatus };
       };
 
       if (!response.ok || !payload.attempt) {
@@ -327,6 +334,7 @@ export function OrderPaymentPanel({
       }
 
       setAttemptStatus(payload.attempt.status);
+      setAttemptPublicReference(payload.attempt.publicPaymentReference);
       setHasSubmittedReference(true);
       setMessage("تم حفظ رقم العملية. يمكنك الآن التحقق من حالة الدفع.");
       setMessageTone("success");
@@ -362,7 +370,7 @@ export function OrderPaymentPanel({
 
       const payload = (await response.json()) as {
         message?: string;
-        attempt?: { status: PaymentAttemptStatus; failureReason?: string | null };
+        attempt?: { publicPaymentReference?: string; status: PaymentAttemptStatus; failureReason?: string | null };
       };
 
       if (!response.ok || !payload.attempt) {
@@ -374,6 +382,7 @@ export function OrderPaymentPanel({
       }
 
       setAttemptStatus(payload.attempt.status);
+      setAttemptPublicReference(payload.attempt.publicPaymentReference);
 
       if (payload.attempt.status === "PAID") {
         setMessage("تم تأكيد الدفع بنجاح. أصبح طلبك جاهزًا ويمكنك المتابعة.");
@@ -600,8 +609,16 @@ export function OrderPaymentPanel({
             <h3 className="text-base font-bold text-slate-900">ملخص التنفيذ</h3>
             <dl className="mt-3 space-y-2 text-sm">
               <div className="flex items-center justify-between gap-2 text-slate-700">
+                <dt>رقم الطلب</dt>
+                <dd className="font-semibold text-slate-900">{publicOrderNumber}</dd>
+              </div>
+              <div className="flex items-center justify-between gap-2 text-slate-700">
                 <dt>وسيلة الدفع</dt>
                 <dd className="font-semibold text-slate-900">{selectedOption?.label ?? "-"}</dd>
+              </div>
+              <div className="flex items-center justify-between gap-2 text-slate-700">
+                <dt>رقم العملية</dt>
+                <dd className="font-semibold text-slate-900">{attemptPublicReference ?? "سيظهر بعد إنشاء المحاولة"}</dd>
               </div>
               <div className="flex items-center justify-between gap-2 text-slate-700">
                 <dt>إجمالي الخصم</dt>

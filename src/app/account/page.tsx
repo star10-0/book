@@ -16,6 +16,7 @@ export default async function AccountPage() {
       orderBy: { createdAt: "desc" },
       select: {
         id: true,
+        publicOrderNumber: true,
         totalCents: true,
         currency: true,
         createdAt: true,
@@ -65,7 +66,7 @@ export default async function AccountPage() {
             <h2 className="text-lg font-bold text-slate-900">آخر طلب</h2>
             {latestOrder ? (
               <div className="mt-3 space-y-2 text-sm text-slate-700">
-                <p>رقم الطلب: #{latestOrder.id.slice(-6)}</p>
+                <p>رقم الطلب: {latestOrder.publicOrderNumber}</p>
                 <p>التاريخ: {formatArabicDate(latestOrder.createdAt)}</p>
                 <p className="font-semibold text-indigo-700">
                   المبلغ: {formatArabicCurrency(latestOrder.totalCents / 100, { currency: latestOrder.currency })}

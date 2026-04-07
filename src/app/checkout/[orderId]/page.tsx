@@ -68,12 +68,14 @@ export default async function CheckoutPage({ params }: CheckoutPageProps) {
       <div className="grid gap-5 xl:grid-cols-[minmax(0,1.45fr)_minmax(340px,0.95fr)] xl:items-start">
         <OrderPaymentPanel
           orderId={order.id}
+          publicOrderNumber={order.publicOrderNumber}
           isPayable={order.status === "PENDING"}
           totalCents={order.totalCents}
           currency={order.currency}
           discountCents={order.discountCents}
           appliedPromoCode={order.promoCode?.code}
           initialAttemptId={latestAttempt?.id}
+          initialAttemptPublicReference={latestAttempt?.publicPaymentReference}
           initialAttemptStatus={latestAttempt?.status}
           initialTransactionReference={initialTransactionReference}
           shamCashDestinationAccount={shamCashDestinationAccount}
@@ -84,6 +86,7 @@ export default async function CheckoutPage({ params }: CheckoutPageProps) {
         <div className="xl:sticky xl:top-24">
           <OrderDetailsCard
             orderId={order.id}
+            publicOrderNumber={order.publicOrderNumber}
             status={order.status}
             currency={order.currency}
             subtotalCents={order.subtotalCents}

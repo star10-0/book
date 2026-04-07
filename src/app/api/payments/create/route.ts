@@ -153,6 +153,7 @@ export async function POST(request: Request) {
         },
         attempt: {
           id: result.attempt.id,
+          publicPaymentReference: result.attempt.publicPaymentReference,
           status: result.attempt.status,
         },
         checkoutUrl: result.checkoutUrl,
