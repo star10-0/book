@@ -61,6 +61,7 @@ export async function POST(request: Request) {
       message: "تم إرسال مرجع الدفع بنجاح.",
       attempt: {
         id: attempt.id,
+        publicPaymentReference: attempt.publicPaymentReference,
         status: attempt.status,
       },
     });

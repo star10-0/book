@@ -10,12 +10,14 @@ import { mapAttemptStatusToUiStatus, toArabicPaymentFailureMessage, type Payment
 
 interface OrderPaymentPanelProps {
   orderId: string;
+  publicOrderNumber: string;
   isPayable: boolean;
   totalCents: number;
   currency: "SYP" | "USD";
   discountCents: number;
   appliedPromoCode?: string;
   initialAttemptId?: string;
+  initialAttemptPublicReference?: string;
   initialAttemptStatus?: PaymentAttemptStatus;
   initialTransactionReference?: string;
   shamCashDestinationAccount?: string;
@@ -75,6 +77,7 @@ function statusToneClasses(uiStatus: PaymentUiStatus) {
 
 export function OrderPaymentPanel({
   orderId,
+  publicOrderNumber,
   isPayable,
   totalCents,
   currency,
@@ -82,6 +85,7 @@ export function OrderPaymentPanel({
   appliedPromoCode,
   initialAttemptId,
   initialAttemptStatus,
+  initialAttemptPublicReference,
   initialTransactionReference,
   shamCashDestinationAccount,
   syriatelCashDestinationAccount,
@@ -90,14 +94,13 @@ export function OrderPaymentPanel({
   const router = useRouter();
   const [attemptId, setAttemptId] = useState<string | undefined>(initialAttemptId);
   const [attemptStatus, setAttemptStatus] = useState<PaymentAttemptStatus | undefined>(initialAttemptStatus);
+  const [attemptPublicReference, setAttemptPublicReference] = useState<string | undefined>(initialAttemptPublicReference);
   const [transactionReference, setTransactionReference] = useState(initialTransactionReference ?? "");
   const [hasSubmittedReference, setHasSubmittedReference] = useState(Boolean(initialTransactionReference?.trim()));
   const [proofNote, setProofNote] = useState("");
   const [promoCodeInput, setPromoCodeInput] = useState(appliedPromoCode ?? "");
   const [message, setMessage] = useState("");
   const [messageTone, setMessageTone] = useState<"info" | "success" | "error">("info");
-  const [copyFeedback, setCopyFeedback] = useState("");
-  const [showSyriatelTransferDetails, setShowSyriatelTransferDetails] = useState(false);
   const [isPending, startTransition] = useTransition();
   const attemptStatusRef = useRef<PaymentAttemptStatus | undefined>(initialAttemptStatus);
 
@@ -127,31 +130,24 @@ export function OrderPaymentPanel({
   useEffect(() => {
     setAttemptId(initialAttemptId);
     setAttemptStatus(initialAttemptStatus);
+    setAttemptPublicReference(initialAttemptPublicReference);
     setTransactionReference(initialTransactionReference ?? "");
     setHasSubmittedReference(Boolean(initialTransactionReference?.trim()));
     if (initialAttemptStatus === "PAID") {
       setMessage("تم تأكيد الدفع بنجاح. يمكنك الآن الوصول إلى محتوى الطلب.");
       setMessageTone("success");
     }
-  }, [initialAttemptId, initialAttemptStatus, initialTransactionReference]);
+  }, [initialAttemptId, initialAttemptPublicReference, initialAttemptStatus, initialTransactionReference]);
 
   useEffect(() => {
     setTransactionReference("");
     setHasSubmittedReference(false);
     setProofNote("");
-    setCopyFeedback("");
-    setShowSyriatelTransferDetails(false);
     if (attemptStatusRef.current !== "PAID") {
       setMessage("");
       setMessageTone("info");
     }
   }, [selectedProvider]);
-
-  useEffect(() => {
-    if (!copyFeedback) return;
-    const timeout = window.setTimeout(() => setCopyFeedback(""), 2200);
-    return () => window.clearTimeout(timeout);
-  }, [copyFeedback]);
 
   const selectedOption =
     availablePaymentOptions.find((option) => option.provider === selectedProvider) ?? availablePaymentOptions[0];
@@ -197,16 +193,6 @@ export function OrderPaymentPanel({
       : !hasSubmittedReference
         ? "أدخل رقم العملية أولًا ثم اضغط إرسال رقم العملية."
         : undefined;
-
-  const copyText = async (text: string, successMessage: string) => {
-    if (!text.trim() || text === "غير متاح حالياً") return;
-    try {
-      await navigator.clipboard.writeText(text);
-      setCopyFeedback(successMessage);
-    } catch {
-      setCopyFeedback("تعذر النسخ تلقائيًا. يمكنك النسخ يدويًا.");
-    }
-  };
 
   const applyPromoCode = () => {
     if (!promoCodeInput.trim()) {
@@ -286,7 +272,7 @@ export function OrderPaymentPanel({
 
       const payload = (await response.json()) as {
         message?: string;
-        attempt?: { id: string; status: PaymentAttemptStatus };
+        attempt?: { id: string; publicPaymentReference?: string; status: PaymentAttemptStatus };
       };
 
       if (!response.ok || !payload.attempt) {
@@ -297,6 +283,7 @@ export function OrderPaymentPanel({
 
       setAttemptId(payload.attempt.id);
       setAttemptStatus(payload.attempt.status);
+      setAttemptPublicReference(payload.attempt.publicPaymentReference);
       setHasSubmittedReference(false);
       setMessage(
         selectedProvider === PaymentProvider.SHAM_CASH
@@ -337,7 +324,7 @@ export function OrderPaymentPanel({
 
       const payload = (await response.json()) as {
         message?: string;
-        attempt?: { status: PaymentAttemptStatus };
+        attempt?: { publicPaymentReference?: string; status: PaymentAttemptStatus };
       };
 
       if (!response.ok || !payload.attempt) {
@@ -347,6 +334,7 @@ export function OrderPaymentPanel({
       }
 
       setAttemptStatus(payload.attempt.status);
+      setAttemptPublicReference(payload.attempt.publicPaymentReference);
       setHasSubmittedReference(true);
       setMessage("تم حفظ رقم العملية. يمكنك الآن التحقق من حالة الدفع.");
       setMessageTone("success");
@@ -382,7 +370,7 @@ export function OrderPaymentPanel({
 
       const payload = (await response.json()) as {
         message?: string;
-        attempt?: { status: PaymentAttemptStatus; failureReason?: string | null };
+        attempt?: { publicPaymentReference?: string; status: PaymentAttemptStatus; failureReason?: string | null };
       };
 
       if (!response.ok || !payload.attempt) {
@@ -394,6 +382,7 @@ export function OrderPaymentPanel({
       }
 
       setAttemptStatus(payload.attempt.status);
+      setAttemptPublicReference(payload.attempt.publicPaymentReference);
 
       if (payload.attempt.status === "PAID") {
         setMessage("تم تأكيد الدفع بنجاح. أصبح طلبك جاهزًا ويمكنك المتابعة.");
@@ -510,42 +499,14 @@ export function OrderPaymentPanel({
                 <div className="rounded-2xl border border-indigo-100 bg-indigo-50/60 p-4">
                   <dl className="space-y-2 text-sm text-slate-800">
                     <div className="flex items-center justify-between gap-3">
-                      <dt className="font-semibold">حساب الاستلام</dt>
-                      <dd className="font-mono text-xs sm:text-sm">{shamDestinationLabel}</dd>
-                    </div>
-                    <div className="flex items-center justify-between gap-3">
                       <dt className="font-semibold">المبلغ</dt>
                       <dd className="font-bold select-all">{formatArabicCurrency(totalCents / 100, { currency })}</dd>
                     </div>
                     <div className="flex items-center justify-between gap-3">
-                      <dt className="font-semibold">مرجع الطلب</dt>
-                      <dd className="font-mono text-xs sm:text-sm select-all">{orderId}</dd>
+                      <dt className="font-semibold">بصمة التحقق</dt>
+                      <dd className="font-mono text-xs sm:text-sm">5468 **** **** ****</dd>
                     </div>
                   </dl>
-
-                  <div className="mt-3 flex flex-wrap gap-2">
-                    <button
-                      type="button"
-                      onClick={() => copyText(shamDestinationLabel, "تم نسخ حساب الاستلام.")}
-                      className="rounded-lg border border-indigo-200 bg-white px-3 py-1.5 text-xs font-semibold text-indigo-700 hover:bg-indigo-50"
-                    >
-                      نسخ الحساب
-                    </button>
-                    <button
-                      type="button"
-                      onClick={() =>
-                        copyText(
-                          `المبلغ: ${formatArabicCurrency(totalCents / 100, { currency })}\nمرجع الطلب: ${orderId}`,
-                          "تم نسخ المبلغ ومرجع الطلب.",
-                        )
-                      }
-                      className="rounded-lg border border-indigo-200 bg-white px-3 py-1.5 text-xs font-semibold text-indigo-700 hover:bg-indigo-50"
-                    >
-                      نسخ المبلغ/المرجع
-                    </button>
-                  </div>
-
-                  {copyFeedback ? <p className="mt-2 text-xs font-semibold text-indigo-700">{copyFeedback}</p> : null}
 
                   <div className="mt-4 rounded-xl border border-indigo-200 bg-white p-3">
                     <p className="text-xs font-semibold text-slate-900">رمز QR للدفع السريع</p>
@@ -557,7 +518,7 @@ export function OrderPaymentPanel({
                         height={176}
                         className="h-44 w-44 rounded-md border border-slate-200 bg-white p-2"
                       />
-                      <p className="text-center text-[11px] text-slate-600">يتضمن بيانات الحساب والمبلغ ومرجع الطلب.</p>
+                      <p className="text-center text-[11px] text-slate-600">تحقق من اسم المستلم والمبلغ قبل تأكيد التحويل ثم أدخل رقم العملية.</p>
                     </div>
                   </div>
                 </div>
@@ -582,45 +543,18 @@ export function OrderPaymentPanel({
                         height={176}
                         className="h-44 w-44 rounded-md border border-slate-200 bg-white p-2"
                       />
-                      <p className="text-center text-[11px] text-slate-600">امسح الرمز لإتمام التحويل عبر Syriatel Cash.</p>
+                      <p className="text-center text-[11px] text-slate-600">تحقق من اسم المستلم والمبلغ قبل تأكيد التحويل ثم أدخل رقم العملية.</p>
                     </div>
                   </div>
 
-                  <div className="mt-3">
-                    <button
-                      type="button"
-                      onClick={() => setShowSyriatelTransferDetails((current) => !current)}
-                      className="rounded-lg border border-emerald-200 bg-white px-3 py-1.5 text-xs font-semibold text-emerald-700 hover:bg-emerald-50"
-                    >
-                      إظهار بيانات التحويل
-                    </button>
-                  </div>
-
-                  {showSyriatelTransferDetails ? (
-                    <div className="mt-3 rounded-xl border border-emerald-200 bg-white p-3">
-                      <dl className="space-y-2 text-sm text-slate-800">
-                        <div className="flex items-center justify-between gap-3">
-                          <dt className="font-semibold">رقم/حساب الاستلام</dt>
-                          <dd className="font-mono text-xs sm:text-sm">{syriatelDestinationLabel}</dd>
-                        </div>
-                        <div className="flex items-center justify-between gap-3">
-                          <dt className="font-semibold">المبلغ</dt>
-                          <dd className="font-bold">{formatArabicCurrency(totalCents / 100, { currency })}</dd>
-                        </div>
-                      </dl>
-                      <div className="mt-3">
-                        <button
-                          type="button"
-                          onClick={() => copyText(syriatelDestinationLabel, "تم نسخ رقم/حساب الاستلام.")}
-                          className="rounded-lg border border-emerald-200 bg-white px-3 py-1.5 text-xs font-semibold text-emerald-700 hover:bg-emerald-50"
-                        >
-                          نسخ الحساب
-                        </button>
+                  <div className="mt-3 rounded-xl border border-emerald-200 bg-white p-3">
+                    <dl className="space-y-2 text-sm text-slate-800">
+                      <div className="flex items-center justify-between gap-3">
+                        <dt className="font-semibold">معرف الحساب الرسمي</dt>
+                        <dd className="font-mono text-xs sm:text-sm">#50917965</dd>
                       </div>
-                    </div>
-                  ) : null}
-
-                  {copyFeedback ? <p className="mt-2 text-xs font-semibold text-emerald-700">{copyFeedback}</p> : null}
+                    </dl>
+                  </div>
                 </div>
               ) : null}
             </section>
@@ -675,8 +609,16 @@ export function OrderPaymentPanel({
             <h3 className="text-base font-bold text-slate-900">ملخص التنفيذ</h3>
             <dl className="mt-3 space-y-2 text-sm">
               <div className="flex items-center justify-between gap-2 text-slate-700">
+                <dt>رقم الطلب</dt>
+                <dd className="font-semibold text-slate-900">{publicOrderNumber}</dd>
+              </div>
+              <div className="flex items-center justify-between gap-2 text-slate-700">
                 <dt>وسيلة الدفع</dt>
                 <dd className="font-semibold text-slate-900">{selectedOption?.label ?? "-"}</dd>
+              </div>
+              <div className="flex items-center justify-between gap-2 text-slate-700">
+                <dt>رقم العملية</dt>
+                <dd className="font-semibold text-slate-900">{attemptPublicReference ?? "سيظهر بعد إنشاء المحاولة"}</dd>
               </div>
               <div className="flex items-center justify-between gap-2 text-slate-700">
                 <dt>إجمالي الخصم</dt>
@@ -687,11 +629,6 @@ export function OrderPaymentPanel({
                 <dd className="text-lg font-black text-indigo-700">{formatArabicCurrency(totalCents / 100, { currency })}</dd>
               </div>
             </dl>
-            {attemptId ? (
-              <p className="mt-3 rounded-lg bg-white px-3 py-2 text-xs text-slate-700">
-                رقم محاولة الدفع: <span className="font-mono">{attemptId}</span>
-              </p>
-            ) : null}
           </section>
 
           <section className="rounded-2xl border border-slate-200 bg-white p-4">

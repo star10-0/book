@@ -9,6 +9,7 @@ import {
   validateCreateOrderPayload,
 } from "@/lib/orders/create-order";
 import { prisma } from "@/lib/prisma";
+import { generatePublicOrderNumber } from "@/lib/public-reference";
 import { enforceRateLimit, isSameOriginMutation, jsonNoStore, rejectCrossOriginMutation, rejectRateLimitUnavailable, rejectRateLimited } from "@/lib/security";
 import { buildPendingOrderAdvisoryLockKeys } from "@/lib/orders/pending-order-lock";
 
@@ -115,7 +116,10 @@ export async function POST(request: Request) {
               },
             },
           },
-          select: { id: true },
+          select: {
+            id: true,
+            publicOrderNumber: true,
+          },
         }),
       ]);
 
@@ -124,7 +128,11 @@ export async function POST(request: Request) {
       }
 
       if (existingPendingOrder) {
-        return { type: "PENDING_EXISTS" as const, orderId: existingPendingOrder.id };
+        return {
+          type: "PENDING_EXISTS" as const,
+          orderId: existingPendingOrder.id,
+          publicOrderNumber: existingPendingOrder.publicOrderNumber,
+        };
       }
 
       const totals = calculateOrderTotals({ subtotalCents: offer.priceCents });
@@ -132,10 +140,13 @@ export async function POST(request: Request) {
         return { type: "PRICING_UNAVAILABLE" as const };
       }
 
+      const publicOrderNumber = await generatePublicOrderNumber(tx, now);
+
       const order = await tx.order.create({
         data: {
           userId: user.id,
           currency: offer.currency,
+          publicOrderNumber,
           subtotalCents: totals.subtotalCents,
           discountCents: totals.discountCents,
           totalCents: totals.totalCents,
@@ -175,7 +186,10 @@ export async function POST(request: Request) {
       return jsonNoStore(
         {
           message: "لديك طلب معلّق لهذا العرض مسبقاً.",
-          order: { id: result.orderId },
+          order: {
+            id: result.orderId,
+            publicOrderNumber: result.publicOrderNumber,
+          },
           checkoutUrl: `/checkout/${result.orderId}`,
           summaryUrl: `/orders/${result.orderId}/summary`,
         },
@@ -192,6 +206,7 @@ export async function POST(request: Request) {
         message: "تم إنشاء الطلب بنجاح.",
         order: {
           id: result.order.id,
+          publicOrderNumber: result.order.publicOrderNumber,
           status: result.order.status,
           totalCents: result.order.totalCents,
           currency: result.order.currency,

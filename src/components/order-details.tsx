@@ -14,6 +14,7 @@ type OrderItemView = {
 
 type OrderDetailsCardProps = {
   orderId: string;
+  publicOrderNumber: string;
   status: OrderStatus;
   currency: CurrencyCode;
   subtotalCents: number;
@@ -27,6 +28,7 @@ type OrderDetailsCardProps = {
 
 export function OrderDetailsCard({
   orderId,
+  publicOrderNumber,
   status,
   currency,
   subtotalCents,
@@ -45,7 +47,7 @@ export function OrderDetailsCard({
         <div className="flex items-start justify-between gap-3">
           <div>
             <p className="text-xs font-semibold text-slate-500">ملخص الطلب</p>
-            <h2 className="mt-1 text-base font-bold text-slate-900">{orderId}</h2>
+            <h2 className="mt-1 text-base font-bold text-slate-900">{publicOrderNumber}</h2>
           </div>
           <span className={`rounded-full px-3 py-1 text-xs font-semibold ${statusTag.tone}`}>{statusTag.label}</span>
         </div>
