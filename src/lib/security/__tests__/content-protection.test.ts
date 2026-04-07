@@ -145,6 +145,29 @@ test("protected token verification rejects nonce mismatch", () => withAuthSecret
   }
 }));
 
+test("protected token verification rejects session mismatch", () => withAuthSecret(() => {
+  const token = createProtectedAssetToken({
+    fileId: "file-1",
+    disposition: "inline",
+    userId: "user-1",
+    readingSessionId: "session-1",
+    expiresInSeconds: 120,
+  });
+
+  const mismatchResult = verifyProtectedAssetToken({
+    token,
+    fileId: "file-1",
+    disposition: "inline",
+    currentUserId: "user-1",
+    expectedSessionId: "session-2",
+  });
+
+  assert.equal(mismatchResult.valid, false);
+  if (!mismatchResult.valid) {
+    assert.equal(mismatchResult.reason, "SESSION_MISMATCH");
+  }
+}));
+
 
 test("createProtectedAssetToken throws when AUTH_SECRET is unset", () => {
   const original = process.env.AUTH_SECRET;

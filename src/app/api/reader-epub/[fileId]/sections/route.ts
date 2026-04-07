@@ -5,12 +5,13 @@ import { tmpdir } from "node:os";
 import path from "node:path";
 import { execFile } from "node:child_process";
 import { promisify } from "node:util";
-import { AccessGrantStatus, FileKind, StorageProvider } from "@prisma/client";
+import { FileKind, StorageProvider } from "@prisma/client";
 import { getCurrentUser } from "@/lib/auth-session";
 import { mapStorageProviderEnumToKey } from "@/lib/files/book-storage-service";
 import { canAccessProtectedAsset, canReadPubliclyByPolicy, resolveAssetDisposition } from "@/lib/files/protected-asset-policy";
 import { createStorageProvider } from "@/lib/files/storage-provider";
 import { prisma } from "@/lib/prisma";
+import { resolveReaderSessionAccess, touchReadingSession } from "@/lib/reader-session";
 import { jsonNoStore } from "@/lib/security";
 import { resolveProtectedAssetToken, verifyProtectedAssetToken } from "@/lib/security/content-protection";
 import { logUserSecurityEvent } from "@/lib/security/suspicious-activity";
@@ -72,21 +73,6 @@ async function resolveReadableLocalPath(storageKey: string) {
   }
 
   return null;
-}
-
-async function hasActiveAccessGrant(userId: string, bookId: string, now: Date) {
-  const grant = await prisma.accessGrant.findFirst({
-    where: {
-      userId,
-      bookId,
-      status: AccessGrantStatus.ACTIVE,
-      startsAt: { lte: now },
-      OR: [{ expiresAt: null }, { expiresAt: { gt: now } }],
-    },
-    select: { id: true },
-  });
-
-  return Boolean(grant);
 }
 
 async function parseEpubSections(epubPath: string): Promise<EpubSection[]> {
@@ -246,7 +232,7 @@ export async function GET(request: Request, { params }: ReaderEpubSectionsRouteP
 
   const user = await getCurrentUser();
   const now = new Date();
-  const canReadWithGrant = user ? await hasActiveAccessGrant(user.id, file.book.id, now) : false;
+  let canReadWithGrant = false;
 
   if (!canReadPubliclyByPolicy(file.book.contentAccessPolicy)) {
     const tokenResult = verifyProtectedAssetToken({
@@ -268,6 +254,44 @@ export async function GET(request: Request, { params }: ReaderEpubSectionsRouteP
       }
 
       return jsonNoStore({ message: "رابط الوصول للملف غير صالح أو منتهي الصلاحية." }, { status: 403 });
+    }
+
+    const accessGrantId = tokenResult.payload.aid ?? null;
+    const readingSessionId = tokenResult.payload.sid ?? null;
+    if (!user || !accessGrantId) {
+      return jsonNoStore({ message: "رابط الوصول للملف غير صالح أو منتهي الصلاحية." }, { status: 403 });
+    }
+
+    const accessState = await prisma.$transaction((tx) =>
+      resolveReaderSessionAccess(tx, {
+        accessGrantId,
+        userId: user.id,
+        now,
+      }),
+    );
+    canReadWithGrant = accessState.allowed;
+
+    if (accessState.allowed && accessState.mode === "GRACE" && !readingSessionId) {
+      canReadWithGrant = false;
+    }
+    if (accessState.allowed && accessState.mode === "GRACE" && readingSessionId) {
+      const session = await prisma.readingSession.findFirst({
+        where: { id: readingSessionId, accessGrantId, userId: user.id, closedAt: null },
+        select: { id: true },
+      });
+      if (!session) {
+        canReadWithGrant = false;
+      }
+    }
+
+    if (canReadWithGrant) {
+      await prisma.$transaction((tx) =>
+        touchReadingSession(tx, {
+          accessGrantId,
+          userId: user.id,
+          now,
+        }),
+      );
     }
   }
 

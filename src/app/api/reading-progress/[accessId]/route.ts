@@ -4,6 +4,7 @@ import { getCurrentUser } from "@/lib/auth-session";
 import { getClientIp } from "@/lib/observability/logger";
 import { prisma } from "@/lib/prisma";
 import { normalizeProgress } from "@/lib/reader/locator";
+import { closeReadingSession, resolveReaderSessionAccess, touchReadingSession } from "@/lib/reader-session";
 import { enforceRateLimit, isSameOriginMutation, rejectCrossOriginMutation, rejectRateLimited } from "@/lib/security";
 
 type UpdateReadingProgressBody = {
@@ -63,26 +64,33 @@ export async function PATCH(request: Request, context: { params: Promise<{ acces
   if (!validation.data) {
     return jsonError(API_ERROR_CODES.invalid_request, validation.error ?? "بيانات التقدم غير صالحة.", 400);
   }
+  const validatedData = validation.data;
 
   const now = new Date();
   const accessGrant = await prisma.accessGrant.findFirst({
-    where: {
-      id: accessId,
-      userId: user.id,
-      status: "ACTIVE",
-      startsAt: { lte: now },
-      OR: [{ expiresAt: null }, { expiresAt: { gt: now } }],
-    },
-    select: {
-      bookId: true,
-    },
+    where: { id: accessId, userId: user.id },
+    select: { bookId: true },
   });
-
   if (!accessGrant) {
     return jsonError(API_ERROR_CODES.forbidden, "الوصول غير متاح أو منتهي الصلاحية.", 403);
   }
 
-  const completedAt = validation.data.progressPercent >= 100 ? now : null;
+  const sessionAccess = await prisma.$transaction((tx) =>
+    resolveReaderSessionAccess(tx, { accessGrantId: accessId, userId: user.id, now }),
+  );
+  if (!sessionAccess.allowed) {
+    await prisma.$transaction((tx) =>
+      closeReadingSession(tx, {
+        accessGrantId: accessId,
+        userId: user.id,
+        now,
+        locator: validatedData.locator,
+      }),
+    );
+    return jsonError(API_ERROR_CODES.forbidden, "الوصول غير متاح أو منتهي الصلاحية.", 403);
+  }
+
+  const completedAt = validatedData.progressPercent >= 100 ? now : null;
 
   const progress = await prisma.readingProgress.upsert({
     where: {
@@ -94,14 +102,14 @@ export async function PATCH(request: Request, context: { params: Promise<{ acces
     create: {
       userId: user.id,
       bookId: accessGrant.bookId,
-      progressPercent: validation.data.progressPercent,
-      locator: validation.data.locator,
+      progressPercent: validatedData.progressPercent,
+      locator: validatedData.locator,
       lastOpenedAt: now,
       completedAt,
     },
     update: {
-      progressPercent: validation.data.progressPercent,
-      locator: validation.data.locator,
+      progressPercent: validatedData.progressPercent,
+      locator: validatedData.locator,
       lastOpenedAt: now,
       completedAt,
     },
@@ -112,6 +120,15 @@ export async function PATCH(request: Request, context: { params: Promise<{ acces
       updatedAt: true,
     },
   });
+
+  await prisma.$transaction((tx) =>
+    touchReadingSession(tx, {
+      accessGrantId: accessId,
+      userId: user.id,
+      now,
+      locator: validatedData.locator,
+    }),
+  );
 
   return NextResponse.json({
     message: "تم تحديث تقدم القراءة.",
