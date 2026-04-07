@@ -1,5 +1,5 @@
 import "server-only";
-import { createHmac, randomUUID, timingSafeEqual } from "node:crypto";
+import { createHash, createHmac, randomUUID, timingSafeEqual } from "node:crypto";
 import { readOptionalServerEnv, readRequiredServerEnv } from "@/lib/env";
 
 export type ProtectedDisposition = "inline" | "attachment";
@@ -12,6 +12,7 @@ type ProtectedAssetTokenPayload = {
   exp: number;
   uid?: string;
   aid?: string;
+  sid?: string;
   dsp: ProtectedDisposition;
   wm?: string;
   jti: string;
@@ -134,6 +135,7 @@ export function createProtectedAssetToken(input: {
   expiresInSeconds?: number;
   userId?: string;
   accessGrantId?: string;
+  readingSessionId?: string;
   watermarkText?: string;
 }) {
   const nowSeconds = Math.floor(Date.now() / 1000);
@@ -141,6 +143,7 @@ export function createProtectedAssetToken(input: {
     fid: input.fileId,
     uid: input.userId,
     aid: input.accessGrantId,
+    sid: input.readingSessionId,
     dsp: input.disposition,
     wm: input.watermarkText,
     exp: nowSeconds + clampTokenLifetime(input.expiresInSeconds),
@@ -157,6 +160,7 @@ export function verifyProtectedAssetToken(input: {
   disposition: ProtectedDisposition;
   currentUserId?: string | null;
   expectedNonce?: string | null;
+  expectedSessionId?: string | null;
 }) {
   if (!input.token) {
     return { valid: false as const, reason: "MISSING_TOKEN" as const };
@@ -196,6 +200,10 @@ export function verifyProtectedAssetToken(input: {
       return { valid: false as const, reason: "NONCE_MISMATCH" as const };
     }
 
+    if (input.expectedSessionId && payload.sid !== input.expectedSessionId) {
+      return { valid: false as const, reason: "SESSION_MISMATCH" as const };
+    }
+
     return { valid: true as const, payload };
   } catch {
     return { valid: false as const, reason: "INVALID_PAYLOAD" as const };
@@ -216,7 +224,13 @@ export function buildWatermarkText(input: {
     return null;
   }
 
-  return `book|${markers.join("|")}`;
+  const secret = getSigningSecretOrNull();
+  const fingerprintSource = markers.join("|");
+  const digest = secret
+    ? createHmac("sha256", secret).update(fingerprintSource).digest("hex")
+    : createHash("sha256").update(fingerprintSource).digest("hex");
+
+  return `book|wm-v1|${digest.slice(0, 24)}`;
 }
 
 export function buildProtectedAssetUrl(input: {
@@ -224,6 +238,7 @@ export function buildProtectedAssetUrl(input: {
   disposition: ProtectedDisposition;
   userId?: string;
   accessGrantId?: string;
+  readingSessionId?: string;
   watermarkText?: string | null;
 }) {
   const token = createProtectedAssetToken({
@@ -231,6 +246,7 @@ export function buildProtectedAssetUrl(input: {
     disposition: input.disposition,
     userId: input.userId,
     accessGrantId: input.accessGrantId,
+    readingSessionId: input.readingSessionId,
     watermarkText: input.watermarkText ?? undefined,
   });
 

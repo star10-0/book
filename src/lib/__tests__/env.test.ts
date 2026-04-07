@@ -393,20 +393,25 @@ test("validateServerEnv allows local storage in production only with explicit em
   else delete process.env.BOOK_STORAGE_ALLOW_LOCAL_IN_PRODUCTION_BYPASS;
 });
 
-test("assertServerEnv skips hard failure during Next production build phase", async () => {
+test("assertServerEnv fails closed during Next production build phase unless explicit bypass is enabled", async () => {
   const { assertServerEnv } = await import("@/lib/env");
 
   const originalPhase = process.env.NEXT_PHASE;
   const originalAuthSecret = process.env.AUTH_SECRET;
   const originalDatabaseUrl = process.env.DATABASE_URL;
+  const originalBypass = process.env.ALLOW_INVALID_ENV_DURING_BUILD;
 
   process.env.NEXT_PHASE = "phase-production-build";
   delete process.env.AUTH_SECRET;
   delete process.env.DATABASE_URL;
+  delete process.env.ALLOW_INVALID_ENV_DURING_BUILD;
 
-  assert.doesNotThrow(() => {
+  assert.throws(() => {
     assertServerEnv();
-  });
+  }, /Invalid server environment during production build phase/);
+
+  process.env.ALLOW_INVALID_ENV_DURING_BUILD = "true";
+  assert.doesNotThrow(() => assertServerEnv());
 
   if (typeof originalPhase === "string") process.env.NEXT_PHASE = originalPhase;
   else delete process.env.NEXT_PHASE;
@@ -416,4 +421,36 @@ test("assertServerEnv skips hard failure during Next production build phase", as
 
   if (typeof originalDatabaseUrl === "string") process.env.DATABASE_URL = originalDatabaseUrl;
   else delete process.env.DATABASE_URL;
+
+  if (typeof originalBypass === "string") process.env.ALLOW_INVALID_ENV_DURING_BUILD = originalBypass;
+  else delete process.env.ALLOW_INVALID_ENV_DURING_BUILD;
+});
+
+test("validateServerEnv in production build context supports placeholder contract without runtime KV enforcement", () => {
+  const originalEnv = { ...process.env };
+  try {
+    (process.env as Record<string, string | undefined>).NODE_ENV = "production";
+    process.env.NEXT_PHASE = "phase-production-build";
+    process.env.BOOK_ENV_VALIDATION_CONTEXT = "build";
+    process.env.DATABASE_URL = "postgresql://build:build@localhost:5432/book";
+    process.env.AUTH_SECRET = "12345678901234567890123456789012";
+    process.env.PAYMENT_GATEWAY_MODE = "live";
+    process.env.PAYMENT_LIVE_PROVIDERS = "SHAM_CASH";
+    process.env.SHAM_CASH_API_BASE_URL = "https://example.invalid/api/v1";
+    process.env.SHAM_CASH_API_KEY = "build-placeholder";
+    process.env.SHAM_CASH_DESTINATION_ACCOUNT = "000000";
+    process.env.BOOK_STORAGE_PROVIDER = "r2";
+    process.env.BOOK_STORAGE_S3_ACCESS_KEY_ID = "build-placeholder";
+    process.env.BOOK_STORAGE_S3_SECRET_ACCESS_KEY = "build-placeholder";
+    process.env.BOOK_STORAGE_S3_PUBLIC_BUCKET = "build-bucket";
+    process.env.NEXTAUTH_URL = "https://build.example";
+    process.env.APP_BASE_URL = "https://build.example";
+    delete process.env.KV_REST_API_URL;
+    delete process.env.KV_REST_API_TOKEN;
+
+    const result = validateServerEnv();
+    assert.equal(result.isValid, true);
+  } finally {
+    process.env = originalEnv;
+  }
 });

@@ -66,6 +66,7 @@ test("promo endpoint fails safely in production when distributed rate-limit back
   try {
     clearDistributedRateLimitEnv();
     (process.env as Record<string, string | undefined>).NODE_ENV = "production";
+    process.env.APP_BASE_URL = "https://book.local";
     process.env.KV_REST_API_URL = "https://kv.example";
     process.env.KV_REST_API_TOKEN = "token";
     global.fetch = async () => new Response("bad", { status: 500 });
@@ -90,6 +91,7 @@ test("complete-free endpoint enforces distributed backend in production when env
   try {
     clearDistributedRateLimitEnv();
     (process.env as Record<string, string | undefined>).NODE_ENV = "production";
+    process.env.APP_BASE_URL = "https://book.local";
 
     const response = await completeFreePost(
       buildMutationRequest("/api/checkout/complete-free", { orderId: "order-1" }, "203.0.113.44"),

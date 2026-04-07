@@ -90,7 +90,7 @@ test("resolveProtectedAssetToken prefers Authorization bearer over cookies", () 
   assert.equal(resolveProtectedAssetNonce(request), "nonce-1");
 });
 
-test("watermark text links content to user context", () => {
+test("watermark text is opaque and does not expose direct identifiers", () => {
   const watermark = buildWatermarkText({
     email: "reader@example.com",
     userId: "u1",
@@ -98,8 +98,9 @@ test("watermark text links content to user context", () => {
     accessGrantId: "g1",
   });
 
-  assert.equal(Boolean(watermark?.includes("reader@example.com")), true);
-  assert.equal(Boolean(watermark?.includes("o1")), true);
+  assert.equal(Boolean(watermark?.startsWith("book|wm-v1|")), true);
+  assert.equal(Boolean(watermark?.includes("reader@example.com")), false);
+  assert.equal(Boolean(watermark?.includes("o1")), false);
 });
 
 
@@ -142,6 +143,29 @@ test("protected token verification rejects nonce mismatch", () => withAuthSecret
   assert.equal(mismatchResult.valid, false);
   if (!mismatchResult.valid) {
     assert.equal(mismatchResult.reason, "NONCE_MISMATCH");
+  }
+}));
+
+test("protected token verification rejects session mismatch", () => withAuthSecret(() => {
+  const token = createProtectedAssetToken({
+    fileId: "file-1",
+    disposition: "inline",
+    userId: "user-1",
+    readingSessionId: "session-1",
+    expiresInSeconds: 120,
+  });
+
+  const mismatchResult = verifyProtectedAssetToken({
+    token,
+    fileId: "file-1",
+    disposition: "inline",
+    currentUserId: "user-1",
+    expectedSessionId: "session-2",
+  });
+
+  assert.equal(mismatchResult.valid, false);
+  if (!mismatchResult.valid) {
+    assert.equal(mismatchResult.reason, "SESSION_MISMATCH");
   }
 }));
 

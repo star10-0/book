@@ -9,6 +9,10 @@ import { ReaderViewport } from "@/components/reader/reader-viewport";
 
 type ReaderShellProps = {
   accessId: string;
+  readingSessionId: string | null;
+  initialAccessMode: "ACTIVE" | "GRACE";
+  graceEndsAtIso: string | null;
+  renewHref: string;
   bookTitle: string;
   initialProgressPercent: number;
   initialLocator: string | null;
@@ -53,7 +57,18 @@ function clampZoom(zoom: number) {
 
 const ZOOM_STEP = 10;
 
-export function ReaderShell({ accessId, bookTitle, initialProgressPercent, initialLocator, source, returnHref }: ReaderShellProps) {
+export function ReaderShell({
+  accessId,
+  readingSessionId,
+  initialAccessMode,
+  graceEndsAtIso,
+  renewHref,
+  bookTitle,
+  initialProgressPercent,
+  initialLocator,
+  source,
+  returnHref,
+}: ReaderShellProps) {
   const [progressPercent, setProgressPercent] = useState(normalizeProgress(initialProgressPercent));
   const [locator, setLocator] = useState(initialLocator ?? "page:1");
   const [theme, setTheme] = useState<ReaderTheme>("light");
@@ -71,6 +86,11 @@ export function ReaderShell({ accessId, bookTitle, initialProgressPercent, initi
   const [isAnnotationSaving, setIsAnnotationSaving] = useState(false);
   const [zoomPercent, setZoomPercent] = useState(100);
   const [isFocusMode, setIsFocusMode] = useState(false);
+  const [accessMode, setAccessMode] = useState<"ACTIVE" | "GRACE">(initialAccessMode);
+  const [graceNoticeVisible, setGraceNoticeVisible] = useState(initialAccessMode === "GRACE");
+  const [graceEndsAt, setGraceEndsAt] = useState<Date | null>(graceEndsAtIso ? new Date(graceEndsAtIso) : null);
+  const [graceRemainingMs, setGraceRemainingMs] = useState(0);
+  const [readerLockedMessage, setReaderLockedMessage] = useState<string | null>(null);
   const [drawingOverride, setDrawingOverride] = useState<Stroke[] | null>(null);
   const readerRootRef = useRef<HTMLElement | null>(null);
   const lastSavedRef = useRef<string>(`${normalizeProgress(initialProgressPercent)}|${initialLocator ?? "page:1"}`);
@@ -94,6 +114,51 @@ export function ReaderShell({ accessId, bookTitle, initialProgressPercent, initi
     return strokes;
   }, [annotations, locator]);
   const visibleDrawing = drawingOverride ?? currentDrawing;
+
+  useEffect(() => {
+    if (!graceEndsAt) {
+      setGraceRemainingMs(0);
+      return;
+    }
+    const tick = () => setGraceRemainingMs(Math.max(0, graceEndsAt.getTime() - Date.now()));
+    tick();
+    const intervalId = window.setInterval(tick, 1000);
+    return () => window.clearInterval(intervalId);
+  }, [graceEndsAt]);
+
+  useEffect(() => {
+    const intervalId = window.setInterval(async () => {
+      try {
+        const statusPath = `/api/reader-session/${accessId}/status${readingSessionId ? `?sid=${encodeURIComponent(readingSessionId)}` : ""}`;
+        const response = await fetch(statusPath, {
+          cache: "no-store",
+          credentials: "same-origin",
+        });
+        if (!response.ok) {
+          if (response.status === 403 || response.status === 404) {
+            setReaderLockedMessage("انتهت المهلة الإضافية وتم إغلاق الكتاب تلقائيًا.");
+          }
+          return;
+        }
+
+        const data = (await response.json()) as { mode?: "ACTIVE" | "GRACE" | "EXPIRED"; graceEndsAt?: string | null };
+        if (data.mode === "GRACE") {
+          setAccessMode("GRACE");
+          setGraceNoticeVisible(true);
+          setGraceEndsAt(data.graceEndsAt ? new Date(data.graceEndsAt) : null);
+          return;
+        }
+
+        if (data.mode === "EXPIRED") {
+          setReaderLockedMessage("انتهت المهلة الإضافية وتم إغلاق الكتاب تلقائيًا.");
+        }
+      } catch {
+        // no-op
+      }
+    }, 15_000);
+
+    return () => window.clearInterval(intervalId);
+  }, [accessId, readingSessionId]);
 
   const resolveProgressFromLocator = useCallback(
     (nextLocator: string) => {
@@ -148,6 +213,15 @@ export function ReaderShell({ accessId, bookTitle, initialProgressPercent, initi
     },
     [accessId],
   );
+
+  useEffect(() => {
+    if (!readerLockedMessage) return;
+    void persistProgress(progressPercent, locator);
+    const timeoutId = window.setTimeout(() => {
+      window.location.href = renewHref;
+    }, 2500);
+    return () => window.clearTimeout(timeoutId);
+  }, [locator, persistProgress, progressPercent, readerLockedMessage, renewHref]);
 
   const loadAnnotations = useCallback(async () => {
     try {
@@ -654,6 +728,23 @@ export function ReaderShell({ accessId, bookTitle, initialProgressPercent, initi
     </aside>
   );
 
+  if (readerLockedMessage) {
+    return (
+      <section className="space-y-4 rounded-2xl border border-rose-300 bg-rose-50 p-6 text-right" dir="rtl">
+        <h2 className="text-xl font-bold text-rose-800">تم إغلاق الكتاب</h2>
+        <p className="text-sm text-rose-700">{readerLockedMessage}</p>
+        <div className="flex flex-wrap gap-3">
+          <Link href={renewHref} className="rounded-lg bg-rose-700 px-4 py-2 text-sm font-semibold text-white hover:bg-rose-600">
+            تجديد الإيجار
+          </Link>
+          <Link href={returnHref} className="rounded-lg border border-rose-300 px-4 py-2 text-sm font-semibold text-rose-800 hover:bg-rose-100">
+            العودة إلى مكتبتي
+          </Link>
+        </div>
+      </section>
+    );
+  }
+
   return (
     <section
       ref={readerRootRef}
@@ -661,6 +752,29 @@ export function ReaderShell({ accessId, bookTitle, initialProgressPercent, initi
         theme === "dark" ? "border-slate-700 bg-slate-950 text-slate-100" : "border-slate-200 bg-slate-50 text-slate-900"
       } ${isFocusMode ? "fixed inset-0 z-40 m-0 rounded-none" : ""}`}
     >
+      {graceNoticeVisible && accessMode === "GRACE" ? (
+        <div className="fixed inset-0 z-50 flex items-center justify-center bg-slate-900/60 px-4">
+          <div className="w-full max-w-lg space-y-4 rounded-2xl bg-white p-6 text-right shadow-2xl" dir="rtl">
+            <h2 className="text-xl font-bold text-amber-900">انتهت مدة الإيجار</h2>
+            <p className="text-sm leading-7 text-slate-700">
+              هدية من المنصة: يمكنك متابعة القراءة لمدة 5 دقائق فقط لحفظ موضعك الحالي. بعد انتهاء المهلة سيُغلق الكتاب تلقائيًا.
+            </p>
+            <p className="text-sm font-semibold text-rose-700">الوقت المتبقي: {Math.ceil(graceRemainingMs / 1000)} ثانية</p>
+            <div className="flex flex-wrap gap-3">
+              <Link href={renewHref} className="rounded-lg bg-emerald-700 px-4 py-2 text-sm font-semibold text-white hover:bg-emerald-600">
+                تجديد الإيجار
+              </Link>
+              <button
+                type="button"
+                className="rounded-lg border border-amber-300 px-4 py-2 text-sm font-semibold text-amber-800 hover:bg-amber-50"
+                onClick={() => setGraceNoticeVisible(false)}
+              >
+                متابعة 5 دقائق
+              </button>
+            </div>
+          </div>
+        </div>
+      ) : null}
       <header
         className={`mb-2 flex flex-wrap items-center gap-1.5 rounded-xl border px-2 py-1.5 text-xs ${
           theme === "dark" ? "border-slate-700 bg-slate-900" : "border-slate-200 bg-white"
