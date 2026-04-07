@@ -303,3 +303,117 @@ test("validateServerEnv warns when deprecated Syriatel legacy env keys are set",
   if (typeof originalVerifyPath === "string") process.env.SYRIATEL_CASH_VERIFY_PAYMENT_PATH = originalVerifyPath;
   else delete process.env.SYRIATEL_CASH_VERIFY_PAYMENT_PATH;
 });
+
+test("validateServerEnv blocks local storage in production without explicit bypass", () => {
+  const originalNodeEnv = (process.env as Record<string, string | undefined>).NODE_ENV;
+  const originalProvider = process.env.BOOK_STORAGE_PROVIDER;
+  const originalBypass = process.env.BOOK_STORAGE_ALLOW_LOCAL_IN_PRODUCTION_BYPASS;
+
+  (process.env as Record<string, string | undefined>).NODE_ENV = "production";
+  process.env.BOOK_STORAGE_PROVIDER = "local";
+  delete process.env.BOOK_STORAGE_ALLOW_LOCAL_IN_PRODUCTION_BYPASS;
+
+  const result = validateServerEnv();
+  assert.ok(result.errors.some((issue) => issue.key === "BOOK_STORAGE_PROVIDER" && issue.message.includes("blocked in production")));
+
+  if (typeof originalNodeEnv === "string") (process.env as Record<string, string | undefined>).NODE_ENV = originalNodeEnv;
+  else delete (process.env as Record<string, string | undefined>).NODE_ENV;
+
+  if (typeof originalProvider === "string") process.env.BOOK_STORAGE_PROVIDER = originalProvider;
+  else delete process.env.BOOK_STORAGE_PROVIDER;
+
+  if (typeof originalBypass === "string") process.env.BOOK_STORAGE_ALLOW_LOCAL_IN_PRODUCTION_BYPASS = originalBypass;
+  else delete process.env.BOOK_STORAGE_ALLOW_LOCAL_IN_PRODUCTION_BYPASS;
+});
+
+test("validateServerEnv blocks PAYMENT_GATEWAY_MODE=mock in production without explicit bypass", () => {
+  const originalNodeEnv = (process.env as Record<string, string | undefined>).NODE_ENV;
+  const originalMode = process.env.PAYMENT_GATEWAY_MODE;
+  const originalBypass = process.env.PAYMENT_ALLOW_MOCK_MODE_IN_PRODUCTION_BYPASS;
+
+  (process.env as Record<string, string | undefined>).NODE_ENV = "production";
+  process.env.PAYMENT_GATEWAY_MODE = "mock";
+  delete process.env.PAYMENT_ALLOW_MOCK_MODE_IN_PRODUCTION_BYPASS;
+
+  const result = validateServerEnv();
+  assert.ok(result.errors.some((issue) => issue.key === "PAYMENT_GATEWAY_MODE" && issue.message.includes("blocked in production")));
+
+  if (typeof originalNodeEnv === "string") (process.env as Record<string, string | undefined>).NODE_ENV = originalNodeEnv;
+  else delete (process.env as Record<string, string | undefined>).NODE_ENV;
+
+  if (typeof originalMode === "string") process.env.PAYMENT_GATEWAY_MODE = originalMode;
+  else delete process.env.PAYMENT_GATEWAY_MODE;
+
+  if (typeof originalBypass === "string") process.env.PAYMENT_ALLOW_MOCK_MODE_IN_PRODUCTION_BYPASS = originalBypass;
+  else delete process.env.PAYMENT_ALLOW_MOCK_MODE_IN_PRODUCTION_BYPASS;
+});
+
+test("validateServerEnv warns when PAYMENT_GATEWAY_MODE=mock production bypass is enabled", () => {
+  const originalNodeEnv = (process.env as Record<string, string | undefined>).NODE_ENV;
+  const originalMode = process.env.PAYMENT_GATEWAY_MODE;
+  const originalBypass = process.env.PAYMENT_ALLOW_MOCK_MODE_IN_PRODUCTION_BYPASS;
+
+  (process.env as Record<string, string | undefined>).NODE_ENV = "production";
+  process.env.PAYMENT_GATEWAY_MODE = "mock";
+  process.env.PAYMENT_ALLOW_MOCK_MODE_IN_PRODUCTION_BYPASS = "true";
+
+  const result = validateServerEnv();
+  assert.ok(result.warnings.some((issue) => issue.key === "PAYMENT_ALLOW_MOCK_MODE_IN_PRODUCTION_BYPASS"));
+
+  if (typeof originalNodeEnv === "string") (process.env as Record<string, string | undefined>).NODE_ENV = originalNodeEnv;
+  else delete (process.env as Record<string, string | undefined>).NODE_ENV;
+
+  if (typeof originalMode === "string") process.env.PAYMENT_GATEWAY_MODE = originalMode;
+  else delete process.env.PAYMENT_GATEWAY_MODE;
+
+  if (typeof originalBypass === "string") process.env.PAYMENT_ALLOW_MOCK_MODE_IN_PRODUCTION_BYPASS = originalBypass;
+  else delete process.env.PAYMENT_ALLOW_MOCK_MODE_IN_PRODUCTION_BYPASS;
+});
+
+test("validateServerEnv allows local storage in production only with explicit emergency bypass", () => {
+  const originalNodeEnv = (process.env as Record<string, string | undefined>).NODE_ENV;
+  const originalProvider = process.env.BOOK_STORAGE_PROVIDER;
+  const originalBypass = process.env.BOOK_STORAGE_ALLOW_LOCAL_IN_PRODUCTION_BYPASS;
+
+  (process.env as Record<string, string | undefined>).NODE_ENV = "production";
+  process.env.BOOK_STORAGE_PROVIDER = "local";
+  process.env.BOOK_STORAGE_ALLOW_LOCAL_IN_PRODUCTION_BYPASS = "true";
+
+  const result = validateServerEnv();
+  assert.equal(result.errors.some((issue) => issue.key === "BOOK_STORAGE_PROVIDER" && issue.message.includes("blocked in production")), false);
+  assert.ok(result.warnings.some((issue) => issue.key === "BOOK_STORAGE_ALLOW_LOCAL_IN_PRODUCTION_BYPASS"));
+
+  if (typeof originalNodeEnv === "string") (process.env as Record<string, string | undefined>).NODE_ENV = originalNodeEnv;
+  else delete (process.env as Record<string, string | undefined>).NODE_ENV;
+
+  if (typeof originalProvider === "string") process.env.BOOK_STORAGE_PROVIDER = originalProvider;
+  else delete process.env.BOOK_STORAGE_PROVIDER;
+
+  if (typeof originalBypass === "string") process.env.BOOK_STORAGE_ALLOW_LOCAL_IN_PRODUCTION_BYPASS = originalBypass;
+  else delete process.env.BOOK_STORAGE_ALLOW_LOCAL_IN_PRODUCTION_BYPASS;
+});
+
+test("assertServerEnv skips hard failure during Next production build phase", async () => {
+  const { assertServerEnv } = await import("@/lib/env");
+
+  const originalPhase = process.env.NEXT_PHASE;
+  const originalAuthSecret = process.env.AUTH_SECRET;
+  const originalDatabaseUrl = process.env.DATABASE_URL;
+
+  process.env.NEXT_PHASE = "phase-production-build";
+  delete process.env.AUTH_SECRET;
+  delete process.env.DATABASE_URL;
+
+  assert.doesNotThrow(() => {
+    assertServerEnv();
+  });
+
+  if (typeof originalPhase === "string") process.env.NEXT_PHASE = originalPhase;
+  else delete process.env.NEXT_PHASE;
+
+  if (typeof originalAuthSecret === "string") process.env.AUTH_SECRET = originalAuthSecret;
+  else delete process.env.AUTH_SECRET;
+
+  if (typeof originalDatabaseUrl === "string") process.env.DATABASE_URL = originalDatabaseUrl;
+  else delete process.env.DATABASE_URL;
+});

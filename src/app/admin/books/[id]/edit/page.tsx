@@ -4,6 +4,7 @@ import { updateAdminBookTextContentAction, updateBookAction, type BookFormValues
 import { BookFileManager } from "@/components/admin/book-file-manager";
 import { BookForm } from "@/components/admin/book-form";
 import { BookTextContentForm } from "@/components/studio/book-text-content-form";
+import { requireAdminScope } from "@/lib/auth-session";
 import { prisma } from "@/lib/prisma";
 import { buildBookInitialValues } from "@/lib/services/book-form";
 
@@ -26,6 +27,7 @@ function buildContentStatuses(files: { kind: FileKind }[], hasTextContent: boole
 }
 
 export default async function EditAdminBookPage({ params, searchParams }: EditBookPageProps) {
+  await requireAdminScope("CONTENT_ADMIN", { callbackUrl: "/admin/books" });
   const { id } = await params;
   const query = searchParams ? await searchParams : undefined;
 

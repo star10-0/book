@@ -2,6 +2,7 @@ import type { Metadata } from "next";
 import type { ReactNode } from "react";
 import { AdminSidebar } from "@/components/admin/admin-sidebar";
 import { requireAdmin } from "@/lib/auth-session";
+import { hasAdminScope } from "@/lib/authz";
 
 type AdminLayoutProps = {
   children: ReactNode;
@@ -15,7 +16,8 @@ export const metadata: Metadata = {
 };
 
 export default async function AdminLayout({ children }: AdminLayoutProps) {
-  await requireAdmin({ callbackUrl: "/admin" });
+  const admin = await requireAdmin({ callbackUrl: "/admin" });
+  const canManageContent = hasAdminScope({ adminScopes: admin.adminScopes, required: "CONTENT_ADMIN" });
 
   return (
     <section className="space-y-4" dir="rtl">
@@ -25,7 +27,7 @@ export default async function AdminLayout({ children }: AdminLayoutProps) {
       </header>
 
       <div className="grid gap-4 lg:grid-cols-[240px_1fr]">
-        <AdminSidebar />
+        <AdminSidebar canManageContent={canManageContent} />
         <main className="space-y-4">{children}</main>
       </div>
     </section>

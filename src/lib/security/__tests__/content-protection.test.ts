@@ -4,6 +4,10 @@ import {
   buildProtectedAssetUrl,
   buildWatermarkText,
   createProtectedAssetToken,
+  getProtectedAssetNonceCookieName,
+  getProtectedAssetTokenCookieName,
+  resolveProtectedAssetNonce,
+  resolveProtectedAssetToken,
   verifyProtectedAssetToken,
 } from "@/lib/security/content-protection";
 
@@ -62,8 +66,29 @@ test("protected asset token is rejected for a different user", () => withAuthSec
 
 test("buildProtectedAssetUrl generates signed short-lived URLs", () => withAuthSecret(() => {
   const url = buildProtectedAssetUrl({ fileId: "file-1", disposition: "inline", userId: "user-1" });
-  assert.equal(url.startsWith("/api/books/assets/file-1?t="), true);
+  assert.equal(url.startsWith("/api/books/assets/file-1/handoff?t="), true);
 }));
+
+test("resolveProtectedAssetToken does not allow query fallback unless explicitly enabled", () => {
+  const request = new Request("https://book.example/api/books/assets/file-1?t=query-token");
+  const url = new URL(request.url);
+
+  assert.equal(resolveProtectedAssetToken(request, url), null);
+  assert.equal(resolveProtectedAssetToken(request, url, { allowQueryToken: true }), "query-token");
+});
+
+test("resolveProtectedAssetToken prefers Authorization bearer over cookies", () => {
+  const request = new Request("https://book.example/api/books/assets/file-1", {
+    headers: {
+      authorization: "Bearer bearer-token",
+      cookie: `${getProtectedAssetTokenCookieName()}=cookie-token; ${getProtectedAssetNonceCookieName()}=nonce-1`,
+    },
+  });
+  const url = new URL(request.url);
+
+  assert.equal(resolveProtectedAssetToken(request, url), "bearer-token");
+  assert.equal(resolveProtectedAssetNonce(request), "nonce-1");
+});
 
 test("watermark text links content to user context", () => {
   const watermark = buildWatermarkText({
@@ -97,6 +122,28 @@ test("protected token verification fails safely when AUTH_SECRET is unset", () =
     process.env.AUTH_SECRET = original;
   }
 });
+
+test("protected token verification rejects nonce mismatch", () => withAuthSecret(() => {
+  const token = createProtectedAssetToken({
+    fileId: "file-1",
+    disposition: "inline",
+    userId: "user-1",
+    expiresInSeconds: 120,
+  });
+
+  const mismatchResult = verifyProtectedAssetToken({
+    token,
+    fileId: "file-1",
+    disposition: "inline",
+    currentUserId: "user-1",
+    expectedNonce: "wrong-nonce",
+  });
+
+  assert.equal(mismatchResult.valid, false);
+  if (!mismatchResult.valid) {
+    assert.equal(mismatchResult.reason, "NONCE_MISMATCH");
+  }
+}));
 
 
 test("createProtectedAssetToken throws when AUTH_SECRET is unset", () => {

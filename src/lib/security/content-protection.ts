@@ -4,6 +4,9 @@ import { readOptionalServerEnv, readRequiredServerEnv } from "@/lib/env";
 
 export type ProtectedDisposition = "inline" | "attachment";
 
+const PROTECTED_ASSET_TOKEN_COOKIE = "__Host-book-pa";
+const PROTECTED_ASSET_HANDOFF_NONCE_COOKIE = "__Host-book-pa-nonce";
+
 type ProtectedAssetTokenPayload = {
   fid: string;
   exp: number;
@@ -53,6 +56,78 @@ function secureEqual(left: string, right: string) {
   return timingSafeEqual(leftBuffer, rightBuffer);
 }
 
+function clampTokenLifetime(seconds: number | undefined) {
+  return Math.max(30, Math.min(seconds ?? 180, 300));
+}
+
+function readBearerToken(request: Request) {
+  const header = request.headers.get("authorization") ?? request.headers.get("Authorization");
+  if (!header || !header.toLowerCase().startsWith("bearer ")) {
+    return null;
+  }
+
+  const token = header.slice("bearer ".length).trim();
+  return token.length > 0 ? token : null;
+}
+
+function readCookieToken(request: Request) {
+  const rawCookie = request.headers.get("cookie");
+  if (!rawCookie) {
+    return null;
+  }
+
+  const entries = rawCookie.split(";");
+  for (const entry of entries) {
+    const [name, ...valueParts] = entry.trim().split("=");
+    if (name === PROTECTED_ASSET_TOKEN_COOKIE) {
+      const value = valueParts.join("=").trim();
+      if (!value) return null;
+      try {
+        return decodeURIComponent(value);
+      } catch {
+        return value;
+      }
+    }
+  }
+
+  return null;
+}
+
+function readNamedCookie(request: Request, cookieName: string) {
+  const rawCookie = request.headers.get("cookie");
+  if (!rawCookie) {
+    return null;
+  }
+
+  for (const entry of rawCookie.split(";")) {
+    const [name, ...valueParts] = entry.trim().split("=");
+    if (name === cookieName) {
+      const value = valueParts.join("=").trim();
+      if (!value) return null;
+      try {
+        return decodeURIComponent(value);
+      } catch {
+        return value;
+      }
+    }
+  }
+
+  return null;
+}
+
+export function resolveProtectedAssetToken(request: Request, url: URL, options?: { allowQueryToken?: boolean }) {
+  const fromHeaderOrCookie = readBearerToken(request) ?? readCookieToken(request);
+  if (fromHeaderOrCookie) {
+    return fromHeaderOrCookie;
+  }
+
+  return options?.allowQueryToken ? url.searchParams.get("t") : null;
+}
+
+export function resolveProtectedAssetNonce(request: Request) {
+  return readNamedCookie(request, PROTECTED_ASSET_HANDOFF_NONCE_COOKIE);
+}
+
 export function createProtectedAssetToken(input: {
   fileId: string;
   disposition: ProtectedDisposition;
@@ -68,7 +143,7 @@ export function createProtectedAssetToken(input: {
     aid: input.accessGrantId,
     dsp: input.disposition,
     wm: input.watermarkText,
-    exp: nowSeconds + Math.max(30, Math.min(input.expiresInSeconds ?? 300, 900)),
+    exp: nowSeconds + clampTokenLifetime(input.expiresInSeconds),
     jti: randomUUID(),
   };
 
@@ -81,6 +156,7 @@ export function verifyProtectedAssetToken(input: {
   fileId: string;
   disposition: ProtectedDisposition;
   currentUserId?: string | null;
+  expectedNonce?: string | null;
 }) {
   if (!input.token) {
     return { valid: false as const, reason: "MISSING_TOKEN" as const };
@@ -114,6 +190,10 @@ export function verifyProtectedAssetToken(input: {
 
     if (payload.uid && input.currentUserId && payload.uid !== input.currentUserId) {
       return { valid: false as const, reason: "WRONG_USER" as const };
+    }
+
+    if (input.expectedNonce && payload.jti !== input.expectedNonce) {
+      return { valid: false as const, reason: "NONCE_MISMATCH" as const };
     }
 
     return { valid: true as const, payload };
@@ -154,5 +234,15 @@ export function buildProtectedAssetUrl(input: {
     watermarkText: input.watermarkText ?? undefined,
   });
 
-  return `/api/books/assets/${input.fileId}?t=${encodeURIComponent(token)}`;
+  const handoffPath = `/api/books/assets/${input.fileId}/handoff`;
+  const dispositionQuery = input.disposition === "attachment" ? "&download=1" : "";
+  return `${handoffPath}?t=${encodeURIComponent(token)}${dispositionQuery}`;
+}
+
+export function getProtectedAssetTokenCookieName() {
+  return PROTECTED_ASSET_TOKEN_COOKIE;
+}
+
+export function getProtectedAssetNonceCookieName() {
+  return PROTECTED_ASSET_HANDOFF_NONCE_COOKIE;
 }

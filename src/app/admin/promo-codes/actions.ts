@@ -2,7 +2,7 @@
 
 import { PromoCodeAppliesTo, PromoCodeAudience, PromoCodeType } from "@prisma/client";
 import { revalidatePath } from "next/cache";
-import { requireAdmin } from "@/lib/auth-session";
+import { requireAdminScope } from "@/lib/auth-session";
 import { createAdminAuditLog } from "@/lib/admin/audit-log";
 import { prisma } from "@/lib/prisma";
 
@@ -34,7 +34,7 @@ function parsePromoAppliesTo(value: FormDataEntryValue | null, fallback: PromoCo
 }
 
 export async function createPromoCodeAction(formData: FormData) {
-  const user = await requireAdmin({ callbackUrl: "/admin/promo-codes" });
+  const user = await requireAdminScope("CONTENT_ADMIN", { callbackUrl: "/admin/promo-codes" });
 
   const code = String(formData.get("code") ?? "").trim().toUpperCase();
   const type = parsePromoType(formData.get("type"), PromoCodeType.FREE);
@@ -76,7 +76,7 @@ export async function createPromoCodeAction(formData: FormData) {
 }
 
 export async function togglePromoCodeAction(formData: FormData) {
-  const admin = await requireAdmin({ callbackUrl: "/admin/promo-codes" });
+  const admin = await requireAdminScope("CONTENT_ADMIN", { callbackUrl: "/admin/promo-codes" });
 
   const promoCodeId = String(formData.get("promoCodeId") ?? "");
   if (!promoCodeId) return;
@@ -99,7 +99,7 @@ export async function togglePromoCodeAction(formData: FormData) {
 }
 
 export async function updatePromoCodeAction(formData: FormData) {
-  const admin = await requireAdmin({ callbackUrl: "/admin/promo-codes" });
+  const admin = await requireAdminScope("CONTENT_ADMIN", { callbackUrl: "/admin/promo-codes" });
 
   const promoCodeId = String(formData.get("promoCodeId") ?? "").trim();
   if (!promoCodeId) return;

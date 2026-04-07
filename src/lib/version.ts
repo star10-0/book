@@ -33,3 +33,12 @@ export function getOperationalDiagnostics() {
     },
   };
 }
+
+export function getPublicBuildId() {
+  const sha = getCommitSha();
+  if (!sha) return null;
+
+  const normalized = sha.trim();
+  if (normalized.length < 8) return null;
+  return normalized.slice(0, 8);
+}

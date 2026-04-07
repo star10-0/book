@@ -9,7 +9,12 @@ import { canAccessProtectedAsset, canReadPubliclyByPolicy, resolveAssetDispositi
 import { createStorageProvider } from "@/lib/files/storage-provider";
 import { prisma } from "@/lib/prisma";
 import { jsonNoStore } from "@/lib/security";
-import { buildWatermarkText, verifyProtectedAssetToken } from "@/lib/security/content-protection";
+import {
+  buildWatermarkText,
+  resolveProtectedAssetNonce,
+  resolveProtectedAssetToken,
+  verifyProtectedAssetToken,
+} from "@/lib/security/content-protection";
 import { logUserSecurityEvent } from "@/lib/security/suspicious-activity";
 
 export const runtime = "nodejs";
@@ -119,11 +124,14 @@ export async function GET(request: Request, { params }: BookAssetRouteParams) {
   const isPubliclyReadable = canReadPubliclyByPolicy(file.book.contentAccessPolicy);
 
   if (!isPubliclyReadable) {
+    const resolvedToken = resolveProtectedAssetToken(request, url);
+    const handoffNonce = resolveProtectedAssetNonce(request);
     const tokenResult = verifyProtectedAssetToken({
-      token: url.searchParams.get("t"),
+      token: resolvedToken,
       fileId,
       disposition: requestedDisposition,
       currentUserId: user?.id,
+      expectedNonce: resolvedToken && !request.headers.get("authorization") ? handoffNonce : undefined,
     });
 
     if (!tokenResult.valid) {
@@ -201,7 +209,8 @@ export async function GET(request: Request, { params }: BookAssetRouteParams) {
           "Cache-Control": "private, no-store",
           "X-Book-Watermark-Hook": watermark ?? "",
           "X-Content-Type-Options": "nosniff",
-          "Referrer-Policy": "same-origin",
+          "Referrer-Policy": "no-referrer",
+          "Cross-Origin-Resource-Policy": "same-origin",
         },
       });
     } catch {
@@ -230,7 +239,8 @@ export async function GET(request: Request, { params }: BookAssetRouteParams) {
       "Content-Disposition": `${access.disposition}; filename*=UTF-8''${encodeURIComponent(file.originalFileName ?? `${file.id}.${file.kind.toLowerCase()}`)}`,
       "Cache-Control": "private, no-store",
       "X-Content-Type-Options": "nosniff",
-      "Referrer-Policy": "same-origin",
+      "Referrer-Policy": "no-referrer",
+      "Cross-Origin-Resource-Policy": "same-origin",
       "X-Book-Watermark-Hook": watermark ?? "",
     },
   });

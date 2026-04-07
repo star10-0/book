@@ -1,9 +1,11 @@
 import { createBookAction } from "@/app/admin/books/actions";
 import { BookForm } from "@/components/admin/book-form";
 import { ensureDevelopmentCategories } from "@/lib/default-categories";
+import { requireAdminScope } from "@/lib/auth-session";
 import { prisma } from "@/lib/prisma";
 
 export default async function NewAdminBookPage() {
+  await requireAdminScope("CONTENT_ADMIN", { callbackUrl: "/admin/books/new" });
   await ensureDevelopmentCategories();
   const [authors, categories] = await Promise.all([
     prisma.author.findMany({ select: { id: true, nameAr: true }, orderBy: { nameAr: "asc" } }),

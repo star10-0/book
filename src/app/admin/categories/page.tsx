@@ -1,8 +1,11 @@
 import { AdminPageCard, AdminPageHeader } from "@/components/admin/admin-page";
 import { CategoriesManager } from "@/components/admin/categories-manager";
+import { requireAdminScope } from "@/lib/auth-session";
 import { prisma } from "@/lib/prisma";
 
 export default async function AdminCategoriesPage() {
+  await requireAdminScope("CONTENT_ADMIN", { callbackUrl: "/admin/categories" });
+
   const categories = await prisma.category.findMany({
     select: {
       id: true,

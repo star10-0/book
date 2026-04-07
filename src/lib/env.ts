@@ -130,6 +130,24 @@ function validateEnvironment(): EnvIssue[] {
     });
   }
 
+  const allowMockModeBypass = (readEnv("PAYMENT_ALLOW_MOCK_MODE_IN_PRODUCTION_BYPASS") ?? "false").toLowerCase();
+  if (nodeEnv === "production" && paymentMode === "mock") {
+    if (allowMockModeBypass !== "true") {
+      issues.push({
+        severity: "error",
+        key: "PAYMENT_GATEWAY_MODE",
+        message:
+          "PAYMENT_GATEWAY_MODE=mock is blocked in production. Use live providers, or explicitly set PAYMENT_ALLOW_MOCK_MODE_IN_PRODUCTION_BYPASS=true for emergency-only rollback windows.",
+      });
+    } else {
+      issues.push({
+        severity: "warning",
+        key: "PAYMENT_ALLOW_MOCK_MODE_IN_PRODUCTION_BYPASS",
+        message: "Emergency bypass enabled: PAYMENT_GATEWAY_MODE=mock in production must be temporary and audited.",
+      });
+    }
+  }
+
   if (nodeEnv === "production" && Object.prototype.hasOwnProperty.call(process.env, "ADMIN_SCOPES_LEGACY_ALLOW_EMPTY")) {
     issues.push({
       severity: "error",
@@ -211,12 +229,21 @@ function validateEnvironment(): EnvIssue[] {
     });
   }
 
+  const allowLocalStorageProductionBypass = (readEnv("BOOK_STORAGE_ALLOW_LOCAL_IN_PRODUCTION_BYPASS") ?? "false").toLowerCase();
   if (nodeEnv === "production" && storageProvider === "local") {
-    issues.push({
-      severity: "warning",
-      key: "BOOK_STORAGE_PROVIDER",
-      message: "Using local storage in production can lose files on ephemeral hosts. Prefer object storage.",
-    });
+    if (allowLocalStorageProductionBypass !== "true") {
+      issues.push({
+        severity: "error",
+        key: "BOOK_STORAGE_PROVIDER",
+        message: "BOOK_STORAGE_PROVIDER=local is blocked in production. Use s3/r2 or explicitly set BOOK_STORAGE_ALLOW_LOCAL_IN_PRODUCTION_BYPASS=true for temporary emergency-only deployments.",
+      });
+    } else {
+      issues.push({
+        severity: "warning",
+        key: "BOOK_STORAGE_ALLOW_LOCAL_IN_PRODUCTION_BYPASS",
+        message: "Emergency bypass enabled: local storage in production increases risk of irreversible content loss.",
+      });
+    }
   }
 
   if (storageProvider === "s3" || storageProvider === "r2") {
@@ -300,6 +327,12 @@ export function assertServerEnv() {
 
   if (!result.isValid) {
     const keys = result.errors.map((issue) => issue.key).join(", ");
+
+    if (process.env.NEXT_PHASE === "phase-production-build") {
+      console.warn(`[env] Skipping hard failure during production build phase. Missing/invalid keys: ${keys}`);
+      return result;
+    }
+
     throw new Error(`Invalid server environment configuration. Missing or invalid keys: ${keys}`);
   }
 
@@ -326,6 +359,11 @@ export function validateServerEnvOnce(logger?: Pick<Console, "warn" | "error">) 
 
     if (getNodeEnv() === "production") {
       const keys = result.errors.map((issue) => issue.key).join(", ");
+      if (process.env.NEXT_PHASE === "phase-production-build") {
+        output.warn(`[env] Skipping hard failure during production build phase. Missing/invalid keys: ${keys}`);
+        return;
+      }
+
       throw new Error(`Invalid server environment configuration. Missing or invalid keys: ${keys}`);
     }
   }

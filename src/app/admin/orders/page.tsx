@@ -3,6 +3,7 @@ import { recoverOrderAccessGrantAction, recheckPromoIntegrityAction, resolveStal
 import { AdminPageCard, AdminPageHeader } from "@/components/admin/admin-page";
 import { AdminTable } from "@/components/admin/admin-table";
 import { formatArabicCurrency } from "@/lib/formatters/intl";
+import { requireAdminScope } from "@/lib/auth-session";
 import { getOrderIntegritySnapshot } from "@/lib/admin/order-integrity";
 import { prisma } from "@/lib/prisma";
 
@@ -23,6 +24,8 @@ function recommendedIntegrityAction(kind: string) {
 }
 
 export default async function AdminOrdersPage() {
+  await requireAdminScope("PAYMENT_ADMIN", { callbackUrl: "/admin/orders" });
+
   const [orders, integrity] = await Promise.all([
     prisma.order.findMany({
       include: {

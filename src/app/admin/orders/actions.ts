@@ -1,7 +1,7 @@
 "use server";
 
 import { revalidatePath } from "next/cache";
-import { requireAdmin, requireAdminScope } from "@/lib/auth-session";
+import { requireAdminScope } from "@/lib/auth-session";
 import { createAdminAuditLog } from "@/lib/admin/audit-log";
 import {
   recoverMissingGrantsForPaidOrder,
@@ -59,7 +59,7 @@ export async function recoverOrderAccessGrantAction(formData: FormData) {
 }
 
 export async function recheckPromoIntegrityAction(formData: FormData) {
-  const admin = await requireAdmin({ callbackUrl: "/admin/orders" });
+  const admin = await requireAdminScope("PAYMENT_ADMIN", { callbackUrl: "/admin/orders" });
   const orderId = val(formData, "orderId");
   const reason = val(formData, "reason");
   if (reason.length < 5) {
@@ -87,7 +87,7 @@ export async function recheckPromoIntegrityAction(formData: FormData) {
 }
 
 export async function resolveStaleRentalGrantsAction(formData: FormData) {
-  const admin = await requireAdmin({ callbackUrl: "/admin/orders" });
+  const admin = await requireAdminScope("PAYMENT_ADMIN", { callbackUrl: "/admin/orders" });
   const reason = val(formData, "reason");
   if (reason.length < 5) {
     return;
