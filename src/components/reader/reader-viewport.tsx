@@ -65,17 +65,17 @@ function toSectionProgress(sectionIndex: number, totalSections: number) {
 }
 
 function resolveReaderSourceUrl(rawUrl: string) {
-  if (typeof window === "undefined") {
+  if (rawUrl.startsWith("/")) {
     return rawUrl;
   }
 
   try {
-    const parsed = new URL(rawUrl, window.location.origin);
+    const parsed = new URL(rawUrl);
     if (parsed.hostname === "localhost" || parsed.hostname === "127.0.0.1" || parsed.hostname === "::1") {
-      parsed.protocol = window.location.protocol;
-      parsed.host = window.location.host;
+      return `${parsed.pathname}${parsed.search}${parsed.hash}`;
     }
-    return parsed.toString();
+
+    return rawUrl;
   } catch {
     return rawUrl;
   }

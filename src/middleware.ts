@@ -2,6 +2,15 @@ import type { NextRequest, NextResponse as NextResponseType } from "next/server"
 import { NextResponse } from "next/server";
 import { buildContentSecurityPolicy } from "./lib/security/csp";
 
+function isReaderAssetRoute(pathname: string) {
+  return (
+    pathname === "/api/books/assets" ||
+    pathname.startsWith("/api/books/assets/") ||
+    pathname === "/uploads/books" ||
+    pathname.startsWith("/uploads/books/")
+  );
+}
+
 function applySecurityHeaders({
   response,
   isDevelopment,
@@ -13,17 +22,20 @@ function applySecurityHeaders({
   nonce?: string;
   pathname: string;
 }) {
+  const readerAssetRoute = isReaderAssetRoute(pathname);
+
   response.headers.set(
     "Content-Security-Policy",
     buildContentSecurityPolicy({
       isDevelopment,
       nonce,
+      frameAncestors: readerAssetRoute ? "'self'" : "'none'",
     }),
   );
 
   response.headers.set("Referrer-Policy", "strict-origin-when-cross-origin");
   response.headers.set("X-Content-Type-Options", "nosniff");
-  response.headers.set("X-Frame-Options", "DENY");
+  response.headers.set("X-Frame-Options", readerAssetRoute ? "SAMEORIGIN" : "DENY");
 
   if (pathname.startsWith("/api") || pathname.startsWith("/uploads/books")) {
     response.headers.set("X-Robots-Tag", "noindex, nofollow, noarchive");
