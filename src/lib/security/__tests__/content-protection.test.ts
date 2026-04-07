@@ -90,7 +90,7 @@ test("resolveProtectedAssetToken prefers Authorization bearer over cookies", () 
   assert.equal(resolveProtectedAssetNonce(request), "nonce-1");
 });
 
-test("watermark text links content to user context", () => {
+test("watermark text is opaque and does not expose direct identifiers", () => {
   const watermark = buildWatermarkText({
     email: "reader@example.com",
     userId: "u1",
@@ -98,8 +98,9 @@ test("watermark text links content to user context", () => {
     accessGrantId: "g1",
   });
 
-  assert.equal(Boolean(watermark?.includes("reader@example.com")), true);
-  assert.equal(Boolean(watermark?.includes("o1")), true);
+  assert.equal(Boolean(watermark?.startsWith("book|wm-v1|")), true);
+  assert.equal(Boolean(watermark?.includes("reader@example.com")), false);
+  assert.equal(Boolean(watermark?.includes("o1")), false);
 });
 
 

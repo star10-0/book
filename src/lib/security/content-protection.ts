@@ -1,5 +1,5 @@
 import "server-only";
-import { createHmac, randomUUID, timingSafeEqual } from "node:crypto";
+import { createHash, createHmac, randomUUID, timingSafeEqual } from "node:crypto";
 import { readOptionalServerEnv, readRequiredServerEnv } from "@/lib/env";
 
 export type ProtectedDisposition = "inline" | "attachment";
@@ -224,7 +224,13 @@ export function buildWatermarkText(input: {
     return null;
   }
 
-  return `book|${markers.join("|")}`;
+  const secret = getSigningSecretOrNull();
+  const fingerprintSource = markers.join("|");
+  const digest = secret
+    ? createHmac("sha256", secret).update(fingerprintSource).digest("hex")
+    : createHash("sha256").update(fingerprintSource).digest("hex");
+
+  return `book|wm-v1|${digest.slice(0, 24)}`;
 }
 
 export function buildProtectedAssetUrl(input: {

@@ -8,6 +8,8 @@ import { endUserSession, getCurrentUser, startUserSession } from "@/lib/auth-ses
 import { buildPolicyAcceptanceUpdate } from "@/lib/policy";
 import { prisma } from "@/lib/prisma";
 import { authErrorMessages } from "@/lib/auth-error-messages";
+import { getAppBaseUrl } from "@/lib/env";
+import { resolveSafeRelativeRedirect } from "@/lib/security/safe-redirect";
 import { checkRateLimit } from "@/lib/security/rate-limit";
 import { invalidateUserSessions, updatePasswordAndInvalidateSessions } from "@/lib/session-invalidation";
 import { enforceTrustedDeviceOnLogin } from "@/lib/trusted-device";
@@ -29,15 +31,11 @@ function readField(formData: FormData, key: string) {
 }
 
 function resolveSafeCallbackUrl(rawCallbackUrl: string) {
-  if (!rawCallbackUrl.startsWith("/")) {
-    return "/account";
-  }
-
-  if (rawCallbackUrl.startsWith("//")) {
-    return "/account";
-  }
-
-  return rawCallbackUrl;
+  return resolveSafeRelativeRedirect({
+    redirectParam: rawCallbackUrl,
+    requestUrl: `${getAppBaseUrl()}/auth/actions`,
+    fallbackPath: "/account",
+  });
 }
 
 function hasAuthSecretConfigured() {

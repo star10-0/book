@@ -393,20 +393,25 @@ test("validateServerEnv allows local storage in production only with explicit em
   else delete process.env.BOOK_STORAGE_ALLOW_LOCAL_IN_PRODUCTION_BYPASS;
 });
 
-test("assertServerEnv skips hard failure during Next production build phase", async () => {
+test("assertServerEnv fails closed during Next production build phase unless explicit bypass is enabled", async () => {
   const { assertServerEnv } = await import("@/lib/env");
 
   const originalPhase = process.env.NEXT_PHASE;
   const originalAuthSecret = process.env.AUTH_SECRET;
   const originalDatabaseUrl = process.env.DATABASE_URL;
+  const originalBypass = process.env.ALLOW_INVALID_ENV_DURING_BUILD;
 
   process.env.NEXT_PHASE = "phase-production-build";
   delete process.env.AUTH_SECRET;
   delete process.env.DATABASE_URL;
+  delete process.env.ALLOW_INVALID_ENV_DURING_BUILD;
 
-  assert.doesNotThrow(() => {
+  assert.throws(() => {
     assertServerEnv();
-  });
+  }, /Invalid server environment during production build phase/);
+
+  process.env.ALLOW_INVALID_ENV_DURING_BUILD = "true";
+  assert.doesNotThrow(() => assertServerEnv());
 
   if (typeof originalPhase === "string") process.env.NEXT_PHASE = originalPhase;
   else delete process.env.NEXT_PHASE;
@@ -416,4 +421,7 @@ test("assertServerEnv skips hard failure during Next production build phase", as
 
   if (typeof originalDatabaseUrl === "string") process.env.DATABASE_URL = originalDatabaseUrl;
   else delete process.env.DATABASE_URL;
+
+  if (typeof originalBypass === "string") process.env.ALLOW_INVALID_ENV_DURING_BUILD = originalBypass;
+  else delete process.env.ALLOW_INVALID_ENV_DURING_BUILD;
 });

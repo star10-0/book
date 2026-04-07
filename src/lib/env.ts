@@ -17,6 +17,7 @@ type EnvIssue = {
 };
 
 let hasValidated = false;
+const BUILD_BYPASS_FLAG = "ALLOW_INVALID_ENV_DURING_BUILD";
 const DEPRECATED_ENV_KEYS: readonly string[] = [
   "SYRIATEL_CASH_MERCHANT_ID",
   "SYRIATEL_CASH_CREATE_PAYMENT_PATH",
@@ -329,8 +330,13 @@ export function assertServerEnv() {
     const keys = result.errors.map((issue) => issue.key).join(", ");
 
     if (process.env.NEXT_PHASE === "phase-production-build") {
-      console.warn(`[env] Skipping hard failure during production build phase. Missing/invalid keys: ${keys}`);
-      return result;
+      if ((readEnv(BUILD_BYPASS_FLAG) ?? "false").toLowerCase() === "true") {
+        console.warn(`[env] ${BUILD_BYPASS_FLAG}=true set; allowing invalid env during production build. Missing/invalid keys: ${keys}`);
+        return result;
+      }
+      throw new Error(
+        `Invalid server environment during production build phase. Missing or invalid keys: ${keys}. To bypass temporarily for emergency builds only, set ${BUILD_BYPASS_FLAG}=true.`,
+      );
     }
 
     throw new Error(`Invalid server environment configuration. Missing or invalid keys: ${keys}`);
@@ -360,8 +366,13 @@ export function validateServerEnvOnce(logger?: Pick<Console, "warn" | "error">) 
     if (getNodeEnv() === "production") {
       const keys = result.errors.map((issue) => issue.key).join(", ");
       if (process.env.NEXT_PHASE === "phase-production-build") {
-        output.warn(`[env] Skipping hard failure during production build phase. Missing/invalid keys: ${keys}`);
-        return;
+        if ((readEnv(BUILD_BYPASS_FLAG) ?? "false").toLowerCase() === "true") {
+          output.warn(`[env] ${BUILD_BYPASS_FLAG}=true set; allowing invalid env during production build. Missing/invalid keys: ${keys}`);
+          return;
+        }
+        throw new Error(
+          `Invalid server environment during production build phase. Missing or invalid keys: ${keys}. To bypass temporarily for emergency builds only, set ${BUILD_BYPASS_FLAG}=true.`,
+        );
       }
 
       throw new Error(`Invalid server environment configuration. Missing or invalid keys: ${keys}`);

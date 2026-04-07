@@ -108,7 +108,7 @@ export async function resolveReaderSessionAccess(
     accessGrantId: string;
     userId: string;
     now: Date;
-    requireSessionForExpiredRental?: boolean;
+    requiredSessionId?: string;
   },
 ): Promise<ReaderSessionAccessState> {
   const grant = await tx.accessGrant.findFirst({
@@ -139,6 +139,7 @@ export async function resolveReaderSessionAccess(
 
   const session = await tx.readingSession.findFirst({
     where: {
+      id: input.requiredSessionId,
       accessGrantId: grant.id,
       userId: input.userId,
       closedAt: null,
@@ -154,10 +155,6 @@ export async function resolveReaderSessionAccess(
   });
 
   if (!session) {
-    return { allowed: false, reason: "EXPIRED" };
-  }
-
-  if (input.requireSessionForExpiredRental && !session.id) {
     return { allowed: false, reason: "EXPIRED" };
   }
 

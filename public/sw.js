@@ -1,12 +1,25 @@
-const SW_VERSION = "book-v3";
+const SW_VERSION = "book-v4";
 const STATIC_CACHE = `${SW_VERSION}-static`;
 const SHELL_CACHE = `${SW_VERSION}-shell`;
 
 const APP_SHELL_ROUTES = ["/", "/books", "/offline"];
+const SENSITIVE_PATH_PREFIXES = [
+  "/account",
+  "/orders",
+  "/studio",
+  "/admin",
+  "/checkout",
+  "/reader",
+  "/api",
+];
 const STATIC_FILE_PATTERNS = [
   /\/(_next\/static)\//,
   /\.(?:css|js|mjs|woff2?|ttf|otf|svg|png|webmanifest)$/i,
 ];
+
+function isSensitivePath(path) {
+  return SENSITIVE_PATH_PREFIXES.some((prefix) => path === prefix || path.startsWith(`${prefix}/`));
+}
 
 self.addEventListener("install", (event) => {
   event.waitUntil(
@@ -41,14 +54,7 @@ self.addEventListener("fetch", (event) => {
   }
 
   const path = url.pathname;
-  const isApi = path.startsWith("/api/");
-  const isUserOrAdminPage =
-    path.startsWith("/account") ||
-    path.startsWith("/admin") ||
-    path.startsWith("/checkout") ||
-    path.startsWith("/reader");
-
-  if (isApi || isUserOrAdminPage) {
+  if (isSensitivePath(path)) {
     return;
   }
 

@@ -1,4 +1,5 @@
 import { NextResponse } from "next/server";
+import { getAppBaseUrl, getNodeEnv, readOptionalServerEnv } from "@/lib/env";
 import { checkRateLimit } from "@/lib/security/rate-limit";
 
 const SAME_ORIGIN_METHODS = new Set(["POST", "PUT", "PATCH", "DELETE"]);
@@ -7,22 +8,42 @@ function normalizeOrigin(origin: string) {
   return origin.endsWith("/") ? origin.slice(0, -1) : origin;
 }
 
-function getAllowedOrigin(request: Request) {
-  const host = request.headers.get("x-forwarded-host") ?? request.headers.get("host");
-  const requestProto = (() => {
-    try {
-      return new URL(request.url).protocol.replace(":", "");
-    } catch {
-      return null;
-    }
-  })();
-  const proto = request.headers.get("x-forwarded-proto") ?? requestProto ?? "https";
-
-  if (!host) {
-    return null;
+function parseTrustedOriginsFromEnv() {
+  const configured = readOptionalServerEnv("TRUSTED_ORIGINS");
+  if (!configured) {
+    return [];
   }
 
-  return `${proto}://${host}`;
+  return configured
+    .split(",")
+    .map((value) => value.trim())
+    .filter((value) => value.length > 0)
+    .flatMap((value) => {
+      try {
+        return [normalizeOrigin(new URL(value).toString())];
+      } catch {
+        return [];
+      }
+    });
+}
+
+function getAllowedOrigins(request: Request) {
+  const origins = new Set<string>();
+  origins.add(normalizeOrigin(getAppBaseUrl()));
+
+  for (const origin of parseTrustedOriginsFromEnv()) {
+    origins.add(origin);
+  }
+
+  if (getNodeEnv() !== "production") {
+    try {
+      origins.add(normalizeOrigin(new URL(request.url).origin));
+    } catch {
+      // ignore malformed request URL in non-production fallback resolution
+    }
+  }
+
+  return origins;
 }
 
 export function isSameOriginMutation(request: Request) {
@@ -36,13 +57,8 @@ export function isSameOriginMutation(request: Request) {
     return false;
   }
 
-  const allowedOrigin = getAllowedOrigin(request);
-
-  if (!allowedOrigin) {
-    return false;
-  }
-
-  return normalizeOrigin(origin) === normalizeOrigin(allowedOrigin);
+  const allowedOrigins = getAllowedOrigins(request);
+  return allowedOrigins.has(normalizeOrigin(origin));
 }
 
 export function rejectCrossOriginMutation() {
