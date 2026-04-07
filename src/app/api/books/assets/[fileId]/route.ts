@@ -20,6 +20,39 @@ import { logUserSecurityEvent } from "@/lib/security/suspicious-activity";
 
 export const runtime = "nodejs";
 
+const isDev = process.env.NODE_ENV !== "production";
+
+type TokenFailureReason =
+  | "MISSING_TOKEN"
+  | "MALFORMED_TOKEN"
+  | "SIGNING_SECRET_UNSET"
+  | "INVALID_SIGNATURE"
+  | "MISMATCH"
+  | "TOKEN_EXPIRED"
+  | "WRONG_USER"
+  | "NONCE_MISMATCH"
+  | "SESSION_MISMATCH"
+  | "INVALID_PAYLOAD";
+
+function mapTokenFailure(reason: TokenFailureReason) {
+  switch (reason) {
+    case "MISSING_TOKEN":
+      return { status: 401, message: "رمز الوصول مفقود." };
+    case "TOKEN_EXPIRED":
+      return { status: 401, message: "انتهت صلاحية رمز الوصول." };
+    case "SIGNING_SECRET_UNSET":
+      return { status: 500, message: "إعدادات الأمان غير مكتملة على الخادم." };
+    case "INVALID_SIGNATURE":
+    case "MALFORMED_TOKEN":
+    case "INVALID_PAYLOAD":
+    case "MISMATCH":
+    case "WRONG_USER":
+    case "NONCE_MISMATCH":
+    case "SESSION_MISMATCH":
+      return { status: 403, message: "رمز الوصول غير صالح." };
+  }
+}
+
 type BookAssetRouteParams = {
   params: Promise<{ fileId: string }>;
 };
@@ -118,6 +151,16 @@ export async function GET(request: Request, { params }: BookAssetRouteParams) {
     });
 
     if (!tokenResult.valid) {
+      const mapped = mapTokenFailure(tokenResult.reason);
+      if (isDev) {
+        console.error("[assets/file] token verification failed", {
+          fileId,
+          reason: tokenResult.reason,
+          hasResolvedToken: Boolean(resolvedToken),
+          hasNonceCookie: Boolean(handoffNonce),
+          hasUser: Boolean(user?.id),
+        });
+      }
       if (user) {
         await logUserSecurityEvent({
           userId: user.id,
@@ -132,7 +175,7 @@ export async function GET(request: Request, { params }: BookAssetRouteParams) {
         });
       }
 
-      return jsonNoStore({ message: "رابط الوصول للملف غير صالح أو منتهي الصلاحية." }, { status: 403 });
+      return jsonNoStore({ message: mapped.message, code: tokenResult.reason }, { status: mapped.status });
     }
 
     accessGrantId = tokenResult.payload.aid ?? null;
@@ -244,7 +287,14 @@ export async function GET(request: Request, { params }: BookAssetRouteParams) {
           "Cross-Origin-Resource-Policy": "same-origin",
         },
       });
-    } catch {
+    } catch (error) {
+      if (isDev) {
+        console.error("[assets/file] failed to create signed asset URL", {
+          fileId,
+          provider: file.storageProvider,
+          message: error instanceof Error ? error.message : String(error),
+        });
+      }
       return jsonNoStore({ message: "تعذر تجهيز الملف للقراءة حالياً." }, { status: 500 });
     }
   }
