@@ -1,3 +1,4 @@
+import { NextResponse } from "next/server";
 import { getCurrentUser } from "@/lib/auth-session";
 import { jsonNoStore } from "@/lib/security";
 import {
@@ -75,19 +76,25 @@ export async function GET(request: Request, { params }: BookAssetHandoffParams) 
     }
 
     const targetPath = `/api/books/assets/${encodeURIComponent(fileId)}${disposition === "attachment" ? "?download=1" : ""}`;
-    const response = Response.redirect(new URL(targetPath, url.origin), 302);
+    const response = NextResponse.redirect(new URL(targetPath, url.origin), 302);
 
     response.headers.set("Cache-Control", "private, no-store");
     response.headers.set("Referrer-Policy", "no-referrer");
     response.headers.set("X-Content-Type-Options", "nosniff");
-    response.headers.append(
-      "Set-Cookie",
-      `${getProtectedAssetTokenCookieName()}=${encodeURIComponent(token ?? "")}; Path=/api; Max-Age=90; HttpOnly; SameSite=Strict; Secure`,
-    );
-    response.headers.append(
-      "Set-Cookie",
-      `${getProtectedAssetNonceCookieName()}=${encodeURIComponent(tokenResult.payload.jti)}; Path=/api; Max-Age=90; HttpOnly; SameSite=Strict; Secure`,
-    );
+    response.cookies.set(getProtectedAssetTokenCookieName(), token ?? "", {
+      path: "/api",
+      maxAge: 90,
+      httpOnly: true,
+      sameSite: "strict",
+      secure: process.env.NODE_ENV === "production",
+    });
+    response.cookies.set(getProtectedAssetNonceCookieName(), tokenResult.payload.jti, {
+      path: "/api",
+      maxAge: 90,
+      httpOnly: true,
+      sameSite: "strict",
+      secure: process.env.NODE_ENV === "production",
+    });
     response.headers.set("Cross-Origin-Resource-Policy", "same-origin");
 
     return response;
