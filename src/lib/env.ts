@@ -7,6 +7,7 @@ import {
 } from "@/lib/payments/gateways/provider-integration";
 
 type RuntimeEnvironment = "development" | "test" | "production";
+type EnvValidationContext = "build" | "runtime";
 
 type EnvSeverity = "error" | "warning";
 
@@ -23,6 +24,18 @@ const DEPRECATED_ENV_KEYS: readonly string[] = [
   "SYRIATEL_CASH_CREATE_PAYMENT_PATH",
   "SYRIATEL_CASH_VERIFY_PAYMENT_PATH",
 ];
+
+function getEnvValidationContext(): EnvValidationContext {
+  if (process.env.BOOK_ENV_VALIDATION_CONTEXT === "build") {
+    return "build";
+  }
+
+  if (process.env.NEXT_PHASE === "phase-production-build") {
+    return "build";
+  }
+
+  return "runtime";
+}
 
 function readEnv(key: string): string | undefined {
   const value = process.env[key];
@@ -67,7 +80,7 @@ export function getAppBaseUrl(): string {
   }
 }
 
-function validateEnvironment(): EnvIssue[] {
+function validateEnvironment(context: EnvValidationContext = getEnvValidationContext()): EnvIssue[] {
   const issues: EnvIssue[] = [];
   const nodeEnv = getNodeEnv();
 
@@ -157,7 +170,7 @@ function validateEnvironment(): EnvIssue[] {
     });
   }
 
-  if (nodeEnv === "production") {
+  if (nodeEnv === "production" && context === "runtime") {
     const kvUrl = readEnv("KV_REST_API_URL") ?? readEnv("UPSTASH_REDIS_REST_URL");
     const kvToken = readEnv("KV_REST_API_TOKEN") ?? readEnv("UPSTASH_REDIS_REST_TOKEN");
 

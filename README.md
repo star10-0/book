@@ -109,6 +109,9 @@ This repository includes a production-first Docker/VPS deployment flow with expl
 - Run app server (migration-first): `npm run start`
 - Run migrations only: `npm run prisma:migrate:deploy`
 
+`npm run build` uses a build-only env contract (safe placeholders) via `scripts/next-build.mjs` when required keys are absent, so artifact validation does not require live production secrets/infrastructure.
+Runtime startup (`npm run start`) still uses full production fail-closed validation and must provide real operational env values.
+
 > Production startup order is migration-first, app-second. Do **not** use `prisma migrate dev` in production.
 
 ### Security hardening contracts (runtime)
@@ -167,6 +170,7 @@ Select at least one provider via `PAYMENT_LIVE_PROVIDERS` and fully configure on
 
 
 Use `.env.production.example` as the source of truth.
+For artifact-only build validation in CI/review environments, use `.env.build.example` placeholders (never for runtime production startup).
 
 ### Secrets storage and exposure response
 

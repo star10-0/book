@@ -6,7 +6,7 @@
     "predev": "prisma generate",
     "dev": "next dev",
     "prebuild": "prisma generate",
-    "build": "next build",
+    "build": "node scripts/next-build.mjs",
     "start": "npm run prisma:migrate:deploy && next start",
     "lint": "next lint",
     "typecheck": "tsc --noEmit",
