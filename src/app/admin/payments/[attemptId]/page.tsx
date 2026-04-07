@@ -99,17 +99,15 @@ export default async function AdminPaymentAttemptPage({ params }: PageProps) {
   return (
     <div className="space-y-4" dir="rtl">
       <AdminPageCard>
-        <AdminPageHeader title={`محاولة دفع: ${attempt.id}`} description="تفاصيل كاملة للمحاولة وإجراءات المعالجة اليدوية الآمنة." />
+        <AdminPageHeader title={`مرجع الدفع: ${attempt.publicPaymentReference}`} description="تفاصيل كاملة للمحاولة وإجراءات المعالجة اليدوية الآمنة." />
         <div className="grid gap-3 text-sm sm:grid-cols-2">
+          <p>رقم مرجع الدفع العام: <span className="font-semibold">{attempt.publicPaymentReference}</span></p>
+          <p>رقم الطلب العام: <span className="font-semibold">{attempt.order.publicOrderNumber}</span></p>
           <p>المستخدم: {attempt.user.email}</p>
           <p>الحالة: {attempt.status}</p>
           <p>حالة الدفع: {attempt.payment.status}</p>
           <p>حالة الطلب: {attempt.order.status}</p>
-          <p>paymentId: {attempt.paymentId}</p>
-          <p>orderId: {attempt.orderId}</p>
           <p>tx: {txRef || "—"}</p>
-          <p>providerReference: {attempt.providerReference || "—"}</p>
-          <p>providerRef على Payment: {attempt.payment.providerRef || "—"}</p>
           <p>incident: {incident ?? "—"}</p>
           <p>فشل: {attempt.failureReason || "—"}</p>
           <p>createdAt: {formatArabicDate(attempt.createdAt, { dateStyle: "short", timeStyle: "short" })}</p>
@@ -118,6 +116,16 @@ export default async function AdminPaymentAttemptPage({ params }: PageProps) {
           <p>وصول ممنوح: {accessExists > 0 ? "نعم" : "لا"}</p>
           <p>providerRef متطابق: {providerReferenceMatchesPayment ? "نعم" : "لا"}</p>
         </div>
+        <details className="mt-3 rounded border border-slate-200 bg-slate-50 p-3 text-xs text-slate-700">
+          <summary className="cursor-pointer font-semibold text-slate-900">معرفات داخلية وتفاصيل تقنية</summary>
+          <div className="mt-2 grid gap-2 sm:grid-cols-2">
+            <p>attempt.id: <span className="font-mono">{attempt.id}</span></p>
+            <p>paymentId: <span className="font-mono">{attempt.paymentId}</span></p>
+            <p>orderId: <span className="font-mono">{attempt.orderId}</span></p>
+            <p>providerReference (attempt): <span className="font-mono">{attempt.providerReference || "—"}</span></p>
+            <p>providerRef (payment): <span className="font-mono">{attempt.payment.providerRef || "—"}</span></p>
+          </div>
+        </details>
         {diagnosticHint ? (
           <p className="mt-3 rounded border border-amber-200 bg-amber-50 px-3 py-2 text-xs text-amber-900">{diagnosticHint}</p>
         ) : null}

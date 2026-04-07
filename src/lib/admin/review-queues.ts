@@ -1,4 +1,4 @@
-import { PaymentAttemptStatus, PaymentProvider, Prisma, UserRole } from "@prisma/client";
+import { PaymentAttemptStatus, Prisma, UserRole } from "@prisma/client";
 import { prisma } from "@/lib/prisma";
 import { getOrderIntegritySnapshot } from "@/lib/admin/order-integrity";
 import { buildRiskSignals, summarizeRiskSeverity } from "@/lib/admin/risk-engine";
@@ -33,15 +33,32 @@ export type ReviewQueuesSnapshot = {
   };
 };
 
+const paymentAttemptQueueSelect = Prisma.validator<Prisma.PaymentAttemptSelect>()({
+  id: true,
+  publicPaymentReference: true,
+  userId: true,
+  status: true,
+  failureReason: true,
+  provider: true,
+  requestPayload: true,
+  order: {
+    select: {
+      id: true,
+      publicOrderNumber: true,
+    },
+  },
+});
+
+type PaymentAttemptQueueRow = Prisma.PaymentAttemptGetPayload<{
+  select: typeof paymentAttemptQueueSelect;
+}>;
+
+type PaymentAttemptQueueFindManyArgs = Omit<Prisma.PaymentAttemptFindManyArgs, "select"> & {
+  select: typeof paymentAttemptQueueSelect;
+};
+
 type ReviewQueueDeps = {
-  paymentAttemptsFindMany: (args: Prisma.PaymentAttemptFindManyArgs) => Promise<Array<{
-    id: string;
-    userId: string;
-    status: PaymentAttemptStatus;
-    failureReason: string | null;
-    provider: PaymentProvider;
-    requestPayload: Prisma.JsonValue | null;
-  }>>;
+  paymentAttemptsFindMany: (args: PaymentAttemptQueueFindManyArgs) => Promise<PaymentAttemptQueueRow[]>;
   securityEventsFindMany: (args: Prisma.UserSecurityEventFindManyArgs) => Promise<Array<{
     id: string;
     userId: string;
@@ -90,14 +107,7 @@ export async function loadOperationalReviewQueues(now = new Date(), deps: Review
       },
       orderBy: { createdAt: "desc" },
       take: 50,
-      select: {
-        id: true,
-        userId: true,
-        status: true,
-        failureReason: true,
-        provider: true,
-        requestPayload: true,
-      },
+      select: paymentAttemptQueueSelect,
     }),
     deps.securityEventsFindMany({
       where: {
@@ -189,7 +199,7 @@ export async function loadOperationalReviewQueues(now = new Date(), deps: Review
   return {
     paymentRecoveryQueue: paymentAttempts.map((attempt) => ({
       id: attempt.id,
-      label: `محاولة ${attempt.id}`,
+      label: `${attempt.publicPaymentReference} • ${attempt.order.publicOrderNumber}`,
       reason: attempt.failureReason || (attempt.status === "VERIFYING" ? "محاولة عالقة في التحقق" : "محاولة فاشلة"),
       recommendedAction: attempt.status === "VERIFYING" ? "نفّذ استرداد محاولة أو حرّر القفل بعد التحقق." : "أعد التحقق من المرجع وراجع إثبات الدفع.",
     })),

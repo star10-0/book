@@ -18,7 +18,7 @@ export default async function AdminPromoCodesPage() {
           take: 5,
           include: {
             user: { select: { email: true } },
-            order: { select: { id: true } },
+            order: { select: { id: true, publicOrderNumber: true } },
           },
         },
       },
@@ -124,7 +124,9 @@ export default async function AdminPromoCodesPage() {
                   <ul className="mt-2 space-y-1 text-slate-700">
                     {code.redemptions.map((redemption) => (
                       <li key={redemption.id}>
-                        {redemption.user.email} · طلب {redemption.order.id} · الحالة {redemption.status} · {formatArabicDate(redemption.createdAt)}
+                        {redemption.user.email} · طلب {redemption.order.publicOrderNumber}
+                        <span className="text-xs text-slate-500"> (داخلي: {redemption.order.id})</span>
+                        {" "}· الحالة {redemption.status} · {formatArabicDate(redemption.createdAt)}
                       </li>
                     ))}
                   </ul>
