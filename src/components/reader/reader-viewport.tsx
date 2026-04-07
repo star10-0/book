@@ -64,6 +64,23 @@ function toSectionProgress(sectionIndex: number, totalSections: number) {
   return Math.min(100, (sectionIndex / totalSections) * 100);
 }
 
+function resolveReaderSourceUrl(rawUrl: string) {
+  if (typeof window === "undefined") {
+    return rawUrl;
+  }
+
+  try {
+    const parsed = new URL(rawUrl, window.location.origin);
+    if (parsed.hostname === "localhost" || parsed.hostname === "127.0.0.1" || parsed.hostname === "::1") {
+      parsed.protocol = window.location.protocol;
+      parsed.host = window.location.host;
+    }
+    return parsed.toString();
+  } catch {
+    return rawUrl;
+  }
+}
+
 export function ReaderViewport({
   source,
   locator,
@@ -85,12 +102,19 @@ export function ReaderViewport({
   const canvasRef = useRef<HTMLCanvasElement | null>(null);
   const currentStrokeRef = useRef<Point[]>([]);
   const heightClass = focusMode ? "h-[calc(100vh-5.5rem)] min-h-[84vh]" : "h-[calc(100vh-8.5rem)] min-h-[76vh]";
+  const resolvedSourceUrl = useMemo(() => {
+    if (!source || (source.kind !== "PDF" && source.kind !== "EPUB") || !source.publicUrl) {
+      return null;
+    }
+
+    return resolveReaderSourceUrl(source.publicUrl);
+  }, [source]);
 
   useEffect(() => {
     let isCancelled = false;
 
     async function loadEpubSections() {
-      if (!source || source.kind !== "EPUB" || !source.publicUrl) {
+      if (!source || source.kind !== "EPUB" || !resolvedSourceUrl) {
         setEpubSections([]);
         setEpubStatus("idle");
         return;
@@ -98,13 +122,13 @@ export function ReaderViewport({
 
       setEpubStatus("loading");
       try {
-        const parsedUrl = new URL(source.publicUrl, window.location.origin);
+        const parsedUrl = new URL(resolvedSourceUrl, window.location.origin);
         const fileId = parsedUrl.pathname.split("/").filter(Boolean).at(-1);
         if (!fileId) {
           throw new Error("missing_epub_file_id");
         }
 
-        await fetch(source.publicUrl, {
+        await fetch(resolvedSourceUrl, {
           cache: "no-store",
           credentials: "same-origin",
           redirect: "follow",
@@ -139,7 +163,7 @@ export function ReaderViewport({
     return () => {
       isCancelled = true;
     };
-  }, [source]);
+  }, [resolvedSourceUrl, source]);
 
   const currentEpubSection = useMemo(() => {
     if (!epubSections.length) {
@@ -286,9 +310,9 @@ export function ReaderViewport({
     return (
       <div className={`relative overflow-hidden rounded-xl border ${palette.frame}`}>
         <iframe
-          key={`${source.publicUrl}-${currentPage}-${theme}-${zoomPercent}`}
+          key={`${resolvedSourceUrl}-${currentPage}-${theme}-${zoomPercent}`}
           title="قارئ PDF"
-          src={`${source.publicUrl}#page=${currentPage}&zoom=${zoomPercent}&view=FitH&toolbar=0&navpanes=0`}
+          src={`${resolvedSourceUrl}#page=${currentPage}&zoom=${zoomPercent}&view=FitH&toolbar=0&navpanes=0`}
           className={`w-full ${heightClass} ${theme === "dark" ? "bg-slate-900 invert hue-rotate-180" : "bg-white"}`}
         />
         <canvas
