@@ -7,27 +7,33 @@ test("queue inclusion rules include repeated suspicious users and actionable pay
     paymentAttemptsFindMany: async () => [
       {
         id: "attempt_failed_1",
+        publicPaymentReference: "PAY-2026-0001",
         userId: "user_risky",
         status: "FAILED",
         failureReason: "gateway timeout",
         provider: "MANUAL",
         requestPayload: { transactionReference: "TX-1" },
+        order: { id: "order_1", publicOrderNumber: "ORD-2026-0001" },
       },
       {
         id: "attempt_failed_2",
+        publicPaymentReference: "PAY-2026-0002",
         userId: "user_risky",
         status: "FAILED",
         failureReason: "gateway timeout",
         provider: "MANUAL",
         requestPayload: { transactionReference: "TX-2" },
+        order: { id: "order_2", publicOrderNumber: "ORD-2026-0002" },
       },
       {
         id: "attempt_failed_3",
+        publicPaymentReference: "PAY-2026-0003",
         userId: "user_risky",
         status: "FAILED",
         failureReason: "gateway timeout",
         provider: "MANUAL",
         requestPayload: { transactionReference: "TX-3" },
+        order: { id: "order_3", publicOrderNumber: "ORD-2026-0003" },
       },
     ],
     securityEventsFindMany: async () => [

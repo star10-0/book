@@ -23,11 +23,27 @@ function recommendedIntegrityAction(kind: string) {
   return "راجع السجل المرتبط ونفّذ إجراء التصحيح من أدوات الطلبات.";
 }
 
-export default async function AdminOrdersPage() {
+type AdminOrdersPageProps = {
+  searchParams?: Promise<Record<string, string | string[] | undefined>>;
+};
+
+export default async function AdminOrdersPage({ searchParams }: AdminOrdersPageProps) {
   await requireAdminScope("PAYMENT_ADMIN", { callbackUrl: "/admin/orders" });
+  const params = searchParams ? await searchParams : {};
+  const searchTermRaw = Array.isArray(params.q) ? params.q[0] : params.q;
+  const searchTerm = typeof searchTermRaw === "string" ? searchTermRaw.trim() : "";
 
   const [orders, integrity] = await Promise.all([
     prisma.order.findMany({
+      where: searchTerm
+        ? {
+          OR: [
+            { publicOrderNumber: { contains: searchTerm, mode: "insensitive" } },
+            { id: { contains: searchTerm, mode: "insensitive" } },
+            { user: { email: { contains: searchTerm, mode: "insensitive" } } },
+          ],
+        }
+        : undefined,
       include: {
         user: {
           select: {
@@ -42,6 +58,21 @@ export default async function AdminOrdersPage() {
     getOrderIntegritySnapshot(40),
   ]);
 
+  const anomalyOrderIds = Array.from(
+    new Set(
+      integrity.anomalies
+        .filter((entry) => entry.orderId && entry.orderId !== "—")
+        .map((entry) => entry.orderId),
+    ),
+  );
+  const anomalyOrders = anomalyOrderIds.length
+    ? await prisma.order.findMany({
+      where: { id: { in: anomalyOrderIds } },
+      select: { id: true, publicOrderNumber: true },
+    })
+    : [];
+  const publicOrderNumberById = new Map(anomalyOrders.map((order) => [order.id, order.publicOrderNumber]));
+
   const affectedOrderIds = new Set(
     integrity.anomalies
       .filter((entry) => entry.orderId && entry.orderId !== "—")
@@ -52,6 +83,15 @@ export default async function AdminOrdersPage() {
     <div className="space-y-4" dir="rtl">
       <AdminPageCard>
         <AdminPageHeader title="نزاهة الطلبات والوصول" description="كشف حالات عدم الاتساق بين الطلبات/الدفع/المنح مع أدوات إصلاح آمنة." />
+        <form className="mb-3 flex flex-wrap items-center gap-2 text-xs" method="get">
+          <input
+            name="q"
+            defaultValue={searchTerm}
+            placeholder="بحث: رقم الطلب العام أو معرف الطلب الداخلي أو بريد المستخدم"
+            className="w-full rounded border border-slate-300 px-3 py-2 sm:max-w-md"
+          />
+          <button className="rounded border px-3 py-2">بحث</button>
+        </form>
         <div className="grid gap-2 text-sm sm:grid-cols-2 lg:grid-cols-3">
           <p className="rounded border border-amber-200 bg-amber-50 p-2">مدفوع بدون وصول: {integrity.totals.paid_order_missing_grants.toLocaleString("ar-SY")}</p>
           <p className="rounded border border-amber-200 bg-amber-50 p-2">وصول بدون تدفق مدفوع: {integrity.totals.grant_without_paid_flow.toLocaleString("ar-SY")}</p>
@@ -75,7 +115,8 @@ export default async function AdminOrdersPage() {
           {integrity.anomalies.slice(0, 10).map((anomaly, idx) => (
             <article key={`${anomaly.kind}-${anomaly.orderId}-${idx}`} className="rounded border border-slate-200 p-2">
               <p className="font-semibold">{anomaly.kind}</p>
-              <p>order: <span className="font-mono">{anomaly.orderId}</span> • user: <span className="font-mono">{anomaly.userId}</span></p>
+              <p>الطلب العام: <span className="font-semibold">{publicOrderNumberById.get(anomaly.orderId) ?? "—"}</span></p>
+              <p className="text-xs text-slate-600">داخليًا: order.id <span className="font-mono">{anomaly.orderId}</span> • user: <span className="font-mono">{anomaly.userId}</span></p>
               <p className="text-slate-600">{anomaly.details}</p>
               <p className="mt-1 text-slate-700">إجراء موصى: {recommendedIntegrityAction(anomaly.kind)}</p>
               {anomaly.kind === "paid_order_missing_grants" ? (
@@ -100,7 +141,16 @@ export default async function AdminOrdersPage() {
           getRowKey={(row) => row.id}
           emptyMessage="لا توجد طلبات حالياً. عند إنشاء طلبات من واجهة المتجر ستظهر هنا."
           columns={[
-            { key: "id", title: "رقم الطلب", render: (row) => <span className="font-mono text-xs">{row.id}</span> },
+            {
+              key: "publicOrderNumber",
+              title: "رقم الطلب",
+              render: (row) => (
+                <div>
+                  <p className="font-semibold">{row.publicOrderNumber}</p>
+                  <p className="font-mono text-[11px] text-slate-500">id: {row.id}</p>
+                </div>
+              ),
+            },
             {
               key: "user",
               title: "المستخدم",
