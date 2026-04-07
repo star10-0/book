@@ -97,6 +97,7 @@ export function OrderPaymentPanel({
   const [message, setMessage] = useState("");
   const [messageTone, setMessageTone] = useState<"info" | "success" | "error">("info");
   const [copyFeedback, setCopyFeedback] = useState("");
+  const [showSyriatelTransferDetails, setShowSyriatelTransferDetails] = useState(false);
   const [isPending, startTransition] = useTransition();
   const attemptStatusRef = useRef<PaymentAttemptStatus | undefined>(initialAttemptStatus);
 
@@ -139,6 +140,7 @@ export function OrderPaymentPanel({
     setHasSubmittedReference(false);
     setProofNote("");
     setCopyFeedback("");
+    setShowSyriatelTransferDetails(false);
     if (attemptStatusRef.current !== "PAID") {
       setMessage("");
       setMessageTone("info");
@@ -565,40 +567,58 @@ export function OrderPaymentPanel({
                 <div className="rounded-2xl border border-emerald-100 bg-emerald-50/60 p-4">
                   <dl className="space-y-2 text-sm text-slate-800">
                     <div className="flex items-center justify-between gap-3">
-                      <dt className="font-semibold">رقم/حساب الاستلام</dt>
-                      <dd className="font-mono text-xs sm:text-sm">{syriatelDestinationLabel}</dd>
-                    </div>
-                    <div className="flex items-center justify-between gap-3">
                       <dt className="font-semibold">المبلغ</dt>
-                      <dd className="font-bold">{formatArabicCurrency(totalCents / 100, { currency })}</dd>
-                    </div>
-                    <div className="flex items-center justify-between gap-3">
-                      <dt className="font-semibold">مرجع الطلب</dt>
-                      <dd className="font-mono text-xs sm:text-sm">{orderId}</dd>
+                      <dd className="font-bold select-all">{formatArabicCurrency(totalCents / 100, { currency })}</dd>
                     </div>
                   </dl>
 
-                  <div className="mt-3 flex flex-wrap gap-2">
+                  <div className="mt-4 rounded-xl border border-emerald-200 bg-white p-3">
+                    <p className="text-xs font-semibold text-slate-900">رمز QR للدفع السريع</p>
+                    <div className="mt-2 flex flex-col items-center gap-2">
+                      <Image
+                        src="/payments/syriatel-cash-qr.jpg"
+                        alt="رمز QR لتحويل Syriatel Cash"
+                        width={176}
+                        height={176}
+                        className="h-44 w-44 rounded-md border border-slate-200 bg-white p-2"
+                      />
+                      <p className="text-center text-[11px] text-slate-600">امسح الرمز لإتمام التحويل عبر Syriatel Cash.</p>
+                    </div>
+                  </div>
+
+                  <div className="mt-3">
                     <button
                       type="button"
-                      onClick={() => copyText(syriatelDestinationLabel, "تم نسخ رقم/حساب الاستلام.")}
+                      onClick={() => setShowSyriatelTransferDetails((current) => !current)}
                       className="rounded-lg border border-emerald-200 bg-white px-3 py-1.5 text-xs font-semibold text-emerald-700 hover:bg-emerald-50"
                     >
-                      نسخ الحساب
-                    </button>
-                    <button
-                      type="button"
-                      onClick={() =>
-                        copyText(
-                          `المبلغ: ${formatArabicCurrency(totalCents / 100, { currency })}\nمرجع الطلب: ${orderId}`,
-                          "تم نسخ المبلغ ومرجع الطلب.",
-                        )
-                      }
-                      className="rounded-lg border border-emerald-200 bg-white px-3 py-1.5 text-xs font-semibold text-emerald-700 hover:bg-emerald-50"
-                    >
-                      نسخ المبلغ/المرجع
+                      إظهار بيانات التحويل
                     </button>
                   </div>
+
+                  {showSyriatelTransferDetails ? (
+                    <div className="mt-3 rounded-xl border border-emerald-200 bg-white p-3">
+                      <dl className="space-y-2 text-sm text-slate-800">
+                        <div className="flex items-center justify-between gap-3">
+                          <dt className="font-semibold">رقم/حساب الاستلام</dt>
+                          <dd className="font-mono text-xs sm:text-sm">{syriatelDestinationLabel}</dd>
+                        </div>
+                        <div className="flex items-center justify-between gap-3">
+                          <dt className="font-semibold">المبلغ</dt>
+                          <dd className="font-bold">{formatArabicCurrency(totalCents / 100, { currency })}</dd>
+                        </div>
+                      </dl>
+                      <div className="mt-3">
+                        <button
+                          type="button"
+                          onClick={() => copyText(syriatelDestinationLabel, "تم نسخ رقم/حساب الاستلام.")}
+                          className="rounded-lg border border-emerald-200 bg-white px-3 py-1.5 text-xs font-semibold text-emerald-700 hover:bg-emerald-50"
+                        >
+                          نسخ الحساب
+                        </button>
+                      </div>
+                    </div>
+                  ) : null}
 
                   {copyFeedback ? <p className="mt-2 text-xs font-semibold text-emerald-700">{copyFeedback}</p> : null}
                 </div>
