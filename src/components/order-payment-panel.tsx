@@ -495,7 +495,7 @@ export function OrderPaymentPanel({
                     </div>
                     <div className="flex items-center justify-between gap-3">
                       <dt className="font-semibold">بصمة التحقق</dt>
-                      <dd className="font-mono text-xs sm:text-sm">5468 **** **** ****</dd>
+                      <dd className="font-mono text-xs sm:text-sm">**** 1111</dd>
                     </div>
                   </dl>
 
