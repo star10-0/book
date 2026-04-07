@@ -576,7 +576,7 @@ export function OrderPaymentPanel({
                     <p className="text-xs font-semibold text-slate-900">رمز QR للدفع السريع</p>
                     <div className="mt-2 flex flex-col items-center gap-2">
                       <Image
-                        src="/payments/syriatel-cash-qr.jpg"
+                        src="/1/3.jpg"
                         alt="رمز QR لتحويل Syriatel Cash"
                         width={176}
                         height={176}
