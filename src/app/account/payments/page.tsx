@@ -13,6 +13,7 @@ export default async function AccountPaymentsPage() {
       order: {
         select: {
           id: true,
+          publicOrderNumber: true,
         },
       },
     },
@@ -34,16 +35,15 @@ export default async function AccountPaymentsPage() {
             {attempts.map((attempt) => (
               <li key={attempt.id} className="rounded-2xl bg-white p-4 shadow-sm ring-1 ring-slate-200">
                 <div className="flex items-center justify-between gap-2">
-                  <p className="font-bold text-slate-900">محاولة #{attempt.id.slice(-6)}</p>
+                  <p className="font-bold text-slate-900">{attempt.publicPaymentReference}</p>
                   <span className="rounded-full bg-slate-100 px-2.5 py-1 text-xs font-semibold text-slate-700">
                     {paymentAttemptStatusLabels[attempt.status]}
                   </span>
                 </div>
 
                 <p className="mt-2 text-sm text-slate-500">{formatArabicDate(attempt.createdAt)}</p>
-                <p className="mt-2 text-sm text-slate-600">الطلب المرتبط: #{attempt.order.id.slice(-6)}</p>
-                <p className="mt-1 text-xs text-slate-500">مرجع المزود: {attempt.providerReference ?? "سيظهر بعد إنشاء العملية"}</p>
-                <p className="mt-2 font-semibold text-indigo-700">{formatArabicCurrency(attempt.amountCents / 100, { currency: attempt.currency })}</p>
+                <p className="mt-2 text-sm text-slate-600">الطلب المرتبط: {attempt.order.publicOrderNumber}</p>
+                                <p className="mt-2 font-semibold text-indigo-700">{formatArabicCurrency(attempt.amountCents / 100, { currency: attempt.currency })}</p>
 
                 <div className="mt-4 flex gap-2">
                   <Link

@@ -46,7 +46,7 @@ export default async function AccountOrdersPage() {
               return (
                 <li key={order.id} className="rounded-2xl bg-white p-4 shadow-sm ring-1 ring-slate-200">
                   <div className="flex items-center justify-between gap-2">
-                    <p className="font-bold text-slate-900">طلب #{order.id.slice(-6)}</p>
+                    <p className="font-bold text-slate-900">{order.publicOrderNumber}</p>
                     <span className={`rounded-full px-2.5 py-1 text-xs font-semibold ${status.tone}`}>{status.label}</span>
                   </div>
 

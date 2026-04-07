@@ -58,6 +58,7 @@ export async function POST(request: Request) {
       message: "تم التحقق من حالة الدفع لدى مزود الخدمة.",
       attempt: {
         id: attempt.id,
+        publicPaymentReference: attempt.publicPaymentReference,
         status: attempt.status,
         verifiedAt: attempt.verifiedAt,
         failureReason: attempt.failureReason,

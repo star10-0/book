@@ -12,6 +12,7 @@ import { grantAccessForPaidOrder } from "@/lib/access-grants";
 import { normalizeNonNegativeMoneyCents, normalizeProviderReference } from "@/lib/services/invariants";
 import { PAYMENT_ERROR_CODES, paymentError } from "@/lib/payments/errors";
 import { markPromoRedemptionsRedeemed } from "@/lib/promos";
+import { generatePublicPaymentReference } from "@/lib/public-reference";
 
 export interface CreatePaymentForOrderInput {
   orderId: string;
@@ -110,12 +111,15 @@ export async function createPaymentForOrder(input: CreatePaymentForOrderInput) {
           },
         });
 
+        const publicPaymentReference = await generatePublicPaymentReference(tx);
+
         const attempt = await tx.paymentAttempt.create({
           data: {
             paymentId: payment.id,
             userId: order.userId,
             orderId: order.id,
             provider: input.provider,
+            publicPaymentReference,
             amountCents: order.totalCents,
             currency: order.currency,
             status: "PENDING",

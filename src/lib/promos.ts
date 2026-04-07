@@ -1,5 +1,6 @@
 import { Prisma, PromoCodeAppliesTo, PromoCodeAudience, PromoCodeType } from "@prisma/client";
 import { grantAccessForPaidOrder } from "@/lib/access-grants";
+import { generatePublicPaymentReference } from "@/lib/public-reference";
 import { calculateOrderTotals } from "@/lib/orders/create-order";
 import { prisma } from "@/lib/prisma";
 
@@ -312,12 +313,15 @@ export async function completeFreeOrderWithPromo(input: { orderId: string; userI
       },
     });
 
+    const publicPaymentReference = await generatePublicPaymentReference(tx);
+
     await tx.paymentAttempt.create({
       data: {
         paymentId: payment.id,
         userId: input.userId,
         orderId: order.id,
         provider: "MANUAL",
+        publicPaymentReference,
         amountCents: 0,
         currency: order.currency,
         status: "PAID",

@@ -38,8 +38,8 @@ export default async function AccountPaymentAttemptDetailsPage({ params }: Accou
 
         <dl className="grid gap-3 text-sm sm:grid-cols-2">
           <div className="rounded-xl bg-slate-50 p-3">
-            <dt className="text-slate-500">معرف المحاولة</dt>
-            <dd className="mt-1 font-mono text-xs text-slate-900">{attempt.id}</dd>
+            <dt className="text-slate-500">رقم العملية</dt>
+            <dd className="mt-1 font-semibold text-slate-900">{attempt.publicPaymentReference}</dd>
           </div>
           <div className="rounded-xl bg-slate-50 p-3">
             <dt className="text-slate-500">الحالة</dt>
@@ -62,8 +62,8 @@ export default async function AccountPaymentAttemptDetailsPage({ params }: Accou
             <dd className="mt-1 text-slate-900">{attempt.verifiedAt ? formatArabicDate(attempt.verifiedAt) : "لم يتم بعد"}</dd>
           </div>
           <div className="rounded-xl bg-slate-50 p-3 sm:col-span-2">
-            <dt className="text-slate-500">مرجع مزود الدفع</dt>
-            <dd className="mt-1 font-mono text-xs text-slate-900">{attempt.providerReference ?? "غير متوفر بعد"}</dd>
+            <dt className="text-slate-500">رقم الطلب المرتبط</dt>
+            <dd className="mt-1 font-semibold text-slate-900">{attempt.order.publicOrderNumber}</dd>
           </div>
 
         </dl>
