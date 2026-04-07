@@ -109,13 +109,24 @@ This repository includes a production-first Docker/VPS deployment flow with expl
 - Run app server (migration-first): `npm run start`
 - Run migrations only: `npm run prisma:migrate:deploy`
 
+`npm run build` uses a build-only env contract (safe placeholders) via `scripts/next-build.mjs` when required keys are absent, so artifact validation does not require live production secrets/infrastructure.
+Runtime startup (`npm run start`) still uses full production fail-closed validation and must provide real operational env values.
+
 > Production startup order is migration-first, app-second. Do **not** use `prisma migrate dev` in production.
+
+### Security hardening contracts (runtime)
+
+- **Service Worker cache scope is public-only**: authenticated/session-bound pages are intentionally excluded from SW navigation/runtime caching (`/account`, `/orders`, `/studio`, `/admin`, `/checkout`, `/reader`, `/api`).
+- **Asset watermark headers are opaque-only**: do not expose direct identifiers (email/userId/orderId/accessGrantId) in response headers or logs.
+- **Reader session status is non-cacheable**: `/api/reader-session/*/status` always returns `Cache-Control: no-store` and enforces `sid` during grace-mode checks.
+- **Mutation origin checks are canonical-origin based**: same-origin validation is anchored to `APP_BASE_URL` (+ optional `TRUSTED_ORIGINS`) instead of trusting forwarded headers by default.
 
 ---
 
 ## Production Environment Variables (exact)
 
 Startup validation runs via `src/instrumentation.ts` and `src/lib/env.ts`.
+Production builds are now **fail-closed by default**, including Next build phase (`NEXT_PHASE=phase-production-build`).
 
 ### Required
 
@@ -131,9 +142,11 @@ Startup validation runs via `src/instrumentation.ts` and `src/lib/env.ts`.
 - `PAYMENT_LIVE_PROVIDERS` (comma-separated: `SHAM_CASH`, `SYRIATEL_CASH`) when live mode is used. If omitted, live mode defaults to `SHAM_CASH`.
 - `ALLOW_MOCK_PAYMENTS=false` in production
 - `ALLOW_MOCK_PAYMENT_VERIFICATION=false` in production
+- `ALLOW_INVALID_ENV_DURING_BUILD=false` (optional emergency-only bypass for production build phase env validation; default is hard-fail)
 - `BREAK_GLASS_PAYMENT_OVERRIDE_ENABLED=false` by default in production (set `true` only for approved incident recovery windows)
 - `KV_REST_API_URL`
 - `KV_REST_API_TOKEN`
+- `TRUSTED_ORIGINS` (optional comma-separated allowlist for extra trusted same-origin mutation origins; default empty)
 
 ### Required when `BOOK_STORAGE_PROVIDER=s3|r2`
 
@@ -157,6 +170,7 @@ Select at least one provider via `PAYMENT_LIVE_PROVIDERS` and fully configure on
 
 
 Use `.env.production.example` as the source of truth.
+For artifact-only build validation in CI/review environments, use `.env.build.example` placeholders (never for runtime production startup).
 
 ### Secrets storage and exposure response
 
@@ -295,7 +309,8 @@ To quickly detect deployment drift versus local/main code:
    curl -fsS http://127.0.0.1:${APP_PORT:-3000}/api/health
    ```
 
-9. Put app behind TLS reverse proxy (Nginx/Caddy/Traefik), and ensure proxy forwards `x-forwarded-host` and `x-forwarded-proto`.
+9. Put app behind TLS reverse proxy (Nginx/Caddy/Traefik).  
+   **Important:** app-side CSRF/same-origin checks are pinned to canonical `APP_BASE_URL` (and optional `TRUSTED_ORIGINS`), so forwarded host/proto headers are not a trust anchor by default.
 
 ### Managed PostgreSQL deployment
 

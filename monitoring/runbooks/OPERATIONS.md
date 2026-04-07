@@ -51,6 +51,13 @@ curl -sS https://<app-domain>/api/version | jq '.mode, .liveProviders, .syriatel
   - `{compose_service="app", level="error"}`
   - `{compose_service="app", requestId="<uuid>"}`
 
+### Logging privacy policy (operator-facing)
+
+- Treat headers/fields matching auth/token/secret/cookie/signature/watermark as sensitive.
+- Do not paste raw payment configuration diagnostics or provider env keys in tickets/chats.
+- Watermark signals are opaque identifiers only; never attempt to reconstruct user identity from them.
+- If deeper diagnostics are required, use requestId-scoped server logs with least-privilege access.
+
 ## 6) Check dashboards
 
 - System health dashboard for app/db/container/disk state.
@@ -93,6 +100,14 @@ curl -fsS https://<app-domain>/api/version
 3. `/api/version` SHA matches deployed commit.
 4. Payment create/submit/verify smoke tests pass.
 5. No critical alerts firing.
+6. Reader status endpoint responses include `Cache-Control: no-store`.
+7. SW cache does not serve private routes (`/account`, `/orders`, `/studio`, `/admin`, `/checkout`, `/reader`).
+
+## 11) Proxy/origin trust checklist
+
+1. `APP_BASE_URL` points to the canonical public origin.
+2. Set `TRUSTED_ORIGINS` only when intentionally allowing additional first-party origins.
+3. Do not rely on `x-forwarded-host` / `x-forwarded-proto` as sole trust boundaries for mutation security.
 
 ## 10) Smoke test
 

@@ -192,6 +192,7 @@ model User {
   securityEvents      UserSecurityEvent[]
   adminAuditLogs      AdminAuditLog[]      @relation("AdminAuditActor")
   targetedAuditLogs   AdminAuditLog[]      @relation("AdminAuditTargetUser")
+  readingSessions     ReadingSession[]
   acceptedDevicePolicyAt DateTime?
   acceptedTermsVersion String?
   requirePasswordReset Boolean           @default(false)
@@ -280,6 +281,7 @@ model Book {
   offers              BookOffer[]
   orderItems          OrderItem[]
   accessGrants        AccessGrant[]
+  readingSessions     ReadingSession[]
   readingProgress     ReadingProgress[]
   readerAnnotations   ReaderAnnotation[]
   wishlistItems       WishlistItem[]
@@ -584,11 +586,34 @@ model AccessGrant {
   user        User              @relation(fields: [userId], references: [id], onDelete: Restrict)
   book        Book              @relation(fields: [bookId], references: [id], onDelete: Restrict)
   orderItem   OrderItem?        @relation(fields: [orderItemId], references: [id], onDelete: SetNull)
+  readingSessions ReadingSession[]
 
   @@unique([userId, orderItemId, type])
   @@index([userId, status, expiresAt])
   @@index([bookId])
   @@index([orderItemId])
+}
+
+model ReadingSession {
+  id            String   @id @default(cuid())
+  accessGrantId String
+  userId        String
+  bookId        String
+  openedAt      DateTime @default(now())
+  lastSeenAt    DateTime @default(now())
+  graceEndsAt   DateTime?
+  closedAt      DateTime?
+  lastLocator   String?
+  createdAt     DateTime @default(now())
+  updatedAt     DateTime @updatedAt
+  accessGrant   AccessGrant @relation(fields: [accessGrantId], references: [id], onDelete: Cascade)
+  user          User        @relation(fields: [userId], references: [id], onDelete: Cascade)
+  book          Book        @relation(fields: [bookId], references: [id], onDelete: Cascade)
+
+  @@unique([accessGrantId, userId])
+  @@index([userId, openedAt])
+  @@index([accessGrantId, graceEndsAt, closedAt])
+  @@index([bookId])
 }
 
 

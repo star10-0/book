@@ -1,17 +1,37 @@
 import { PaymentProvider } from "@prisma/client";
 import { API_ERROR_CODES, jsonError, parseJsonBody } from "@/lib/api-response";
 import { getCurrentUser } from "@/lib/auth-session";
-import { logError, getClientIp, getRequestId } from "@/lib/observability/logger";
+import { getClientIp, getRequestId, logError, logWarn } from "@/lib/observability/logger";
 import { recordApiResponse, recordPaymentEvent } from "@/lib/observability/metrics";
 import { GatewayConfigurationError, GatewayRequestError } from "@/lib/payments/gateways/provider-http";
 import { getProviderIntegrationConfig, parseSelectedLiveProviders } from "@/lib/payments/gateways/provider-integration";
 import { isPaymentError, PAYMENT_ERROR_CODES } from "@/lib/payments/errors";
+import { buildPaymentClientConfigError } from "@/lib/payments/client-errors";
 import { createPaymentForOrder } from "@/lib/payments/payment-service";
 import { enforceRateLimit, isSameOriginMutation, jsonNoStore, rejectCrossOriginMutation, rejectRateLimitUnavailable, rejectRateLimited } from "@/lib/security";
 
 interface CreatePaymentRequestBody {
   orderId?: string;
   provider?: PaymentProvider;
+}
+
+function paymentConfigErrorResponse(input: {
+  code: string;
+  status: number;
+  message: string;
+  requestId: string;
+  details: Record<string, unknown>;
+}) {
+  logWarn("Payment configuration issue", {
+    route: "/api/payments/create",
+    requestId: input.requestId,
+    ...input.details,
+  });
+
+  return jsonNoStore(
+    buildPaymentClientConfigError({ code: input.code, message: input.message }),
+    { status: input.status },
+  );
 }
 
 export async function POST(request: Request) {
@@ -50,33 +70,30 @@ export async function POST(request: Request) {
   const integration = getProviderIntegrationConfig(provider);
   const selectedProviders = parseSelectedLiveProviders();
   if (integration && integration.mode === "live" && selectedProviders.invalidProviders.length > 0) {
-    return jsonNoStore(
-      {
-        message: "قيمة مزودي الدفع المباشرين غير صالحة على الخادم.",
-        error: {
-          code: "PAYMENT_LIVE_PROVIDERS_INVALID",
-          mode: integration.mode,
-          selectedLiveProviders: selectedProviders.selectedProviders,
-          invalidProviders: selectedProviders.invalidProviders,
-        },
+    return paymentConfigErrorResponse({
+      code: "PAYMENT_CONFIGURATION_INVALID",
+      status: 500,
+      message: "إعدادات الدفع على الخادم غير صالحة حالياً.",
+      requestId,
+      details: {
+        mode: integration.mode,
+        selectedLiveProviders: selectedProviders.selectedProviders,
+        invalidProviders: selectedProviders.invalidProviders,
       },
-      { status: 500 },
-    );
+    });
   }
 
   if (integration && integration.mode === "live" && selectedProviders.selectedProviders.length === 0) {
-    return jsonNoStore(
-      {
-        message: "لا يوجد مزود دفع مباشر مفعّل على الخادم.",
-        error: {
-          code: "PAYMENT_LIVE_PROVIDERS_EMPTY",
-          mode: integration.mode,
-          selectedLiveProviders: selectedProviders.selectedProviders,
-          invalidProviders: selectedProviders.invalidProviders,
-        },
+    return paymentConfigErrorResponse({
+      code: "PAYMENT_CONFIGURATION_INVALID",
+      status: 500,
+      message: "إعدادات الدفع على الخادم غير مكتملة حالياً.",
+      requestId,
+      details: {
+        mode: integration.mode,
+        selectedLiveProviders: selectedProviders.selectedProviders,
       },
-      { status: 500 },
-    );
+    });
   }
 
   if (
@@ -84,33 +101,31 @@ export async function POST(request: Request) {
     integration.mode === "live" &&
     !selectedProviders.selectedProviders.includes(integration.provider)
   ) {
-    return jsonNoStore(
-      {
-        message: "مزود الدفع غير مفعّل حالياً.",
-        error: {
-          code: "PAYMENT_PROVIDER_DISABLED",
-          provider: integration.provider,
-          mode: integration.mode,
-          selectedLiveProviders: selectedProviders.selectedProviders,
-        },
+    return paymentConfigErrorResponse({
+      code: "PAYMENT_PROVIDER_UNAVAILABLE",
+      status: 409,
+      message: "مزود الدفع المطلوب غير متاح حالياً.",
+      requestId,
+      details: {
+        provider: integration.provider,
+        mode: integration.mode,
+        selectedLiveProviders: selectedProviders.selectedProviders,
       },
-      { status: 409 },
-    );
+    });
   }
 
   if (integration && integration.mode === "live" && !integration.isLiveConfigured) {
-    return jsonNoStore(
-      {
-        message: "إعدادات مزود الدفع غير مكتملة على الخادم.",
-        error: {
-          code: "PAYMENT_PROVIDER_ENV_MISSING",
-          provider: integration.provider,
-          mode: integration.mode,
-          missingEnvKeys: integration.missingEnvKeys,
-        },
+    return paymentConfigErrorResponse({
+      code: "PAYMENT_CONFIGURATION_INVALID",
+      status: 500,
+      message: "إعدادات مزود الدفع غير مكتملة على الخادم.",
+      requestId,
+      details: {
+        provider: integration.provider,
+        mode: integration.mode,
+        missingEnvKeys: integration.missingEnvKeys,
       },
-      { status: 500 },
-    );
+    });
   }
 
   const user = await getCurrentUser();
@@ -169,18 +184,17 @@ export async function POST(request: Request) {
       recordApiResponse({ route: "/api/payments/create", status: 500 });
       recordPaymentEvent({ flow: "create", outcome: "failure", reason: "provider_env_missing" });
       const integration = getProviderIntegrationConfig(provider);
-      return jsonNoStore(
-        {
-          message: "إعدادات مزود الدفع غير مكتملة على الخادم.",
-          error: {
-            code: "PAYMENT_PROVIDER_ENV_MISSING",
-            provider: integration?.provider ?? provider,
-            mode: integration?.mode ?? "live",
-            missingEnvKeys: integration?.missingEnvKeys ?? [],
-          },
+      return paymentConfigErrorResponse({
+        code: "PAYMENT_CONFIGURATION_INVALID",
+        status: 500,
+        message: "إعدادات مزود الدفع غير مكتملة على الخادم.",
+        requestId,
+        details: {
+          provider: integration?.provider ?? provider,
+          mode: integration?.mode ?? "live",
+          missingEnvKeys: integration?.missingEnvKeys ?? [],
         },
-        { status: 500 },
-      );
+      });
     }
 
     if (error instanceof GatewayRequestError) {

@@ -3,7 +3,7 @@ import Link from "next/link";
 import { notFound } from "next/navigation";
 import { ReaderShell } from "@/components/reader-shell";
 import { requireUser } from "@/lib/auth-session";
-import { formatArabicDate } from "@/lib/formatters/intl";
+import { ensureReadingSessionForActiveGrant, resolveReaderSessionAccess } from "@/lib/reader-session";
 import { ReaderDocumentSource } from "@/lib/reader/types";
 import { prisma } from "@/lib/prisma";
 import { buildProtectedAssetUrl, buildWatermarkText } from "@/lib/security/content-protection";
@@ -13,26 +13,6 @@ type ReaderPageProps = {
     accessId: string;
   }>;
 };
-
-function isExpiredRentalGrant(grant: { type: string; status: string; expiresAt: Date | null }, now: Date) {
-  if (grant.type !== "RENTAL") {
-    return false;
-  }
-
-  return grant.status === "EXPIRED" || (grant.expiresAt !== null && grant.expiresAt <= now);
-}
-
-function isActiveGrant(grant: { status: string; startsAt: Date; expiresAt: Date | null }, now: Date) {
-  if (grant.status !== "ACTIVE") {
-    return false;
-  }
-
-  if (grant.startsAt > now) {
-    return false;
-  }
-
-  return grant.expiresAt === null || grant.expiresAt > now;
-}
 
 export default async function ReaderPage({ params }: ReaderPageProps) {
   const { accessId } = await params;
@@ -85,33 +65,55 @@ export default async function ReaderPage({ params }: ReaderPageProps) {
   }
 
   const now = new Date();
-  const hasActiveGrant = isActiveGrant(accessGrant, now);
-  const isExpiredRental = isExpiredRentalGrant(accessGrant, now);
+  const accessState = await prisma.$transaction(async (tx) =>
+    resolveReaderSessionAccess(tx, { accessGrantId: accessGrant.id, userId: user.id, now }),
+  );
 
-  if (!hasActiveGrant && !isExpiredRental) {
+  if (!accessState.allowed) {
     notFound();
   }
 
-  if (hasActiveGrant) {
-    await prisma.readingProgress.upsert({
-      where: {
-        userId_bookId: {
+  const readingSession = accessState.mode === "ACTIVE"
+    ? await prisma.$transaction(async (tx) => {
+        const session = await ensureReadingSessionForActiveGrant(tx, {
+          accessGrantId: accessGrant.id,
           userId: user.id,
           bookId: accessGrant.bookId,
+          now,
+        });
+
+        await tx.readingProgress.upsert({
+          where: {
+            userId_bookId: {
+              userId: user.id,
+              bookId: accessGrant.bookId,
+            },
+          },
+          create: {
+            userId: user.id,
+            bookId: accessGrant.bookId,
+            progressPercent: 0,
+            locator: "page:1",
+            lastOpenedAt: now,
+          },
+          update: {
+            lastOpenedAt: now,
+          },
+        });
+
+        return session;
+      })
+    : await prisma.readingSession.findFirst({
+        where: {
+          accessGrantId: accessGrant.id,
+          userId: user.id,
+          closedAt: null,
         },
-      },
-      create: {
-        userId: user.id,
-        bookId: accessGrant.bookId,
-        progressPercent: 0,
-        locator: "page:1",
-        lastOpenedAt: new Date(),
-      },
-      update: {
-        lastOpenedAt: new Date(),
-      },
-    });
-  }
+        select: {
+          id: true,
+          graceEndsAt: true,
+        },
+      });
 
   const readingProgress = await prisma.readingProgress.findUnique({
     where: {
@@ -144,6 +146,7 @@ export default async function ReaderPage({ params }: ReaderPageProps) {
             disposition: "inline",
             userId: user.id,
             accessGrantId: accessGrant.id,
+            readingSessionId: readingSession?.id,
             watermarkText,
           }),
           storageKey: pdfFile.storageKey,
@@ -159,6 +162,7 @@ export default async function ReaderPage({ params }: ReaderPageProps) {
             disposition: "inline",
             userId: user.id,
             accessGrantId: accessGrant.id,
+            readingSessionId: readingSession?.id,
             watermarkText,
           }),
           storageKey: epubFile.storageKey,
@@ -176,31 +180,13 @@ export default async function ReaderPage({ params }: ReaderPageProps) {
   return (
     <main className="mx-auto w-full max-w-[1600px] space-y-6 px-2 sm:px-4" dir="rtl">
 
-      {isExpiredRental ? (
-        <section className="space-y-4 rounded-2xl bg-rose-50 p-6 ring-1 ring-rose-200">
-          <h1 className="text-2xl font-bold text-rose-800">انتهت صلاحية الوصول</h1>
-          <p className="text-sm text-rose-700">
-            انتهت مدة إعارة هذا الكتاب ولا يمكن فتح القارئ حالياً.
-            {accessGrant.expiresAt ? ` تاريخ الانتهاء: ${formatArabicDate(accessGrant.expiresAt)}.` : ""}
-          </p>
-          <div className="flex flex-wrap gap-3">
-            <Link
-              href="/account/library"
-              className="rounded-lg bg-rose-700 px-4 py-2 text-sm font-semibold text-white hover:bg-rose-600"
-            >
-              العودة إلى مكتبتي
-            </Link>
-            <Link
-              href={`/books/${accessGrant.book.slug}`}
-              className="rounded-lg border border-rose-300 px-4 py-2 text-sm font-semibold text-rose-800 hover:bg-rose-100"
-            >
-              عرض تفاصيل الكتاب
-            </Link>
-          </div>
-        </section>
-      ) : readerSource ? (
+      {readerSource ? (
         <ReaderShell
           accessId={accessGrant.id}
+          readingSessionId={readingSession?.id ?? null}
+          initialAccessMode={accessState.mode}
+          graceEndsAtIso={accessState.mode === "GRACE" ? accessState.graceEndsAt.toISOString() : null}
+          renewHref={`/books/${accessGrant.book.slug}`}
           bookTitle={accessGrant.book.titleAr}
           initialProgressPercent={readingProgress?.progressPercent ?? 0}
           initialLocator={readingProgress?.locator ?? "page:1"}

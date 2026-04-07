@@ -3,6 +3,7 @@ import { API_ERROR_CODES, jsonError, parseJsonBody } from "@/lib/api-response";
 import { getCurrentUser } from "@/lib/auth-session";
 import { getClientIp } from "@/lib/observability/logger";
 import { prisma } from "@/lib/prisma";
+import { resolveReaderSessionAccess, touchReadingSession } from "@/lib/reader-session";
 import { enforceRateLimit, isSameOriginMutation, rejectCrossOriginMutation, rejectRateLimited } from "@/lib/security";
 
 type AnnotationBody = {
@@ -90,18 +91,23 @@ function sanitizePayload(type: "DRAWING" | "NOTE" | "BOOKMARK", payload: unknown
 
 async function getAuthorizedBookId(accessId: string, userId: string) {
   const now = new Date();
-  const accessGrant = await prisma.accessGrant.findFirst({
-    where: {
-      id: accessId,
+  const accessGrant = await prisma.accessGrant.findFirst({ where: { id: accessId, userId }, select: { bookId: true } });
+  if (!accessGrant) {
+    return null;
+  }
+
+  const access = await prisma.$transaction((tx) => resolveReaderSessionAccess(tx, { accessGrantId: accessId, userId, now }));
+  if (!access.allowed) {
+    return null;
+  }
+
+  await prisma.$transaction((tx) =>
+    touchReadingSession(tx, {
+      accessGrantId: accessId,
       userId,
-      status: "ACTIVE",
-      startsAt: { lte: now },
-      OR: [{ expiresAt: null }, { expiresAt: { gt: now } }],
-    },
-    select: {
-      bookId: true,
-    },
-  });
+      now,
+    }),
+  );
 
   return accessGrant?.bookId ?? null;
 }

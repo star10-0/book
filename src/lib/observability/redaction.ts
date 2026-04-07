@@ -9,6 +9,7 @@ const FULL_REDACTION_PATTERNS = [
   /set-cookie/i,
   /signature/i,
   /credential/i,
+  /watermark/i,
 ];
 
 const MASKED_REDACTION_PATTERNS = [
