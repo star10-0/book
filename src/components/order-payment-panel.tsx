@@ -612,11 +612,6 @@ export function OrderPaymentPanel({
                 <dd className="text-lg font-black text-indigo-700">{formatArabicCurrency(totalCents / 100, { currency })}</dd>
               </div>
             </dl>
-            {attemptId ? (
-              <p className="mt-3 rounded-lg bg-white px-3 py-2 text-xs text-slate-700">
-                رقم محاولة الدفع: <span className="font-mono">{attemptId}</span>
-              </p>
-            ) : null}
           </section>
 
           <section className="rounded-2xl border border-slate-200 bg-white p-4">
