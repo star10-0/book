@@ -44,8 +44,8 @@ test("protected asset URLs use handoff endpoint and do not allow direct query-to
   assert.equal(source.includes("/handoff`"), true);
   assert.equal(source.includes("allowQueryToken"), true);
   assert.equal(source.includes("readBearerToken(request) ?? readCookieToken(request)"), true);
-  assert.equal(source.includes("__Host-book-pa"), true);
-  assert.equal(source.includes("__Host-book-pa-nonce"), true);
+  assert.equal(source.includes("book-pa"), true);
+  assert.equal(source.includes("book-pa-nonce"), true);
 });
 
 test("admin content operations enforce CONTENT_ADMIN scope across authors/categories/promo flows", () => {

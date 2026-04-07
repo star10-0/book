@@ -4,8 +4,8 @@ import { readOptionalServerEnv, readRequiredServerEnv } from "@/lib/env";
 
 export type ProtectedDisposition = "inline" | "attachment";
 
-const PROTECTED_ASSET_TOKEN_COOKIE = "__Host-book-pa";
-const PROTECTED_ASSET_HANDOFF_NONCE_COOKIE = "__Host-book-pa-nonce";
+const PROTECTED_ASSET_TOKEN_COOKIE = "book-pa";
+const PROTECTED_ASSET_HANDOFF_NONCE_COOKIE = "book-pa-nonce";
 
 type ProtectedAssetTokenPayload = {
   fid: string;
