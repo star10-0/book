@@ -105,15 +105,26 @@ const seed = async () => {
   const categoryMap = new Map<string, string>();
 
   for (const category of categories) {
-    const upsertedCategory = await prisma.category.upsert({
-      where: { slug: category.slug },
-      update: {
-        nameAr: category.nameAr,
-        nameEn: category.nameEn,
-        description: category.description,
-      },
-      create: category,
+    const existingCategory = await prisma.category.findFirst({
+      where: { slug: category.slug, parentId: null },
+      select: { id: true },
     });
+
+    const upsertedCategory = existingCategory
+      ? await prisma.category.update({
+          where: { id: existingCategory.id },
+          data: {
+            nameAr: category.nameAr,
+            nameEn: category.nameEn,
+            description: category.description,
+          },
+        })
+      : await prisma.category.create({
+          data: {
+            ...category,
+            parentId: null,
+          },
+        });
 
     categoryMap.set(category.slug, upsertedCategory.id);
   }

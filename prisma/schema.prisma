@@ -250,13 +250,28 @@ model Author {
 
 model Category {
   id          String   @id @default(cuid())
-  slug        String   @unique
+  slug        String
   nameAr      String
   nameEn      String?
   description String?
+  kind        String?
+  parentId    String?
+  sortOrder   Int      @default(0)
+  isActive    Boolean  @default(true)
+  icon        String?
+  coverImage  String?
+  themeKey    String?
+  parent      Category? @relation("CategoryTree", fields: [parentId], references: [id], onDelete: Restrict)
+  children    Category[] @relation("CategoryTree")
   books       Book[]
   createdAt   DateTime @default(now())
   updatedAt   DateTime @updatedAt
+
+  @@index([parentId, sortOrder])
+  @@index([parentId, slug])
+  @@unique([parentId, slug])
+  @@index([isActive, sortOrder])
+  @@index([kind, sortOrder])
 }
 
 model Book {

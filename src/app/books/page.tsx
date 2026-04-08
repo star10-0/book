@@ -3,6 +3,7 @@ import type { Prisma } from "@prisma/client";
 import { SiteFooter } from "@/components/site-footer";
 import { BooksFilters, BooksGrid, RecommendedBooksSection, SearchHighlightResult } from "@/components/storefront";
 import { getCurrentUser } from "@/lib/auth-session";
+import { buildBooksCategoryWhere } from "@/lib/categories/books-filter";
 import { prisma } from "@/lib/prisma";
 
 type BooksSearchParams = {
@@ -64,13 +65,7 @@ export default async function BooksPage({
     status: "PUBLISHED",
     format: "DIGITAL",
     ...buildSearchWhere(search),
-    ...(category !== "all"
-      ? {
-          category: {
-            slug: category,
-          },
-        }
-      : {}),
+    ...buildBooksCategoryWhere(category),
     ...(offerType !== "all"
       ? {
           offers: {
@@ -92,6 +87,7 @@ export default async function BooksPage({
   const [categories, books, wishlistItems, topRatedBooks] = await Promise.all([
     prisma.category.findMany({
       where: {
+        isActive: true,
         books: {
           some: {
             status: "PUBLISHED",
@@ -99,11 +95,23 @@ export default async function BooksPage({
           },
         },
       },
-      orderBy: { nameAr: "asc" },
+      orderBy: [{ sortOrder: "asc" }, { nameAr: "asc" }],
       select: {
+        id: true,
         slug: true,
         nameAr: true,
       },
+    }).then((items) => {
+      const nameCounts = new Map<string, number>();
+      for (const item of items) {
+        nameCounts.set(item.nameAr, (nameCounts.get(item.nameAr) ?? 0) + 1);
+      }
+
+      return items.map((item) => ({
+        value: `id:${item.id}`,
+        nameAr: (nameCounts.get(item.nameAr) ?? 0) > 1 ? `${item.nameAr} (${item.slug})` : item.nameAr,
+        slug: item.slug,
+      }));
     }),
     prisma.book.findMany({
       where: baseWhere,
@@ -309,6 +317,10 @@ export default async function BooksPage({
       ? (highlightedResult.metadata as Record<string, unknown>)
       : null;
   const highlightedPublisher = typeof highlightedMetadata?.publisher === "string" ? highlightedMetadata.publisher : null;
+  const normalizedCategoryFilterValue =
+    category !== "all" && !category.startsWith("id:")
+      ? categories.find((item) => item.slug === category)?.value ?? category
+      : category;
 
   return (
     <main>
@@ -367,7 +379,7 @@ export default async function BooksPage({
             <BooksFilters
               categories={categories}
               search={search}
-              category={category}
+              category={normalizedCategoryFilterValue}
               offerType={offerType}
               sort={sort}
               resultsCount={sortedBooks.length}

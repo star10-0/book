@@ -73,8 +73,9 @@ type SearchHighlightBookItem = BookCardItem & {
 };
 
 type BooksFilterCategory = {
-  slug: string;
+  value: string;
   nameAr: string;
+  slug?: string;
 };
 
 export function FeaturedBooksSection({ books }: { books: FeaturedBookItem[] }) {
@@ -225,7 +226,7 @@ type BooksFiltersProps = {
 };
 
 export function BooksFilters({ categories, search, category, offerType, sort, resultsCount = 0 }: BooksFiltersProps) {
-  const selectedCategoryLabel = categories.find((item) => item.slug === category)?.nameAr;
+  const selectedCategoryLabel = categories.find((item) => item.value === category || item.slug === category)?.nameAr;
   const hasActiveFilters = Boolean(search) || category !== "all" || offerType !== "all";
 
   return (
@@ -259,7 +260,7 @@ export function BooksFilters({ categories, search, category, offerType, sort, re
             >
               <option value="all">كل التصنيفات</option>
               {categories.map((item) => (
-                <option key={item.slug} value={item.slug}>
+                <option key={item.value} value={item.value}>
                   {item.nameAr}
                 </option>
               ))}

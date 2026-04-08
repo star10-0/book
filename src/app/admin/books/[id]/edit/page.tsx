@@ -5,6 +5,7 @@ import { BookFileManager } from "@/components/admin/book-file-manager";
 import { BookForm } from "@/components/admin/book-form";
 import { BookTextContentForm } from "@/components/studio/book-text-content-form";
 import { requireAdminScope } from "@/lib/auth-session";
+import { getAdminCategoryFlatOptions } from "@/lib/categories/service";
 import { prisma } from "@/lib/prisma";
 import { buildBookInitialValues } from "@/lib/services/book-form";
 
@@ -45,7 +46,7 @@ export default async function EditAdminBookPage({ params, searchParams }: EditBo
       },
     }),
     prisma.author.findMany({ select: { id: true, nameAr: true }, orderBy: { nameAr: "asc" } }),
-    prisma.category.findMany({ select: { id: true, nameAr: true }, orderBy: { nameAr: "asc" } }),
+    getAdminCategoryFlatOptions(),
     prisma.bookFile.findMany({
       where: {
         bookId: id,
@@ -82,6 +83,11 @@ export default async function EditAdminBookPage({ params, searchParams }: EditBo
     offers: book.offers,
   });
   const contentStatuses = buildContentStatuses(files, Boolean(book.textContent?.trim()));
+  const categoryOptions = categories.map((category) => ({
+    id: category.id,
+    nameAr: category.nameAr,
+    label: `${"— ".repeat(category.depth)}${category.nameAr}${category.isActive ? "" : " (غير نشط)"}`,
+  }));
 
   return (
     <div className="space-y-4">
@@ -91,7 +97,7 @@ export default async function EditAdminBookPage({ params, searchParams }: EditBo
         </section>
       ) : null}
 
-      <BookForm mode="edit" initialValues={initialValues} authors={authors} categories={categories} action={updateBookAction.bind(null, id)} />
+      <BookForm mode="edit" initialValues={initialValues} authors={authors} categories={categoryOptions} action={updateBookAction.bind(null, id)} />
 
       <section
         id="content-section"
