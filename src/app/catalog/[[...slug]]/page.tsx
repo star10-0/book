@@ -1,4 +1,5 @@
 import type { Metadata } from "next";
+import Image from "next/image";
 import Link from "next/link";
 import { notFound } from "next/navigation";
 import { BooksGrid } from "@/components/storefront";
@@ -12,6 +13,18 @@ type CatalogPageProps = {
   params: Promise<{
     slug?: string[];
   }>;
+};
+
+type PublicCategoryCardItem = {
+  id: string;
+  slug: string;
+  nameAr: string;
+  description: string | null;
+  icon: string | null;
+  _count: {
+    children: number;
+    books: number;
+  };
 };
 
 export async function generateMetadata({ params }: CatalogPageProps): Promise<Metadata> {
@@ -44,42 +57,63 @@ export async function generateMetadata({ params }: CatalogPageProps): Promise<Me
   };
 }
 
-function TopCategoryCard({ category }: { category: Awaited<ReturnType<typeof getPublicRootCategories>>[number] }) {
+function resolveIconVisual(icon: string | null): { mode: "image" | "text"; value: string } {
+  const fallback = "/icons/source-book-icon.svg";
+
+  if (!icon) {
+    return { mode: "image", value: fallback };
+  }
+
+  const trimmed = icon.trim();
+  if (!trimmed) {
+    return { mode: "image", value: fallback };
+  }
+
+  if (trimmed.startsWith("/") || trimmed.startsWith("http://") || trimmed.startsWith("https://")) {
+    return { mode: "image", value: trimmed };
+  }
+
+  return { mode: "text", value: trimmed };
+}
+
+function CategoryGridCard({ category, href, active = false }: { category: PublicCategoryCardItem; href: string; active?: boolean }) {
+  const icon = resolveIconVisual(category.icon);
+
   return (
-    <article className="overflow-hidden rounded-3xl border border-indigo-100 bg-gradient-to-l from-white via-indigo-50/40 to-violet-50/50 shadow-sm transition hover:-translate-y-0.5 hover:shadow-md">
-      <Link href={buildCatalogPath([category.slug])} className="block min-h-44 p-5 sm:p-6">
-        <p className="inline-flex rounded-full bg-indigo-100 px-2.5 py-1 text-[11px] font-bold text-indigo-700">قسم رئيسي</p>
-        <h3 className="mt-3 text-xl font-black text-slate-900">{category.nameAr}</h3>
-        {category.description ? <p className="mt-2 line-clamp-3 text-sm leading-7 text-slate-600">{category.description}</p> : null}
-        <p className="mt-4 text-xs font-semibold text-slate-500">{`${category._count.children} تصنيف فرعي • ${category._count.books} عنصر`}</p>
+    <article
+      className={`rounded-xl border bg-white transition ${
+        active ? "border-emerald-700/45 ring-1 ring-emerald-700/20" : "border-emerald-800/35 hover:border-emerald-800/55"
+      }`}
+    >
+      <Link
+        href={href}
+        className="flex min-h-[86px] items-center justify-between gap-4 px-5 py-4 text-right sm:min-h-[92px]"
+        aria-current={active ? "page" : undefined}
+      >
+        <span className="inline-flex h-11 w-11 shrink-0 items-center justify-center text-slate-600" aria-hidden="true">
+          {icon.mode === "image" ? (
+            <Image src={icon.value} alt="" width={44} height={44} className="h-11 w-11 object-contain" />
+          ) : (
+            <span className="text-3xl leading-none">{icon.value}</span>
+          )}
+        </span>
+
+        <div className="min-w-0 flex-1 space-y-1 text-right">
+          <h3 className="line-clamp-2 text-xl font-black text-emerald-900">{category.nameAr}</h3>
+          <p className="text-xs font-semibold text-slate-500">{`${category._count.children} تصنيف فرعي • ${category._count.books} كتاب`}</p>
+        </div>
       </Link>
     </article>
   );
 }
 
-function SubCategoryCard({
-  href,
-  name,
-  description,
-  childrenCount,
-  booksCount,
-  active,
-}: {
-  href: string;
-  name: string;
-  description: string | null;
-  childrenCount: number;
-  booksCount: number;
-  active: boolean;
-}) {
+function CategoryCardsGrid({ items, buildHref, activeCategoryId }: { items: PublicCategoryCardItem[]; buildHref: (item: PublicCategoryCardItem) => string; activeCategoryId?: string }) {
   return (
-    <article className={`rounded-2xl border p-4 transition ${active ? "border-indigo-300 bg-indigo-50/70 ring-1 ring-indigo-200" : "border-slate-200 bg-white hover:border-slate-300"}`}>
-      <Link href={href} className="block">
-        <h3 className="line-clamp-2 min-h-11 text-base font-bold text-slate-900">{name}</h3>
-        {description ? <p className="mt-1 line-clamp-2 min-h-12 text-sm leading-6 text-slate-600">{description}</p> : <div className="min-h-12" />}
-        <p className="mt-2 text-xs font-semibold text-slate-500">{`${childrenCount} تصنيف فرعي • ${booksCount} كتاب`}</p>
-      </Link>
-    </article>
+    <div className="grid gap-4 md:grid-cols-2 xl:grid-cols-3">
+      {items.map((item) => (
+        <CategoryGridCard key={item.id} category={item} href={buildHref(item)} active={item.id === activeCategoryId} />
+      ))}
+    </div>
   );
 }
 
@@ -101,10 +135,11 @@ export default async function CatalogBrowsePage({ params }: CatalogPageProps) {
         {sections.length === 0 ? (
           <p className="rounded-2xl border border-dashed border-slate-300 p-6 text-sm text-slate-600">لا توجد أقسام نشطة حاليًا.</p>
         ) : (
-          <section className="grid gap-4 sm:grid-cols-2 xl:grid-cols-3">
-            {sections.map((section) => (
-              <TopCategoryCard key={section.id} category={section} />
-            ))}
+          <section>
+            <CategoryCardsGrid
+              items={sections}
+              buildHref={(item) => buildCatalogPath([item.slug])}
+            />
           </section>
         )}
 
@@ -155,6 +190,30 @@ export default async function CatalogBrowsePage({ params }: CatalogPageProps) {
 
   const currentPathSlugs = resolved.breadcrumb.map((item) => item.slug);
 
+  const childrenCards: PublicCategoryCardItem[] = resolved.children.map((child) => ({
+    id: child.id,
+    slug: child.slug,
+    nameAr: child.nameAr,
+    description: child.description,
+    icon: child.icon,
+    _count: {
+      children: child._count.children,
+      books: child._count.books,
+    },
+  }));
+
+  const siblingCards: PublicCategoryCardItem[] = siblings.map((sibling) => ({
+    id: sibling.id,
+    slug: sibling.slug,
+    nameAr: sibling.nameAr,
+    description: sibling.description,
+    icon: null,
+    _count: {
+      children: sibling._count.children,
+      books: sibling._count.books,
+    },
+  }));
+
   return (
     <div className="store-shell space-y-6 pb-10 pt-6 sm:space-y-8 sm:pt-8">
       <section className="rounded-3xl border border-indigo-100 bg-gradient-to-l from-white via-indigo-50/60 to-violet-50/70 p-6 shadow-sm sm:p-8">
@@ -187,22 +246,13 @@ export default async function CatalogBrowsePage({ params }: CatalogPageProps) {
         {resolved.category.description ? <p className="mt-3 max-w-3xl text-sm leading-7 text-slate-700 sm:text-base">{resolved.category.description}</p> : null}
       </section>
 
-      {resolved.children.length > 0 ? (
+      {childrenCards.length > 0 ? (
         <section className="space-y-3">
           <h2 className="text-lg font-bold text-slate-900">التصنيفات الفرعية</h2>
-          <div className="grid gap-3 sm:grid-cols-2 xl:grid-cols-3">
-            {resolved.children.map((child) => (
-              <SubCategoryCard
-                key={child.id}
-                href={buildCatalogPath([...currentPathSlugs, child.slug])}
-                name={child.nameAr}
-                description={child.description}
-                childrenCount={child._count.children}
-                booksCount={child._count.books}
-                active={false}
-              />
-            ))}
-          </div>
+          <CategoryCardsGrid
+            items={childrenCards}
+            buildHref={(item) => buildCatalogPath([...currentPathSlugs, item.slug])}
+          />
         </section>
       ) : (
         <p className="rounded-xl border border-dashed border-slate-300 p-4 text-sm text-slate-600">
@@ -210,31 +260,21 @@ export default async function CatalogBrowsePage({ params }: CatalogPageProps) {
         </p>
       )}
 
-      {siblings.length > 0 ? (
+      {siblingCards.length > 0 ? (
         <section className="space-y-3">
           <h2 className="text-lg font-bold text-slate-900">التنقل داخل نفس المستوى</h2>
-          <div className="grid gap-3 sm:grid-cols-2 xl:grid-cols-3">
-            {siblings.map((sibling) => {
-              const href = buildCatalogPath(
+          <CategoryCardsGrid
+            items={siblingCards}
+            activeCategoryId={resolved.category.id}
+            buildHref={(item) =>
+              buildCatalogPath(
                 resolved.breadcrumb
                   .slice(0, Math.max(0, resolved.breadcrumb.length - 1))
                   .map((crumb) => crumb.slug)
-                  .concat(sibling.slug),
-              );
-
-              return (
-                <SubCategoryCard
-                  key={sibling.id}
-                  href={href}
-                  name={sibling.nameAr}
-                  description={sibling.description}
-                  childrenCount={sibling._count.children}
-                  booksCount={sibling._count.books}
-                  active={sibling.isCurrent}
-                />
-              );
-            })}
-          </div>
+                  .concat(item.slug),
+              )
+            }
+          />
         </section>
       ) : null}
 
