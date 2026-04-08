@@ -140,7 +140,7 @@ export async function GET(request: Request, { params }: BookAssetRouteParams) {
   let activeGrant: { id: string; orderItem: { orderId: string } | null } | null = null;
 
   if (!isPubliclyReadable) {
-    const resolvedToken = resolveProtectedAssetToken(request, url);
+    const resolvedToken = resolveProtectedAssetToken(request);
     const handoffNonce = resolveProtectedAssetNonce(request);
     const tokenResult = verifyProtectedAssetToken({
       token: resolvedToken,

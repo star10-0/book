@@ -236,7 +236,7 @@ export async function GET(request: Request, { params }: ReaderEpubSectionsRouteP
 
   if (!canReadPubliclyByPolicy(file.book.contentAccessPolicy)) {
     const tokenResult = verifyProtectedAssetToken({
-      token: resolveProtectedAssetToken(request, url),
+      token: resolveProtectedAssetToken(request),
       fileId,
       disposition: requestedDisposition,
       currentUserId: user?.id,
