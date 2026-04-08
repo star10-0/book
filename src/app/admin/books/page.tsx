@@ -63,14 +63,14 @@ function renderSignals(book: ContentOperationalBook) {
 }
 
 type AdminBooksPageProps = {
-  searchParams?: Promise<{ status?: string; scope?: string }>;
+  searchParams?: Promise<{ status?: string; scope?: string; categoryId?: string }>;
 };
 
 export default async function AdminBooksPage({ searchParams }: AdminBooksPageProps) {
   await requireAdminScope("CONTENT_ADMIN", { callbackUrl: "/admin/books" });
   const query = searchParams ? await searchParams : undefined;
 
-  const [books, opsSnapshot] = await Promise.all([
+  const [books, opsSnapshot, selectedCategory] = await Promise.all([
     prisma.book.findMany({
       include: {
         author: {
@@ -91,6 +91,12 @@ export default async function AdminBooksPage({ searchParams }: AdminBooksPagePro
       },
     }),
     loadContentOperationsSnapshot(),
+    query?.categoryId
+      ? prisma.category.findUnique({
+          where: { id: query.categoryId },
+          select: { id: true, nameAr: true },
+        })
+      : null,
   ]);
 
   const queueBookIds = getQueueFilteredBookIds(query?.scope, opsSnapshot);
@@ -102,6 +108,10 @@ export default async function AdminBooksPage({ searchParams }: AdminBooksPagePro
     }
 
     if (queueBookIds && !queueBookIds.has(book.id)) {
+      return false;
+    }
+
+    if (query?.categoryId && book.categoryId !== query.categoryId) {
       return false;
     }
 
@@ -117,6 +127,15 @@ export default async function AdminBooksPage({ searchParams }: AdminBooksPagePro
         description="إدارة كاملة للكتب مع حالة النشر وعروض الشراء والإيجار الرقمية."
         action={{ href: "/admin/books/new", label: "إضافة كتاب" }}
       />
+
+      {selectedCategory ? (
+        <section className="rounded-xl border border-sky-200 bg-sky-50 p-3 text-sm text-sky-900">
+          <p className="font-semibold">عرض مفلتر حسب التصنيف: {selectedCategory.nameAr}</p>
+          <Link href="/admin/books" className="mt-2 inline-flex rounded-md border border-sky-300 px-3 py-1.5 text-xs font-semibold text-sky-700 hover:bg-sky-100">
+            إزالة الفلتر
+          </Link>
+        </section>
+      ) : null}
 
       <section className="grid gap-3 sm:grid-cols-3">
         <Link href="/admin/books?scope=content-review" className="rounded-xl border border-indigo-200 bg-indigo-50 p-4">

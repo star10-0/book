@@ -5,12 +5,23 @@ import { requireAdminScope } from "@/lib/auth-session";
 import { getAdminCategoryFlatOptions } from "@/lib/categories/service";
 import { prisma } from "@/lib/prisma";
 
-export default async function NewAdminBookPage() {
+type NewAdminBookPageProps = {
+  searchParams?: Promise<{ categoryId?: string }>;
+};
+
+export default async function NewAdminBookPage({ searchParams }: NewAdminBookPageProps) {
   await requireAdminScope("CONTENT_ADMIN", { callbackUrl: "/admin/books/new" });
+  const query = searchParams ? await searchParams : undefined;
   await ensureDevelopmentCategories();
-  const [authors, categories] = await Promise.all([
+  const [authors, categories, selectedCategory] = await Promise.all([
     prisma.author.findMany({ select: { id: true, nameAr: true }, orderBy: { nameAr: "asc" } }),
     getAdminCategoryFlatOptions(),
+    query?.categoryId
+      ? prisma.category.findUnique({
+          where: { id: query.categoryId },
+          select: { id: true, nameAr: true },
+        })
+      : null,
   ]);
 
   const categoryOptions = categories.map((category) => ({
@@ -25,7 +36,19 @@ export default async function NewAdminBookPage() {
         <p className="font-semibold">هنا تُدخل بيانات الكتاب الأساسية والتسعير.</p>
         <p className="mt-1">بعد الحفظ، ستنتقل لصفحة التعديل لإضافة: الغلاف وملفات PDF/EPUB أو كتابة المحتوى النصي.</p>
       </section>
-      <BookForm mode="create" authors={authors} categories={categoryOptions} action={createBookAction} />
+      {selectedCategory ? (
+        <section className="rounded-2xl border border-emerald-200 bg-emerald-50 p-4 text-sm text-emerald-900">
+          <p className="font-semibold">تم اختيار التصنيف مسبقًا: {selectedCategory.nameAr}</p>
+          <p className="mt-1">يمكنك تغييره من حقل التصنيف داخل النموذج إذا لزم.</p>
+        </section>
+      ) : null}
+      <BookForm
+        mode="create"
+        authors={authors}
+        categories={categoryOptions}
+        initialValues={selectedCategory ? { categoryId: selectedCategory.id } : undefined}
+        action={createBookAction}
+      />
     </div>
   );
 }

@@ -1,5 +1,6 @@
 "use client";
 
+import Link from "next/link";
 import { useActionState, useEffect, useMemo, useState } from "react";
 import { createCategoryAction, deleteCategoryAction, updateCategoryAction, type CategoryFormState } from "@/app/admin/categories/actions";
 import type { CategoryTreeNode } from "@/lib/categories/types";
@@ -150,181 +151,272 @@ function CreateCategoryForm({
   );
 }
 
-function CategoryDeleteButton({
-  deleteAction,
-  disabled,
-  pending,
-}: {
-  deleteAction: (formData: FormData) => void | Promise<void>;
-  disabled: boolean;
-  pending?: boolean;
-}) {
-  return (
-    <button
-      type="submit"
-      formAction={deleteAction}
-      disabled={disabled}
-      className="rounded-md border border-rose-300 px-3 py-2 text-xs font-semibold text-rose-700 disabled:cursor-not-allowed disabled:opacity-50"
-    >
-      {pending ? "جارٍ الحذف..." : "حذف"}
-    </button>
-  );
-}
-
-function CategoryRowForm({
+function CategoryEditModal({
   category,
   options,
-  expanded,
-  onToggleExpand,
-  onQuickAddChild,
+  onClose,
 }: {
   category: CategoryTreeNode;
   options: FlatCategory[];
+  onClose: () => void;
+}) {
+  const [state, formAction, isPending] = useActionState(updateCategoryAction.bind(null, category.id), initialState);
+
+  return (
+    <div className="fixed inset-0 z-50 flex items-center justify-center bg-slate-950/45 p-3" role="dialog" aria-modal="true" aria-label={`تعديل ${category.nameAr}`}>
+      <div className="max-h-[92vh] w-full max-w-4xl overflow-y-auto rounded-2xl border border-slate-200 bg-white p-4 shadow-2xl sm:p-5">
+        <div className="mb-4 flex items-center justify-between gap-2">
+          <div>
+            <h3 className="text-lg font-bold text-slate-900">تعديل التصنيف</h3>
+            <p className="text-xs text-slate-600">{`${category.nameAr} • المستوى ${category.depth + 1}`}</p>
+          </div>
+          <button type="button" onClick={onClose} className="rounded-md border border-slate-300 px-3 py-1.5 text-xs font-semibold text-slate-700 hover:bg-slate-50">
+            إغلاق
+          </button>
+        </div>
+
+        <form action={formAction} className="space-y-4">
+          <section className="rounded-xl border border-slate-200 p-3">
+            <h4 className="mb-3 text-sm font-bold text-slate-900">المعلومات الأساسية</h4>
+            <div className="grid gap-3 md:grid-cols-3">
+              <div>
+                <label className="mb-1 block text-xs font-medium text-slate-700">اسم التصنيف</label>
+                <input name="nameAr" type="text" defaultValue={category.nameAr} className="w-full rounded-lg border border-slate-300 px-3 py-2 text-sm" />
+                {state.fieldErrors?.nameAr ? <p className="mt-1 text-xs font-medium text-rose-700">{state.fieldErrors.nameAr}</p> : null}
+              </div>
+
+              <div>
+                <label className="mb-1 block text-xs font-medium text-slate-700">slug</label>
+                <input name="slug" type="text" defaultValue={category.slug} className="w-full rounded-lg border border-slate-300 px-3 py-2 text-sm" />
+                {state.fieldErrors?.slug ? <p className="mt-1 text-xs font-medium text-rose-700">{state.fieldErrors.slug}</p> : null}
+              </div>
+
+              <div>
+                <label className="mb-1 block text-xs font-medium text-slate-700">النوع</label>
+                <input name="kind" type="text" defaultValue={category.kind ?? ""} className="w-full rounded-lg border border-slate-300 px-3 py-2 text-sm" />
+              </div>
+
+              <div>
+                <label className="mb-1 block text-xs font-medium text-slate-700">ترتيب العرض</label>
+                <input name="sortOrder" type="number" defaultValue={category.sortOrder} className="w-full rounded-lg border border-slate-300 px-3 py-2 text-sm" />
+              </div>
+
+              <label className="flex items-center gap-2 pt-6 text-sm font-medium text-slate-700">
+                <input name="isActive" type="checkbox" defaultChecked={category.isActive} className="h-4 w-4 rounded border-slate-300" />
+                نشط
+              </label>
+            </div>
+          </section>
+
+          <section className="rounded-xl border border-slate-200 p-3">
+            <h4 className="mb-3 text-sm font-bold text-slate-900">معلومات الهيكل الهرمي</h4>
+            <div>
+              <label className="mb-1 block text-xs font-medium text-slate-700">الأب</label>
+              <ParentSelect options={options} name="parentId" defaultValue={category.parentId} excludedId={category.id} />
+              {state.fieldErrors?.parentId ? <p className="mt-1 text-xs font-medium text-rose-700">{state.fieldErrors.parentId}</p> : null}
+            </div>
+          </section>
+
+          <section className="rounded-xl border border-slate-200 p-3">
+            <h4 className="mb-3 text-sm font-bold text-slate-900">معلومات العرض والبيانات الوصفية</h4>
+            <div className="grid gap-3 md:grid-cols-3">
+              <div className="md:col-span-3">
+                <label className="mb-1 block text-xs font-medium text-slate-700">الوصف</label>
+                <textarea name="description" rows={2} defaultValue={category.description ?? ""} className="w-full rounded-lg border border-slate-300 px-3 py-2 text-sm" />
+              </div>
+
+              <div>
+                <label className="mb-1 block text-xs font-medium text-slate-700">أيقونة</label>
+                <input name="icon" type="text" defaultValue={category.icon ?? ""} className="w-full rounded-lg border border-slate-300 px-3 py-2 text-sm" />
+              </div>
+
+              <div>
+                <label className="mb-1 block text-xs font-medium text-slate-700">صورة غلاف</label>
+                <input name="coverImage" type="text" defaultValue={category.coverImage ?? ""} className="w-full rounded-lg border border-slate-300 px-3 py-2 text-sm" />
+              </div>
+
+              <div>
+                <label className="mb-1 block text-xs font-medium text-slate-700">themeKey</label>
+                <input name="themeKey" type="text" defaultValue={category.themeKey ?? ""} className="w-full rounded-lg border border-slate-300 px-3 py-2 text-sm" />
+              </div>
+            </div>
+          </section>
+
+          <div className="flex items-center justify-end gap-2">
+            <button type="button" onClick={onClose} className="rounded-md border border-slate-300 px-3 py-2 text-xs font-semibold text-slate-700 hover:bg-slate-50">
+              إلغاء
+            </button>
+            <SaveButton pending={isPending} label="حفظ التعديلات" />
+          </div>
+
+          {state.error ? <p className="text-xs font-semibold text-rose-700">{state.error}</p> : null}
+          {state.success ? <p className="text-xs font-semibold text-emerald-700">{state.success}</p> : null}
+        </form>
+      </div>
+    </div>
+  );
+}
+
+function CategoryDeleteModal({
+  category,
+  options,
+  onClose,
+}: {
+  category: CategoryTreeNode;
+  options: FlatCategory[];
+  onClose: () => void;
+}) {
+  const [deleteState, deleteAction, isDeleting] = useActionState(deleteCategoryAction.bind(null, category.id), initialState);
+  const needsReassignment = category.booksCount > 0 || category.childrenCount > 0;
+
+  return (
+    <div className="fixed inset-0 z-50 flex items-center justify-center bg-slate-950/45 p-3" role="dialog" aria-modal="true" aria-label={`حذف ${category.nameAr}`}>
+      <div className="w-full max-w-2xl rounded-2xl border border-rose-200 bg-white p-4 shadow-2xl sm:p-5">
+        <div className="mb-4 flex items-center justify-between gap-2">
+          <div>
+            <h3 className="text-lg font-bold text-rose-800">حذف التصنيف</h3>
+            <p className="text-xs text-slate-600">{`سيتم حذف التصنيف: ${category.nameAr}`}</p>
+          </div>
+          <button type="button" onClick={onClose} className="rounded-md border border-slate-300 px-3 py-1.5 text-xs font-semibold text-slate-700 hover:bg-slate-50">
+            إغلاق
+          </button>
+        </div>
+
+        <form action={deleteAction} className="space-y-3">
+          <section className="rounded-xl border border-rose-200 bg-rose-50/60 p-3">
+            <h4 className="mb-2 text-sm font-bold text-rose-900">قسم خطير</h4>
+            <p className="text-xs text-rose-900">هذا الإجراء غير قابل للتراجع. لإكمال الحذف اكتب DELETE بشكل مطابق ثم اضغط زر الحذف.</p>
+            <label htmlFor={`confirm-delete-${category.id}`} className="mt-2 block text-xs font-medium text-slate-700">
+              تأكيد الحذف
+            </label>
+            <input
+              id={`confirm-delete-${category.id}`}
+              name="confirmDelete"
+              placeholder="اكتب DELETE"
+              className="mt-1 w-full rounded-lg border border-slate-300 px-3 py-2 text-sm"
+            />
+          </section>
+
+          {needsReassignment ? (
+            <section className="rounded-xl border border-amber-200 bg-amber-50/70 p-3">
+              <h4 className="mb-2 text-sm font-bold text-amber-900">إعادة تعيين قبل الحذف</h4>
+              <p className="mb-2 text-xs text-amber-900">يوجد كتب أو أبناء مرتبطون بهذا التصنيف. اختر وجهة نقلهم قبل الحذف.</p>
+              <div className="grid gap-3 md:grid-cols-2">
+                <div>
+                  <label htmlFor={`reassign-books-${category.id}`} className="mb-1 block text-xs font-medium text-slate-700">
+                    نقل الكتب إلى
+                  </label>
+                  <select id={`reassign-books-${category.id}`} name="reassignBooksToCategoryId" className="w-full rounded-lg border border-slate-300 px-3 py-2 text-sm">
+                    <option value="">اختر تصنيفًا بديلًا (مطلوب عند وجود كتب)</option>
+                    {options
+                      .filter((item) => item.id !== category.id)
+                      .map((item) => (
+                        <option key={`${category.id}-books-${item.id}`} value={item.id}>{`${"— ".repeat(item.depth)}${item.nameAr}`}</option>
+                      ))}
+                  </select>
+                </div>
+                <div>
+                  <label htmlFor={`reassign-children-${category.id}`} className="mb-1 block text-xs font-medium text-slate-700">
+                    نقل الأبناء إلى
+                  </label>
+                  <select id={`reassign-children-${category.id}`} name="reassignChildrenToParentId" className="w-full rounded-lg border border-slate-300 px-3 py-2 text-sm">
+                    <option value="">اختر الأب الجديد (مطلوب عند وجود أبناء)</option>
+                    <option value="__ROOT__">الجذر (بدون أب)</option>
+                    {options
+                      .filter((item) => item.id !== category.id)
+                      .map((item) => (
+                        <option key={`${category.id}-children-${item.id}`} value={item.id}>{`${"— ".repeat(item.depth)}${item.nameAr}`}</option>
+                      ))}
+                  </select>
+                </div>
+              </div>
+            </section>
+          ) : null}
+
+          <div className="flex items-center justify-end gap-2">
+            <button type="button" onClick={onClose} className="rounded-md border border-slate-300 px-3 py-2 text-xs font-semibold text-slate-700 hover:bg-slate-50">
+              إلغاء
+            </button>
+            <button
+              type="submit"
+              disabled={isDeleting}
+              className="rounded-md border border-rose-300 px-3 py-2 text-xs font-semibold text-rose-700 disabled:cursor-not-allowed disabled:opacity-50"
+            >
+              {isDeleting ? "جارٍ الحذف..." : "حذف التصنيف"}
+            </button>
+          </div>
+
+          {deleteState.error ? <p className="text-xs font-semibold text-rose-700">{deleteState.error}</p> : null}
+          {deleteState.success ? <p className="text-xs font-semibold text-emerald-700">{deleteState.success}</p> : null}
+        </form>
+      </div>
+    </div>
+  );
+}
+
+function CategoryRow({
+  category,
+  expanded,
+  onToggleExpand,
+  onQuickAddChild,
+  options,
+}: {
+  category: CategoryTreeNode;
   expanded: boolean;
   onToggleExpand: (categoryId: string) => void;
   onQuickAddChild: (categoryId: string) => void;
+  options: FlatCategory[];
 }) {
-  const [state, formAction, isPending] = useActionState(updateCategoryAction.bind(null, category.id), initialState);
-  const [deleteState, deleteAction, isDeleting] = useActionState(deleteCategoryAction.bind(null, category.id), initialState);
-  const deleteBlocked = category.booksCount > 0 || category.childrenCount > 0;
+  const [isEditOpen, setIsEditOpen] = useState(false);
+  const [isDeleteOpen, setIsDeleteOpen] = useState(false);
 
   return (
-    <div className="space-y-3 rounded-xl border border-slate-200 p-4">
-      <div className="flex flex-wrap items-center justify-between gap-2 text-xs text-slate-600">
-        <div className="flex items-center gap-2">
-          {category.childrenCount > 0 ? (
-            <button
-              type="button"
-              onClick={() => onToggleExpand(category.id)}
-              className="rounded-md border border-slate-300 px-2 py-1 text-[11px] font-semibold text-slate-700 hover:bg-slate-50"
-            >
-              {expanded ? "طيّ الأبناء" : "عرض الأبناء"}
+    <>
+      <article className="rounded-xl border border-slate-200 bg-white p-3 sm:p-4">
+        <div className="flex flex-wrap items-start justify-between gap-2">
+          <div className="space-y-1">
+            <div className="flex items-center gap-2">
+              {category.childrenCount > 0 ? (
+                <button
+                  type="button"
+                  onClick={() => onToggleExpand(category.id)}
+                  className="rounded-md border border-slate-300 px-2 py-1 text-[11px] font-semibold text-slate-700 hover:bg-slate-50"
+                >
+                  {expanded ? "طيّ الأبناء" : "عرض الأبناء"}
+                </button>
+              ) : null}
+              <h3 className="text-sm font-bold text-slate-900">{category.nameAr}</h3>
+              <span className={`rounded-full px-2 py-0.5 text-[11px] font-semibold ${category.isActive ? "bg-emerald-100 text-emerald-800" : "bg-amber-100 text-amber-800"}`}>
+                {category.isActive ? "نشط" : "غير نشط"}
+              </span>
+            </div>
+            <p className="text-xs text-slate-600">{`الأب: ${category.parentNameAr ?? "قسم رئيسي"} • المستوى: ${category.depth + 1}`}</p>
+            <p className="text-xs text-slate-600">{`عدد الأبناء: ${category.childrenCount} • الكتب المرتبطة: ${category.booksCount}`}</p>
+          </div>
+
+          <div className="flex flex-wrap gap-2 text-xs font-semibold">
+            <button type="button" onClick={() => setIsEditOpen(true)} className="rounded-md border border-slate-300 px-2.5 py-1.5 text-slate-700 hover:bg-slate-50">
+              تعديل
             </button>
-          ) : null}
-          <button
-            type="button"
-            onClick={() => onQuickAddChild(category.id)}
-            className="rounded-md border border-indigo-300 px-2 py-1 text-[11px] font-semibold text-indigo-700 hover:bg-indigo-50"
-          >
-            إضافة ابن
-          </button>
-        </div>
-        <p>{`المستوى: ${category.depth + 1}${category.parentNameAr ? ` • الأب: ${category.parentNameAr}` : ""}`}</p>
-        <p>{`أبناء: ${category.childrenCount} • كتب مرتبطة: ${category.booksCount} • الحالة: ${category.isActive ? "نشط" : "غير نشط"}${category.kind ? ` • النوع: ${category.kind}` : ""}`}</p>
-      </div>
-
-      <form action={formAction} className="grid gap-3 md:grid-cols-3">
-        <div>
-          <label className="mb-1 block text-xs font-medium text-slate-700">اسم التصنيف</label>
-          <input name="nameAr" type="text" defaultValue={category.nameAr} className="w-full rounded-lg border border-slate-300 px-3 py-2 text-sm" />
-          {state.fieldErrors?.nameAr ? <p className="mt-1 text-xs font-medium text-rose-700">{state.fieldErrors.nameAr}</p> : null}
-        </div>
-
-        <div>
-          <label className="mb-1 block text-xs font-medium text-slate-700">slug</label>
-          <input name="slug" type="text" defaultValue={category.slug} className="w-full rounded-lg border border-slate-300 px-3 py-2 text-sm" />
-          {state.fieldErrors?.slug ? <p className="mt-1 text-xs font-medium text-rose-700">{state.fieldErrors.slug}</p> : null}
-        </div>
-
-        <div>
-          <label className="mb-1 block text-xs font-medium text-slate-700">الأب</label>
-          <ParentSelect options={options} name="parentId" defaultValue={category.parentId} excludedId={category.id} />
-          {state.fieldErrors?.parentId ? <p className="mt-1 text-xs font-medium text-rose-700">{state.fieldErrors.parentId}</p> : null}
-        </div>
-
-        <div>
-          <label className="mb-1 block text-xs font-medium text-slate-700">النوع</label>
-          <input name="kind" type="text" defaultValue={category.kind ?? ""} className="w-full rounded-lg border border-slate-300 px-3 py-2 text-sm" />
-        </div>
-
-        <div>
-          <label className="mb-1 block text-xs font-medium text-slate-700">ترتيب العرض</label>
-          <input name="sortOrder" type="number" defaultValue={category.sortOrder} className="w-full rounded-lg border border-slate-300 px-3 py-2 text-sm" />
-        </div>
-
-        <div className="flex items-center gap-2 pt-6 text-sm font-medium text-slate-700">
-          <input name="isActive" type="checkbox" defaultChecked={category.isActive} className="h-4 w-4 rounded border-slate-300" />
-          نشط
-        </div>
-
-        <div className="md:col-span-3">
-          <label className="mb-1 block text-xs font-medium text-slate-700">الوصف</label>
-          <textarea name="description" rows={2} defaultValue={category.description ?? ""} className="w-full rounded-lg border border-slate-300 px-3 py-2 text-sm" />
-        </div>
-
-        <div>
-          <label className="mb-1 block text-xs font-medium text-slate-700">أيقونة</label>
-          <input name="icon" type="text" defaultValue={category.icon ?? ""} className="w-full rounded-lg border border-slate-300 px-3 py-2 text-sm" />
-        </div>
-
-        <div>
-          <label className="mb-1 block text-xs font-medium text-slate-700">صورة غلاف</label>
-          <input name="coverImage" type="text" defaultValue={category.coverImage ?? ""} className="w-full rounded-lg border border-slate-300 px-3 py-2 text-sm" />
-        </div>
-
-        <div>
-          <label className="mb-1 block text-xs font-medium text-slate-700">themeKey</label>
-          <input name="themeKey" type="text" defaultValue={category.themeKey ?? ""} className="w-full rounded-lg border border-slate-300 px-3 py-2 text-sm" />
-        </div>
-
-        <div className="md:col-span-3 space-y-2">
-          <div className="flex items-center justify-between gap-2">
-            <SaveButton pending={isPending} label="حفظ" />
-            <CategoryDeleteButton deleteAction={deleteAction} disabled={deleteBlocked || isDeleting} pending={isDeleting} />
+            <button type="button" onClick={() => onQuickAddChild(category.id)} className="rounded-md border border-indigo-300 px-2.5 py-1.5 text-indigo-700 hover:bg-indigo-50">
+              إضافة ابن
+            </button>
+            <Link href={`/admin/books?categoryId=${category.id}`} className="rounded-md border border-sky-300 px-2.5 py-1.5 text-sky-700 hover:bg-sky-50">
+              عرض الكتب
+            </Link>
+            <Link href={`/admin/books/new?categoryId=${category.id}`} className="rounded-md border border-emerald-300 px-2.5 py-1.5 text-emerald-700 hover:bg-emerald-50">
+              إضافة كتاب
+            </Link>
+            <button type="button" onClick={() => setIsDeleteOpen(true)} className="rounded-md border border-rose-300 px-2.5 py-1.5 text-rose-700 hover:bg-rose-50">
+              حذف
+            </button>
           </div>
-          <div className="grid gap-2 sm:grid-cols-[minmax(0,1fr)_auto] sm:items-end">
-            <div>
-              <label htmlFor={`confirm-delete-${category.id}`} className="mb-1 block text-xs font-medium text-slate-700">
-                تأكيد الحذف
-              </label>
-              <input
-                id={`confirm-delete-${category.id}`}
-                name="confirmDelete"
-                placeholder="اكتب DELETE ثم اضغط حذف"
-                className="w-full rounded-lg border border-slate-300 px-3 py-2 text-xs"
-              />
-            </div>
-          </div>
-          {deleteBlocked ? (
-            <div className="grid gap-2 md:grid-cols-2">
-              <div>
-                <label htmlFor={`reassign-books-${category.id}`} className="mb-1 block text-xs font-medium text-slate-700">
-                  نقل الكتب إلى
-                </label>
-                <select id={`reassign-books-${category.id}`} name="reassignBooksToCategoryId" className="w-full rounded-lg border border-slate-300 px-3 py-2 text-xs">
-                  <option value="">اختر تصنيفًا بديلًا (مطلوب عند وجود كتب)</option>
-                  {options
-                    .filter((item) => item.id !== category.id)
-                    .map((item) => (
-                      <option key={`${category.id}-books-${item.id}`} value={item.id}>{`${"— ".repeat(item.depth)}${item.nameAr}`}</option>
-                    ))}
-                </select>
-              </div>
-              <div>
-                <label htmlFor={`reassign-children-${category.id}`} className="mb-1 block text-xs font-medium text-slate-700">
-                  نقل الأبناء إلى
-                </label>
-                <select id={`reassign-children-${category.id}`} name="reassignChildrenToParentId" className="w-full rounded-lg border border-slate-300 px-3 py-2 text-xs">
-                  <option value="">اختر الأب الجديد (مطلوب عند وجود أبناء)</option>
-                  <option value="__ROOT__">الجذر (بدون أب)</option>
-                  {options
-                    .filter((item) => item.id !== category.id)
-                    .map((item) => (
-                      <option key={`${category.id}-children-${item.id}`} value={item.id}>{`${"— ".repeat(item.depth)}${item.nameAr}`}</option>
-                    ))}
-                </select>
-              </div>
-            </div>
-          ) : null}
         </div>
+      </article>
 
-        {deleteBlocked ? <p className="text-xs font-medium text-amber-700 md:col-span-3">لا يمكن حذف هذا التصنيف قبل إزالة الأبناء والكتب المرتبطة.</p> : null}
-        {deleteState.error ? <p className="text-xs font-semibold text-rose-700 md:col-span-3">{deleteState.error}</p> : null}
-        {deleteState.success ? <p className="text-xs font-semibold text-emerald-700 md:col-span-3">{deleteState.success}</p> : null}
-        {state.error ? <p className="text-xs font-semibold text-rose-700 md:col-span-3">{state.error}</p> : null}
-        {state.success ? <p className="text-xs font-semibold text-emerald-700 md:col-span-3">{state.success}</p> : null}
-      </form>
-    </div>
+      {isEditOpen ? <CategoryEditModal category={category} options={options} onClose={() => setIsEditOpen(false)} /> : null}
+      {isDeleteOpen ? <CategoryDeleteModal category={category} options={options} onClose={() => setIsDeleteOpen(false)} /> : null}
+    </>
   );
 }
 
@@ -346,7 +438,7 @@ function CategoryTree({
       {nodes.map((category) => (
         <div key={category.id} className="space-y-3">
           <div className={category.depth > 0 ? "border-r-2 border-slate-200 pr-3 sm:pr-4" : ""}>
-            <CategoryRowForm
+            <CategoryRow
               category={category}
               options={options}
               expanded={expandedIds.has(category.id)}
@@ -458,6 +550,11 @@ export function CategoriesManager({ categories }: CategoriesManagerProps) {
           </select>
         </div>
       </div>
+
+      <section className="rounded-xl border border-indigo-200 bg-indigo-50 p-3 text-xs text-indigo-900">
+        <p className="font-semibold">ربط الكتب يتم من شاشة إدارة الكتب.</p>
+        <p className="mt-1">استخدم «عرض الكتب» لمشاهدة الكتب المرتبطة بالتصنيف، أو «إضافة كتاب» لإنشاء كتاب جديد مع تعيين هذا التصنيف مسبقًا.</p>
+      </section>
 
       <div className="space-y-3">
         {filteredCategories.length === 0 ? (
