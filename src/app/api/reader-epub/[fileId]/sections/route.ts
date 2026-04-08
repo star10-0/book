@@ -13,7 +13,7 @@ import { createStorageProvider } from "@/lib/files/storage-provider";
 import { prisma } from "@/lib/prisma";
 import { resolveReaderSessionAccess, touchReadingSession } from "@/lib/reader-session";
 import { jsonNoStore } from "@/lib/security";
-import { resolveProtectedAssetToken, verifyProtectedAssetToken } from "@/lib/security/content-protection";
+import { hashOpaqueHandle, resolveOpaqueHandleFromRequest } from "@/lib/security/content-protection";
 import { logUserSecurityEvent } from "@/lib/security/suspicious-activity";
 import { sanitizeEpubSections } from "@/lib/reader-epub-sections";
 
@@ -235,29 +235,43 @@ export async function GET(request: Request, { params }: ReaderEpubSectionsRouteP
   let canReadWithGrant = false;
 
   if (!canReadPubliclyByPolicy(file.book.contentAccessPolicy)) {
-    const tokenResult = verifyProtectedAssetToken({
-      token: resolveProtectedAssetToken(request, url),
-      fileId,
-      disposition: requestedDisposition,
-      currentUserId: user?.id,
-    });
+    const sessionHandle = resolveOpaqueHandleFromRequest(request, "session-epub");
+    const session = sessionHandle
+      ? await prisma.protectedAssetSession.findUnique({
+          where: { tokenHash: hashOpaqueHandle(sessionHandle) },
+          select: {
+            fileId: true,
+            disposition: true,
+            userId: true,
+            accessGrantId: true,
+            readingSessionId: true,
+            expiresAt: true,
+          },
+        })
+      : null;
 
-    if (!tokenResult.valid) {
+    if (
+      !session ||
+      session.expiresAt <= now ||
+      session.fileId !== fileId ||
+      session.disposition !== requestedDisposition ||
+      (session.userId && (!user || session.userId !== user.id))
+    ) {
       if (user) {
         await logUserSecurityEvent({
           userId: user.id,
           type: "CONTENT_ACCESS_TOKEN_INVALID",
           ipAddress: request.headers.get("x-forwarded-for")?.split(",")[0]?.trim() || request.headers.get("x-real-ip"),
           userAgent: request.headers.get("user-agent"),
-          metadata: { fileId, route: "reader-epub-sections", reason: tokenResult.reason },
+          metadata: { fileId, route: "reader-epub-sections", reason: "INVALID_OPAQUE_ASSET_SESSION" },
         });
       }
 
       return jsonNoStore({ message: "رابط الوصول للملف غير صالح أو منتهي الصلاحية." }, { status: 403 });
     }
 
-    const accessGrantId = tokenResult.payload.aid ?? null;
-    const readingSessionId = tokenResult.payload.sid ?? null;
+    const accessGrantId = session.accessGrantId ?? null;
+    const readingSessionId = session.readingSessionId ?? null;
     if (!user || !accessGrantId) {
       return jsonNoStore({ message: "رابط الوصول للملف غير صالح أو منتهي الصلاحية." }, { status: 403 });
     }

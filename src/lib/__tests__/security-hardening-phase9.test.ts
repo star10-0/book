@@ -39,13 +39,38 @@ test("public version API is minimal and does not expose diagnostic timestamps or
   assert.equal(source.includes("build:"), true);
 });
 
-test("protected asset URLs use handoff endpoint and do not allow direct query-token fallback by default", () => {
+test("protected asset URLs use handoff endpoint and do not allow query-token fallback", () => {
   const source = readFileSync("src/lib/security/content-protection.ts", "utf8");
   assert.equal(source.includes("/handoff`"), true);
-  assert.equal(source.includes("allowQueryToken"), true);
-  assert.equal(source.includes("readBearerToken(request) ?? readCookieToken(request)"), true);
-  assert.equal(source.includes("__Host-book-pa"), true);
-  assert.equal(source.includes("__Host-book-pa-nonce"), true);
+  assert.equal(source.includes("allowQueryToken"), false);
+  assert.equal(source.includes('searchParams.get("t")'), false);
+  assert.equal(source.includes("readBearerToken(request)"), true);
+  assert.equal(source.includes("book-pa-s-a"), true);
+  assert.equal(source.includes("book-pa-s-e"), true);
+  assert.equal(source.includes("book-pa-ht"), true);
+  assert.equal(source.includes("createHmac"), true);
+});
+
+test("handoff bootstrap enforces one-time ticket redemption before issuing opaque asset session", () => {
+  const source = readFileSync("src/app/api/books/assets/[fileId]/bootstrap/route.ts", "utf8");
+  assert.equal(source.includes("protectedAssetHandoffTicket.updateMany"), true);
+  assert.equal(source.includes("redeemedAt: null"), true);
+  assert.equal(source.includes("redeemedTicket.count !== 1"), true);
+  assert.equal(source.includes("protectedAssetSession.create"), true);
+  assert.equal(source.includes("hashOpaqueHandle(assetSessionHandle)"), true);
+  assert.equal(source.includes('path: "/api/books/assets"'), true);
+  assert.equal(source.includes('path: "/api/reader-epub"'), true);
+  assert.equal(source.includes('path: "/api"'), false);
+});
+
+test("asset and EPUB routes rely on opaque session handles instead of signed payload tokens", () => {
+  const assetRoute = readFileSync("src/app/api/books/assets/[fileId]/route.ts", "utf8");
+  const epubSectionsRoute = readFileSync("src/app/api/reader-epub/[fileId]/sections/route.ts", "utf8");
+
+  assert.equal(assetRoute.includes("verifyProtectedAssetToken"), false);
+  assert.equal(epubSectionsRoute.includes("verifyProtectedAssetToken"), false);
+  assert.equal(assetRoute.includes("resolveOpaqueHandleFromRequest"), true);
+  assert.equal(epubSectionsRoute.includes("resolveOpaqueHandleFromRequest"), true);
 });
 
 test("admin content operations enforce CONTENT_ADMIN scope across authors/categories/promo flows", () => {

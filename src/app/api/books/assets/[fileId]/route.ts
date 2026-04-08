@@ -12,13 +12,29 @@ import { resolveReaderSessionAccess, touchReadingSession } from "@/lib/reader-se
 import { jsonNoStore } from "@/lib/security";
 import {
   buildWatermarkText,
-  resolveProtectedAssetNonce,
-  resolveProtectedAssetToken,
-  verifyProtectedAssetToken,
+  hashOpaqueHandle,
+  resolveOpaqueHandleFromRequest,
 } from "@/lib/security/content-protection";
 import { logUserSecurityEvent } from "@/lib/security/suspicious-activity";
 
 export const runtime = "nodejs";
+
+const isDev = process.env.NODE_ENV !== "production";
+
+type SessionFailureReason = "MISSING_SESSION" | "SESSION_NOT_FOUND" | "SESSION_EXPIRED" | "SESSION_MISMATCH" | "WRONG_USER";
+
+function mapSessionFailure(reason: SessionFailureReason) {
+  switch (reason) {
+    case "MISSING_SESSION":
+      return { status: 401, message: "رمز الوصول مفقود." };
+    case "SESSION_EXPIRED":
+      return { status: 401, message: "انتهت صلاحية رمز الوصول." };
+    case "SESSION_NOT_FOUND":
+    case "SESSION_MISMATCH":
+    case "WRONG_USER":
+      return { status: 403, message: "رمز الوصول غير صالح." };
+  }
+}
 
 type BookAssetRouteParams = {
   params: Promise<{ fileId: string }>;
@@ -105,19 +121,49 @@ export async function GET(request: Request, { params }: BookAssetRouteParams) {
   let readingSessionId: string | null = null;
   let canReadWithGrant = false;
   let activeGrant: { id: string; orderItem: { orderId: string } | null } | null = null;
+  let sessionWatermarkText: string | null = null;
 
   if (!isPubliclyReadable) {
-    const resolvedToken = resolveProtectedAssetToken(request, url);
-    const handoffNonce = resolveProtectedAssetNonce(request);
-    const tokenResult = verifyProtectedAssetToken({
-      token: resolvedToken,
-      fileId,
-      disposition: requestedDisposition,
-      currentUserId: user?.id,
-      expectedNonce: resolvedToken && !request.headers.get("authorization") ? handoffNonce : undefined,
-    });
+    const sessionHandle = resolveOpaqueHandleFromRequest(request, "session-assets");
+    let sessionFailure: SessionFailureReason | null = null;
+    if (!sessionHandle) {
+      sessionFailure = "MISSING_SESSION";
+    }
+    const session = sessionHandle
+      ? await prisma.protectedAssetSession.findUnique({
+          where: { tokenHash: hashOpaqueHandle(sessionHandle) },
+          select: {
+            fileId: true,
+            disposition: true,
+            userId: true,
+            accessGrantId: true,
+            readingSessionId: true,
+            watermarkText: true,
+            expiresAt: true,
+          },
+        })
+      : null;
 
-    if (!tokenResult.valid) {
+    if (!sessionFailure && !session) {
+      sessionFailure = "SESSION_NOT_FOUND";
+    } else if (!sessionFailure && session && session.expiresAt <= now) {
+      sessionFailure = "SESSION_EXPIRED";
+    } else if (!sessionFailure && session && (session.fileId !== fileId || session.disposition !== requestedDisposition)) {
+      sessionFailure = "SESSION_MISMATCH";
+    } else if (!sessionFailure && session?.userId && (!user || session.userId !== user.id)) {
+      sessionFailure = "WRONG_USER";
+    }
+
+    if (sessionFailure) {
+      const mapped = mapSessionFailure(sessionFailure);
+      if (isDev) {
+        console.error("[assets/file] session verification failed", {
+          fileId,
+          reason: sessionFailure,
+          hasSessionHandle: Boolean(sessionHandle),
+          hasUser: Boolean(user?.id),
+        });
+      }
       if (user) {
         await logUserSecurityEvent({
           userId: user.id,
@@ -126,17 +172,18 @@ export async function GET(request: Request, { params }: BookAssetRouteParams) {
           userAgent: request.headers.get("user-agent"),
           metadata: {
             fileId,
-            reason: tokenResult.reason,
+            reason: sessionFailure,
             disposition: requestedDisposition,
           },
         });
       }
 
-      return jsonNoStore({ message: "رابط الوصول للملف غير صالح أو منتهي الصلاحية." }, { status: 403 });
+      return jsonNoStore({ message: mapped.message, code: sessionFailure }, { status: mapped.status });
     }
 
-    accessGrantId = tokenResult.payload.aid ?? null;
-    readingSessionId = tokenResult.payload.sid ?? null;
+    accessGrantId = session?.accessGrantId ?? null;
+    readingSessionId = session?.readingSessionId ?? null;
+    sessionWatermarkText = session?.watermarkText ?? null;
     if (!user || !accessGrantId) {
       return jsonNoStore({ message: "رابط الوصول للملف غير صالح أو منتهي الصلاحية." }, { status: 403 });
     }
@@ -207,7 +254,7 @@ export async function GET(request: Request, { params }: BookAssetRouteParams) {
     return jsonNoStore({ message: "غير مصرح بالوصول لهذا الملف." }, { status: 403 });
   }
 
-  const watermark = buildWatermarkText({
+  const watermark = sessionWatermarkText ?? buildWatermarkText({
     email: user?.email,
     userId: user?.id,
     accessGrantId: activeGrant?.id,
@@ -244,7 +291,14 @@ export async function GET(request: Request, { params }: BookAssetRouteParams) {
           "Cross-Origin-Resource-Policy": "same-origin",
         },
       });
-    } catch {
+    } catch (error) {
+      if (isDev) {
+        console.error("[assets/file] failed to create signed asset URL", {
+          fileId,
+          provider: file.storageProvider,
+          message: error instanceof Error ? error.message : String(error),
+        });
+      }
       return jsonNoStore({ message: "تعذر تجهيز الملف للقراءة حالياً." }, { status: 500 });
     }
   }

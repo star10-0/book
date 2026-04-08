@@ -77,6 +77,26 @@ function scopeDescription(scope: PaymentsScope) {
   return "مراجعة محاولات الدفع مع إجراءات إدارية آمنة وقابلة للتتبع.";
 }
 
+function parseSearchTerm(value?: string | string[]) {
+  const term = Array.isArray(value) ? value[0] : value;
+  return term?.trim() ?? "";
+}
+
+function resolveSearchWhere(searchTerm: string): Prisma.PaymentAttemptWhereInput {
+  if (!searchTerm) return {};
+  return {
+    OR: [
+      { publicPaymentReference: { contains: searchTerm, mode: "insensitive" } },
+      { id: { contains: searchTerm, mode: "insensitive" } },
+      { paymentId: { contains: searchTerm, mode: "insensitive" } },
+      { orderId: { contains: searchTerm, mode: "insensitive" } },
+      { transactionReference: { contains: searchTerm, mode: "insensitive" } },
+      { providerReference: { contains: searchTerm, mode: "insensitive" } },
+      { order: { publicOrderNumber: { contains: searchTerm, mode: "insensitive" } } },
+    ],
+  };
+}
+
 function incidentLabelText(label: PaymentIncidentLabel | null) {
   if (!label) return "—";
   if (label === "verification_failed") return "فشل التحقق";
@@ -125,14 +145,17 @@ export default async function AdminPaymentsPage({ searchParams }: AdminPaymentsP
   await requireAdminScope("PAYMENT_ADMIN", { callbackUrl: "/admin/payments" });
   const params = searchParams ? await searchParams : {};
   const scope = parseScope(params.scope);
+  const searchTerm = parseSearchTerm(params.q);
 
   const [attempts, integrity] = await Promise.all([
     prisma.paymentAttempt.findMany({
-    where: resolveScopeWhere(scope),
+    where: {
+      AND: [resolveScopeWhere(scope), resolveSearchWhere(searchTerm)],
+    },
     include: {
       payment: { select: { id: true, status: true, providerRef: true } },
       user: { select: { email: true } },
-      order: { select: { status: true } },
+      order: { select: { id: true, status: true, publicOrderNumber: true } },
       adminAuditLogs: {
         select: { id: true, action: true, createdAt: true },
         orderBy: { createdAt: "desc" },
@@ -182,14 +205,43 @@ export default async function AdminPaymentsPage({ searchParams }: AdminPaymentsP
           مشكلات
         </Link>
       </div>
+      <form className="flex flex-wrap items-center gap-2 text-xs" method="get">
+        <input type="hidden" name="scope" value={scope} />
+        <input
+          name="q"
+          defaultValue={searchTerm}
+          placeholder="بحث: رقم مرجع الدفع العام / رقم الطلب العام / معرف داخلي"
+          className="w-full rounded border border-slate-300 px-3 py-2 sm:max-w-md"
+        />
+        <button className="rounded border px-3 py-2">بحث</button>
+      </form>
       <AdminTable
         caption="جدول المدفوعات"
         rows={attempts}
         getRowKey={(row) => row.id}
         emptyMessage="لا توجد محاولات دفع ضمن هذا النطاق حالياً."
         columns={[
-          { key: "id", title: "المحاولة", render: (row) => <Link className="font-mono text-xs text-indigo-700" href={`/admin/payments/${row.id}`}>{row.id}</Link> },
-          { key: "paymentId", title: "معرّف الدفع", render: (row) => <span className="font-mono text-[11px]">{row.paymentId}</span> },
+          {
+            key: "publicRefs",
+            title: "المراجع العامة",
+            render: (row) => (
+              <div>
+                <Link className="font-semibold text-indigo-700" href={`/admin/payments/${row.id}`}>{row.publicPaymentReference}</Link>
+                <p className="text-xs text-slate-600">الطلب: {row.order.publicOrderNumber}</p>
+              </div>
+            ),
+          },
+          {
+            key: "internalRefs",
+            title: "معرفات داخلية",
+            render: (row) => (
+              <div className="text-[11px] text-slate-600">
+                <p className="font-mono">attempt: {row.id}</p>
+                <p className="font-mono">order: {row.order.id}</p>
+                <p className="font-mono">payment: {row.paymentId}</p>
+              </div>
+            ),
+          },
           { key: "tx", title: "مرجع العملية", render: (row) => <span className="font-mono text-[11px]">{(row.requestPayload as { transactionReference?: string } | null)?.transactionReference ?? "—"}</span> },
           { key: "provider", title: "البوابة", render: (row) => <div><p>{providerLabel(row.provider)}</p><p className="font-mono text-[11px] text-slate-500">{row.providerReference ?? "—"}</p></div> },
           { key: "providerRefPayment", title: "providerRef (payment)", render: (row) => <span className="font-mono text-[11px]">{row.payment.providerRef ?? "—"}</span> },

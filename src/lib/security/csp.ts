@@ -1,9 +1,11 @@
 export function buildContentSecurityPolicy({
   isDevelopment,
   nonce,
+  frameAncestors = "'none'",
 }: {
   isDevelopment: boolean;
   nonce?: string;
+  frameAncestors?: "'none'" | "'self'";
 }) {
   const scriptSrc = ["'self'"];
   const connectSrc = ["'self'"];
@@ -22,7 +24,7 @@ export function buildContentSecurityPolicy({
     "img-src 'self' data: https://placehold.co https://api.qrserver.com",
     "font-src 'self' data:",
     `connect-src ${connectSrc.join(" ")}`,
-    "frame-ancestors 'none'",
+    `frame-ancestors ${frameAncestors}`,
     "base-uri 'self'",
     "form-action 'self'",
     "object-src 'none'",
