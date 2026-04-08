@@ -24,7 +24,8 @@
     "start:prod": "npm run start",
     "prisma:reset-admin-password": "tsx prisma/reset-admin-password.ts",
     "security:scan:secrets": "bash scripts/scan-secrets.sh",
-    "security:scan:bundle": "node scripts/check-client-bundle-secrets.mjs"
+    "security:scan:bundle": "node scripts/check-client-bundle-secrets.mjs",
+    "security:cleanup:protected-assets": "tsx scripts/security/cleanup-protected-assets.ts"
   },
   "dependencies": {
     "@prisma/client": "^6.19.3",
