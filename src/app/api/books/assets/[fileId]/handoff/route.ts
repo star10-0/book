@@ -1,47 +1,21 @@
+import { FileKind } from "@prisma/client";
 import { NextResponse } from "next/server";
 import { getCurrentUser } from "@/lib/auth-session";
+import { canReadPubliclyByPolicy, resolveAssetDisposition } from "@/lib/files/protected-asset-policy";
+import { prisma } from "@/lib/prisma";
+import { resolveReaderSessionAccess } from "@/lib/reader-session";
 import { jsonNoStore } from "@/lib/security";
 import {
+  buildWatermarkText,
+  createProtectedAssetToken,
   getProtectedAssetNonceCookieName,
   getProtectedAssetTokenCookieName,
-  resolveProtectedAssetToken,
   verifyProtectedAssetToken,
 } from "@/lib/security/content-protection";
 
 export const runtime = "nodejs";
 
 const isDev = process.env.NODE_ENV !== "production";
-
-type TokenFailureReason =
-  | "MISSING_TOKEN"
-  | "MALFORMED_TOKEN"
-  | "SIGNING_SECRET_UNSET"
-  | "INVALID_SIGNATURE"
-  | "MISMATCH"
-  | "TOKEN_EXPIRED"
-  | "WRONG_USER"
-  | "NONCE_MISMATCH"
-  | "SESSION_MISMATCH"
-  | "INVALID_PAYLOAD";
-
-function mapTokenFailure(reason: TokenFailureReason) {
-  switch (reason) {
-    case "MISSING_TOKEN":
-      return { status: 401, message: "رمز الوصول مفقود." };
-    case "TOKEN_EXPIRED":
-      return { status: 401, message: "انتهت صلاحية رمز الوصول." };
-    case "SIGNING_SECRET_UNSET":
-      return { status: 500, message: "إعدادات الأمان غير مكتملة على الخادم." };
-    case "INVALID_SIGNATURE":
-    case "MALFORMED_TOKEN":
-    case "INVALID_PAYLOAD":
-    case "MISMATCH":
-    case "WRONG_USER":
-    case "NONCE_MISMATCH":
-    case "SESSION_MISMATCH":
-      return { status: 403, message: "رمز الوصول غير صالح." };
-  }
-}
 
 type BookAssetHandoffParams = {
   params: Promise<{ fileId: string }>;
@@ -51,28 +25,119 @@ export async function GET(request: Request, { params }: BookAssetHandoffParams) 
   try {
     const { fileId } = await params;
     const url = new URL(request.url);
-    const disposition = url.searchParams.get("download") === "1" ? "attachment" : "inline";
+    const disposition = resolveAssetDisposition(url.searchParams.get("download") === "1");
     const user = await getCurrentUser();
-    const token = resolveProtectedAssetToken(request, url, { allowQueryToken: true });
+    const file = await prisma.bookFile.findUnique({
+      where: { id: fileId },
+      select: {
+        id: true,
+        kind: true,
+        bookId: true,
+        book: { select: { contentAccessPolicy: true } },
+      },
+    });
 
-    const tokenResult = verifyProtectedAssetToken({
+    if (!file || (file.kind !== FileKind.PDF && file.kind !== FileKind.EPUB)) {
+      return jsonNoStore({ message: "معرّف ملف القراءة غير صالح أو غير موجود." }, { status: 404 });
+    }
+
+    const isPubliclyReadable = canReadPubliclyByPolicy(file.book.contentAccessPolicy);
+    if (!isPubliclyReadable && !user) {
+      return jsonNoStore({ message: "يلزم تسجيل الدخول للوصول إلى هذا الملف." }, { status: 401 });
+    }
+
+    let accessGrantId: string | undefined;
+    let readingSessionId: string | undefined;
+    let orderId: string | undefined;
+    const now = new Date();
+
+    if (!isPubliclyReadable && user) {
+      const grants = await prisma.accessGrant.findMany({
+        where: {
+          userId: user.id,
+          bookId: file.bookId,
+          status: "ACTIVE",
+        },
+        select: {
+          id: true,
+          expiresAt: true,
+          orderItem: { select: { orderId: true } },
+        },
+        orderBy: [{ expiresAt: "asc" }, { createdAt: "asc" }],
+      });
+
+      for (const grant of grants) {
+        const accessState = await prisma.$transaction((tx) =>
+          resolveReaderSessionAccess(tx, { accessGrantId: grant.id, userId: user.id, now }),
+        );
+
+        if (accessState.allowed && accessState.mode === "ACTIVE") {
+          accessGrantId = grant.id;
+          orderId = grant.orderItem?.orderId ?? undefined;
+          break;
+        }
+
+        if (accessState.allowed && accessState.mode === "GRACE") {
+          const session = await prisma.readingSession.findFirst({
+            where: {
+              accessGrantId: grant.id,
+              userId: user.id,
+              closedAt: null,
+            },
+            select: { id: true },
+            orderBy: { openedAt: "asc" },
+          });
+
+          if (!session) {
+            continue;
+          }
+
+          const graceState = await prisma.$transaction((tx) =>
+            resolveReaderSessionAccess(tx, {
+              accessGrantId: grant.id,
+              userId: user.id,
+              now,
+              requiredSessionId: session.id,
+            }),
+          );
+
+          if (graceState.allowed) {
+            accessGrantId = grant.id;
+            readingSessionId = session.id;
+            orderId = grant.orderItem?.orderId ?? undefined;
+            break;
+          }
+        }
+      }
+
+      if (!accessGrantId) {
+        return jsonNoStore({ message: "رابط الوصول للملف غير صالح أو منتهي الصلاحية." }, { status: 403 });
+      }
+    }
+
+    const watermarkText = buildWatermarkText({
+      email: user?.email,
+      userId: user?.id,
+      accessGrantId,
+      orderId,
+    });
+
+    const token = createProtectedAssetToken({
+      fileId,
+      disposition,
+      userId: user?.id,
+      accessGrantId,
+      readingSessionId,
+      watermarkText: watermarkText ?? undefined,
+    });
+    const verifiedToken = verifyProtectedAssetToken({
       token,
       fileId,
       disposition,
       currentUserId: user?.id,
     });
-
-    if (!tokenResult.valid) {
-      const mapped = mapTokenFailure(tokenResult.reason);
-      if (isDev) {
-        console.error("[assets/handoff] token verification failed", {
-          fileId,
-          reason: tokenResult.reason,
-          hasToken: Boolean(token),
-          hasUser: Boolean(user?.id),
-        });
-      }
-      return jsonNoStore({ message: mapped.message, code: tokenResult.reason }, { status: mapped.status });
+    if (!verifiedToken.valid) {
+      return jsonNoStore({ message: "تعذر إنشاء رمز الوصول للملف." }, { status: 500 });
     }
 
     const targetPath = `/api/books/assets/${encodeURIComponent(fileId)}${disposition === "attachment" ? "?download=1" : ""}`;
@@ -81,21 +146,21 @@ export async function GET(request: Request, { params }: BookAssetHandoffParams) 
     response.headers.set("Cache-Control", "private, no-store");
     response.headers.set("Referrer-Policy", "no-referrer");
     response.headers.set("X-Content-Type-Options", "nosniff");
-    response.cookies.set(getProtectedAssetTokenCookieName(), token ?? "", {
-      path: "/api",
-      maxAge: 90,
-      httpOnly: true,
-      sameSite: "strict",
-      secure: process.env.NODE_ENV === "production",
-    });
-    response.cookies.set(getProtectedAssetNonceCookieName(), tokenResult.payload.jti, {
-      path: "/api",
-      maxAge: 90,
-      httpOnly: true,
-      sameSite: "strict",
-      secure: process.env.NODE_ENV === "production",
-    });
     response.headers.set("Cross-Origin-Resource-Policy", "same-origin");
+    response.cookies.set(getProtectedAssetTokenCookieName(), token, {
+      path: "/api",
+      maxAge: 90,
+      httpOnly: true,
+      sameSite: "strict",
+      secure: process.env.NODE_ENV === "production",
+    });
+    response.cookies.set(getProtectedAssetNonceCookieName(), verifiedToken.payload.jti, {
+      path: "/api",
+      maxAge: 90,
+      httpOnly: true,
+      sameSite: "strict",
+      secure: process.env.NODE_ENV === "production",
+    });
 
     return response;
   } catch (error) {

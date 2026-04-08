@@ -39,10 +39,11 @@ test("public version API is minimal and does not expose diagnostic timestamps or
   assert.equal(source.includes("build:"), true);
 });
 
-test("protected asset URLs use handoff endpoint and do not allow direct query-token fallback by default", () => {
+test("protected asset URLs use handoff endpoint and do not allow query-token fallback", () => {
   const source = readFileSync("src/lib/security/content-protection.ts", "utf8");
   assert.equal(source.includes("/handoff`"), true);
-  assert.equal(source.includes("allowQueryToken"), true);
+  assert.equal(source.includes("allowQueryToken"), false);
+  assert.equal(source.includes('searchParams.get("t")'), false);
   assert.equal(source.includes("readBearerToken(request) ?? readCookieToken(request)"), true);
   assert.equal(source.includes("book-pa"), true);
   assert.equal(source.includes("book-pa-nonce"), true);

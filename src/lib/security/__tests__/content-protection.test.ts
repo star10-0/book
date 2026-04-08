@@ -64,17 +64,14 @@ test("protected asset token is rejected for a different user", () => withAuthSec
   }
 }));
 
-test("buildProtectedAssetUrl generates signed short-lived URLs", () => withAuthSecret(() => {
+test("buildProtectedAssetUrl uses handoff endpoint without exposing token in query params", () => withAuthSecret(() => {
   const url = buildProtectedAssetUrl({ fileId: "file-1", disposition: "inline", userId: "user-1" });
-  assert.equal(url.startsWith("/api/books/assets/file-1/handoff?t="), true);
+  assert.equal(url, "/api/books/assets/file-1/handoff");
 }));
 
-test("resolveProtectedAssetToken does not allow query fallback unless explicitly enabled", () => {
+test("resolveProtectedAssetToken ignores query token and reads only bearer/cookie", () => {
   const request = new Request("https://book.example/api/books/assets/file-1?t=query-token");
-  const url = new URL(request.url);
-
-  assert.equal(resolveProtectedAssetToken(request, url), null);
-  assert.equal(resolveProtectedAssetToken(request, url, { allowQueryToken: true }), "query-token");
+  assert.equal(resolveProtectedAssetToken(request), null);
 });
 
 test("resolveProtectedAssetToken prefers Authorization bearer over cookies", () => {
@@ -84,9 +81,7 @@ test("resolveProtectedAssetToken prefers Authorization bearer over cookies", () 
       cookie: `${getProtectedAssetTokenCookieName()}=cookie-token; ${getProtectedAssetNonceCookieName()}=nonce-1`,
     },
   });
-  const url = new URL(request.url);
-
-  assert.equal(resolveProtectedAssetToken(request, url), "bearer-token");
+  assert.equal(resolveProtectedAssetToken(request), "bearer-token");
   assert.equal(resolveProtectedAssetNonce(request), "nonce-1");
 });
 

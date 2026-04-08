@@ -116,13 +116,12 @@ function readNamedCookie(request: Request, cookieName: string) {
   return null;
 }
 
-export function resolveProtectedAssetToken(request: Request, url: URL, options?: { allowQueryToken?: boolean }) {
+export function resolveProtectedAssetToken(request: Request) {
   const fromHeaderOrCookie = readBearerToken(request) ?? readCookieToken(request);
   if (fromHeaderOrCookie) {
     return fromHeaderOrCookie;
   }
-
-  return options?.allowQueryToken ? url.searchParams.get("t") : null;
+  return null;
 }
 
 export function resolveProtectedAssetNonce(request: Request) {
@@ -241,18 +240,9 @@ export function buildProtectedAssetUrl(input: {
   readingSessionId?: string;
   watermarkText?: string | null;
 }) {
-  const token = createProtectedAssetToken({
-    fileId: input.fileId,
-    disposition: input.disposition,
-    userId: input.userId,
-    accessGrantId: input.accessGrantId,
-    readingSessionId: input.readingSessionId,
-    watermarkText: input.watermarkText ?? undefined,
-  });
-
   const handoffPath = `/api/books/assets/${input.fileId}/handoff`;
-  const dispositionQuery = input.disposition === "attachment" ? "&download=1" : "";
-  return `${handoffPath}?t=${encodeURIComponent(token)}${dispositionQuery}`;
+  const dispositionQuery = input.disposition === "attachment" ? "?download=1" : "";
+  return `${handoffPath}${dispositionQuery}`;
 }
 
 export function getProtectedAssetTokenCookieName() {
