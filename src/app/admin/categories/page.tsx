@@ -1,38 +1,20 @@
 import { AdminPageCard, AdminPageHeader } from "@/components/admin/admin-page";
 import { CategoriesManager } from "@/components/admin/categories-manager";
 import { requireAdminScope } from "@/lib/auth-session";
-import { prisma } from "@/lib/prisma";
+import { getAdminCategoryTree } from "@/lib/categories/service";
 
 export default async function AdminCategoriesPage() {
   await requireAdminScope("CONTENT_ADMIN", { callbackUrl: "/admin/categories" });
 
-  const categories = await prisma.category.findMany({
-    select: {
-      id: true,
-      nameAr: true,
-      slug: true,
-      _count: {
-        select: {
-          books: true,
-        },
-      },
-    },
-    orderBy: {
-      nameAr: "asc",
-    },
-  });
+  const categories = await getAdminCategoryTree();
 
   return (
     <AdminPageCard>
-      <AdminPageHeader title="إدارة التصنيفات" description="إضافة وتعديل وحذف التصنيفات مع مراعاة الكتب المرتبطة." />
-      <CategoriesManager
-        categories={categories.map((category) => ({
-          id: category.id,
-          nameAr: category.nameAr,
-          slug: category.slug,
-          booksCount: category._count.books,
-        }))}
-      />
+      <AdminPageHeader title="إدارة التصنيفات" description="إدارة شجرة التصنيفات: أقسام رئيسية، تصنيفات فرعية، وترتيب الظهور." />
+      <p className="rounded-xl border border-indigo-200 bg-indigo-50 p-3 text-xs text-indigo-800">
+        ملاحظة: الحذف محمي. لا يمكن حذف تصنيف يحتوي كتبًا مرتبطة أو تصنيفات فرعية.
+      </p>
+      <CategoriesManager categories={categories} />
     </AdminPageCard>
   );
 }

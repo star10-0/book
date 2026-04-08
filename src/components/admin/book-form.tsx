@@ -12,7 +12,7 @@ type BookFormProps = {
   mode: "create" | "edit";
   initialValues?: BaseBookValues;
   authors: { id: string; nameAr: string }[];
-  categories: { id: string; nameAr: string }[];
+  categories: { id: string; nameAr: string; label?: string }[];
   hideAuthorField?: boolean;
   backHref?: string;
   action: (state: BookFormState, formData: FormData) => Promise<BookFormState>;
@@ -157,7 +157,7 @@ export function BookForm({ mode, initialValues, authors, categories, hideAuthorF
                 <option value="">اختر التصنيف</option>
                 {categories.map((category) => (
                   <option key={category.id} value={category.id}>
-                    {category.nameAr}
+                    {category.label ?? category.nameAr}
                   </option>
                 ))}
               </select>
