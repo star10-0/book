@@ -7,15 +7,16 @@ import { resolveReaderSessionAccess } from "@/lib/reader-session";
 import { jsonNoStore } from "@/lib/security";
 import {
   buildWatermarkText,
-  createProtectedAssetToken,
-  getProtectedAssetNonceCookieName,
-  getProtectedAssetTokenCookieName,
-  verifyProtectedAssetToken,
+  createOpaqueHandle,
+  getProtectedAssetHandoffTicketCookieName,
+  hashOpaqueHandle,
 } from "@/lib/security/content-protection";
 
 export const runtime = "nodejs";
 
 const isDev = process.env.NODE_ENV !== "production";
+
+const HANDOFF_TICKET_MAX_AGE_SECONDS = 45;
 
 type BookAssetHandoffParams = {
   params: Promise<{ fileId: string }>;
@@ -46,9 +47,9 @@ export async function GET(request: Request, { params }: BookAssetHandoffParams) 
       return jsonNoStore({ message: "يلزم تسجيل الدخول للوصول إلى هذا الملف." }, { status: 401 });
     }
 
-    let accessGrantId: string | undefined;
-    let readingSessionId: string | undefined;
-    let orderId: string | undefined;
+    let accessGrantId: string | null = null;
+    let readingSessionId: string | null = null;
+    let orderId: string | null = null;
     const now = new Date();
 
     if (!isPubliclyReadable && user) {
@@ -73,7 +74,7 @@ export async function GET(request: Request, { params }: BookAssetHandoffParams) 
 
         if (accessState.allowed && accessState.mode === "ACTIVE") {
           accessGrantId = grant.id;
-          orderId = grant.orderItem?.orderId ?? undefined;
+          orderId = grant.orderItem?.orderId ?? null;
           break;
         }
 
@@ -104,7 +105,7 @@ export async function GET(request: Request, { params }: BookAssetHandoffParams) 
           if (graceState.allowed) {
             accessGrantId = grant.id;
             readingSessionId = session.id;
-            orderId = grant.orderItem?.orderId ?? undefined;
+            orderId = grant.orderItem?.orderId ?? null;
             break;
           }
         }
@@ -122,41 +123,33 @@ export async function GET(request: Request, { params }: BookAssetHandoffParams) 
       orderId,
     });
 
-    const token = createProtectedAssetToken({
-      fileId,
-      disposition,
-      userId: user?.id,
-      accessGrantId,
-      readingSessionId,
-      watermarkText: watermarkText ?? undefined,
-    });
-    const verifiedToken = verifyProtectedAssetToken({
-      token,
-      fileId,
-      disposition,
-      currentUserId: user?.id,
-    });
-    if (!verifiedToken.valid) {
-      return jsonNoStore({ message: "تعذر إنشاء رمز الوصول للملف." }, { status: 500 });
-    }
+    const handoffTicket = createOpaqueHandle();
+    const handoffTicketHash = hashOpaqueHandle(handoffTicket);
+    const expiresAt = new Date(Date.now() + HANDOFF_TICKET_MAX_AGE_SECONDS * 1000);
 
-    const targetPath = `/api/books/assets/${encodeURIComponent(fileId)}${disposition === "attachment" ? "?download=1" : ""}`;
+    await prisma.protectedAssetHandoffTicket.create({
+      data: {
+        tokenHash: handoffTicketHash,
+        fileId,
+        disposition,
+        userId: user?.id ?? null,
+        accessGrantId,
+        readingSessionId,
+        watermarkText,
+        expiresAt,
+      },
+    });
+
+    const targetPath = `/api/books/assets/${encodeURIComponent(fileId)}/bootstrap${disposition === "attachment" ? "?download=1" : ""}`;
     const response = NextResponse.redirect(new URL(targetPath, url.origin), 302);
 
     response.headers.set("Cache-Control", "private, no-store");
     response.headers.set("Referrer-Policy", "no-referrer");
     response.headers.set("X-Content-Type-Options", "nosniff");
     response.headers.set("Cross-Origin-Resource-Policy", "same-origin");
-    response.cookies.set(getProtectedAssetTokenCookieName(), token, {
-      path: "/api",
-      maxAge: 90,
-      httpOnly: true,
-      sameSite: "strict",
-      secure: process.env.NODE_ENV === "production",
-    });
-    response.cookies.set(getProtectedAssetNonceCookieName(), verifiedToken.payload.jti, {
-      path: "/api",
-      maxAge: 90,
+    response.cookies.set(getProtectedAssetHandoffTicketCookieName(), handoffTicket, {
+      path: `/api/books/assets/${encodeURIComponent(fileId)}/bootstrap`,
+      maxAge: HANDOFF_TICKET_MAX_AGE_SECONDS,
       httpOnly: true,
       sameSite: "strict",
       secure: process.env.NODE_ENV === "production",

@@ -193,6 +193,8 @@ model User {
   adminAuditLogs      AdminAuditLog[]      @relation("AdminAuditActor")
   targetedAuditLogs   AdminAuditLog[]      @relation("AdminAuditTargetUser")
   readingSessions     ReadingSession[]
+  protectedAssetHandoffTickets ProtectedAssetHandoffTicket[]
+  protectedAssetSessions       ProtectedAssetSession[]
   acceptedDevicePolicyAt DateTime?
   acceptedTermsVersion String?
   requirePasswordReset Boolean           @default(false)
@@ -358,6 +360,8 @@ model BookFile {
   createdAt        DateTime        @default(now())
   updatedAt        DateTime        @updatedAt
   book             Book            @relation(fields: [bookId], references: [id], onDelete: Cascade)
+  protectedAssetHandoffTickets ProtectedAssetHandoffTicket[]
+  protectedAssetSessions       ProtectedAssetSession[]
 
   @@unique([bookId, kind, sortOrder])
   @@index([bookId, kind])
@@ -616,6 +620,45 @@ model ReadingSession {
   @@index([userId, openedAt])
   @@index([accessGrantId, graceEndsAt, closedAt])
   @@index([bookId])
+}
+
+model ProtectedAssetHandoffTicket {
+  id               String   @id @default(cuid())
+  tokenHash        String   @unique
+  fileId           String
+  disposition      String
+  userId           String?
+  accessGrantId    String?
+  readingSessionId String?
+  watermarkText    String?
+  expiresAt        DateTime
+  redeemedAt       DateTime?
+  createdAt        DateTime @default(now())
+  user             User?    @relation(fields: [userId], references: [id], onDelete: SetNull)
+  file             BookFile @relation(fields: [fileId], references: [id], onDelete: Cascade)
+
+  @@index([fileId, expiresAt])
+  @@index([userId, expiresAt])
+  @@index([expiresAt, redeemedAt])
+}
+
+model ProtectedAssetSession {
+  id               String   @id @default(cuid())
+  tokenHash        String   @unique
+  fileId           String
+  disposition      String
+  userId           String?
+  accessGrantId    String?
+  readingSessionId String?
+  watermarkText    String?
+  expiresAt        DateTime
+  createdAt        DateTime @default(now())
+  user             User?    @relation(fields: [userId], references: [id], onDelete: SetNull)
+  file             BookFile @relation(fields: [fileId], references: [id], onDelete: Cascade)
+
+  @@index([fileId, expiresAt])
+  @@index([userId, expiresAt])
+  @@index([expiresAt])
 }
 
 
