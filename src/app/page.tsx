@@ -4,6 +4,7 @@ import { HOME_BILLBOARD_FALLBACKS } from "@/lib/home-billboards";
 import { SiteFooter } from "@/components/site-footer";
 import { HomeDiscoveryHero } from "@/components/home/home-discovery-hero";
 import {
+  CategoriesPreviewSection,
   FeaturedBooksSection,
   RecommendedBooksSection,
 } from "@/components/storefront";
@@ -130,8 +131,8 @@ export default async function HomePage() {
   const fallbackBillboard = HOME_BILLBOARD_FALLBACKS[0];
 
   return (
-    <main className="bg-gradient-to-b from-slate-100 via-slate-50 to-white">
-      <div className="space-y-3 pb-8 sm:space-y-4">
+    <main className="bg-gradient-to-b from-slate-200 via-slate-100 to-slate-50">
+      <div className="space-y-4 pb-8 sm:space-y-5">
         <HomeDiscoveryHero
           billboard={fallbackBillboard}
           categories={discoveryCategories
@@ -154,6 +155,16 @@ export default async function HomePage() {
               })),
             }))
             .filter((category) => category.books.length > 0)}
+        />
+
+        <CategoriesPreviewSection
+          categories={discoveryCategories
+            .map((category) => ({
+              slug: category.slug,
+              name: category.nameAr,
+              description: category.description ?? "اكتشف أبرز الكتب المتاحة ضمن هذا التصنيف.",
+            }))
+            .slice(0, 4)}
         />
 
         <FeaturedBooksSection

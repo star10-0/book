@@ -80,21 +80,24 @@ export async function SiteHeader() {
   const canAccessAdmin = user?.role === "ADMIN";
 
   return (
-    <header className="sticky top-1 z-40 mb-1 overflow-visible rounded-2xl bg-white shadow-sm ring-1 ring-slate-200 sm:mb-1.5">
-      <div className="px-2.5 py-1 sm:px-3.5 sm:py-1">
-        <div className="grid items-start gap-0.5 lg:grid-cols-[auto_minmax(0,1fr)_auto] lg:items-center lg:gap-1.5">
+    <header className="sticky top-0 z-40 mb-2 overflow-visible rounded-2xl bg-slate-950 text-white shadow-[0_10px_30px_-18px_rgba(2,6,23,0.95)] ring-1 ring-slate-800/90 sm:mb-2.5">
+      <div className="px-2.5 py-2 sm:px-3.5 sm:py-2.5">
+        <div className="grid items-start gap-2 lg:grid-cols-[auto_minmax(0,1fr)_auto] lg:items-center lg:gap-2.5">
           <div className="flex w-fit flex-col items-end">
             <Link
               href="/"
-              className="rounded-lg px-1 py-0.5 focus-visible:outline-none focus-visible:ring-2 focus-visible:ring-indigo-400"
+              className="rounded-lg px-1 py-0.5 focus-visible:outline-none focus-visible:ring-2 focus-visible:ring-amber-300"
             >
-              <p className="text-[1.45rem] font-black leading-none tracking-tight text-slate-900 sm:text-[1.6rem]">أمجد</p>
-              <p className="mt-0.5 text-[10px] font-semibold uppercase tracking-[0.16em] text-indigo-600">{t.brandSub}</p>
+              <p className="text-[1.45rem] font-black leading-none tracking-tight text-white sm:text-[1.6rem]">أمجد</p>
+              <p className="mt-0.5 text-[10px] font-semibold uppercase tracking-[0.16em] text-amber-300">{t.brandSub}</p>
             </Link>
           </div>
 
           <form action="/books" method="get" className="order-last w-full lg:order-none">
-            <div className="flex overflow-hidden rounded-lg border border-slate-300 bg-white shadow-sm ring-1 ring-transparent transition focus-within:border-indigo-500 focus-within:ring-indigo-100 lg:border-indigo-200/80 lg:shadow">
+            <div className="flex overflow-hidden rounded-lg border border-slate-700 bg-white shadow-sm ring-1 ring-transparent transition focus-within:border-amber-400 focus-within:ring-amber-100">
+              <span className="inline-flex h-8 shrink-0 items-center border-s border-slate-200 bg-slate-100 px-2.5 text-[11px] font-semibold text-slate-700 sm:h-9">
+                {t.all}
+              </span>
               <input
                 type="search"
                 name="q"
@@ -104,7 +107,7 @@ export async function SiteHeader() {
               />
               <button
                 type="submit"
-                className="h-8 bg-indigo-600 px-3 text-xs font-semibold text-white transition hover:bg-indigo-500 focus-visible:outline-none focus-visible:ring-2 focus-visible:ring-indigo-300 sm:h-9 sm:px-3.5"
+                className="h-8 bg-amber-400 px-3 text-xs font-black text-slate-950 transition hover:bg-amber-300 focus-visible:outline-none focus-visible:ring-2 focus-visible:ring-amber-200 sm:h-9 sm:px-3.5"
               >
                 {t.searchCta}
               </button>
@@ -114,14 +117,14 @@ export async function SiteHeader() {
           <div className="flex items-center gap-0.5 lg:justify-end">
             <LanguageSwitcher locale={locale} />
 
-            <CartLink href="/cart" className="store-btn-secondary h-7.5 px-2 text-xs sm:h-8 sm:px-2.5" label={t.cart} initialCount={cartCount} />
+            <CartLink href="/cart" className="inline-flex h-7.5 items-center justify-center rounded-md border border-slate-600 bg-slate-900 px-2 text-xs font-semibold text-slate-100 transition hover:bg-slate-800 focus-visible:outline-none focus-visible:ring-2 focus-visible:ring-amber-300 sm:h-8 sm:px-2.5" label={t.cart} initialCount={cartCount} />
 
             {user ? (
-              <Link href="/account" className="store-btn-primary h-7.5 px-2 text-xs sm:h-8 sm:px-2.5">
+              <Link href="/account" className="inline-flex h-7.5 items-center justify-center rounded-md bg-slate-800 px-2 text-xs font-semibold text-white transition hover:bg-slate-700 focus-visible:outline-none focus-visible:ring-2 focus-visible:ring-amber-300 sm:h-8 sm:px-2.5">
                 {t.myAccount}
               </Link>
             ) : (
-              <Link href="/login" className="store-btn-secondary h-7.5 px-2 text-xs sm:h-8 sm:px-2.5">
+              <Link href="/login" className="inline-flex h-7.5 items-center justify-center rounded-md border border-slate-600 bg-slate-900 px-2 text-xs font-semibold text-slate-100 transition hover:bg-slate-800 focus-visible:outline-none focus-visible:ring-2 focus-visible:ring-amber-300 sm:h-8 sm:px-2.5">
                 {t.signIn}
               </Link>
             )}
@@ -130,7 +133,7 @@ export async function SiteHeader() {
 
       </div>
 
-      <nav aria-label="التنقل الرئيسي" className="border-t border-slate-200 bg-slate-50/90 px-2.5 py-px sm:px-3.5">
+      <nav aria-label="التنقل الرئيسي" className="border-t border-slate-800 bg-slate-900/90 px-2.5 py-1 sm:px-3.5">
         <ul className="flex min-w-0 flex-wrap items-center gap-0.5 overflow-x-auto py-px">
           <li>
             <SiteDrawerNav
@@ -142,7 +145,7 @@ export async function SiteHeader() {
               canAccessAdmin={canAccessAdmin}
               logoutAction={signOutAction}
               triggerLabel={t.all}
-              triggerClassName="inline-flex h-5.5 items-center gap-1 rounded-md border border-slate-300 bg-white px-1.5 text-xs font-medium text-slate-700 transition hover:bg-slate-100 hover:text-slate-900 focus-visible:outline-none focus-visible:ring-2 focus-visible:ring-indigo-400 sm:h-6 sm:px-2"
+              triggerClassName="inline-flex h-6 items-center gap-1 rounded-md border border-slate-700 bg-slate-800 px-2 text-xs font-medium text-slate-100 transition hover:bg-slate-700 hover:text-white focus-visible:outline-none focus-visible:ring-2 focus-visible:ring-amber-300 sm:px-2.5"
               triggerIconClassName="text-[0.9rem] leading-none"
             />
           </li>
