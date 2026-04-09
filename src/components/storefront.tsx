@@ -80,7 +80,7 @@ type BooksFilterCategory = {
 
 export function FeaturedBooksSection({ books }: { books: FeaturedBookItem[] }) {
   return (
-    <section className="store-surface border border-slate-200/90" aria-labelledby="featured-title">
+    <section className="store-surface rounded-2xl border border-slate-200/90 p-4 sm:p-5" aria-labelledby="featured-title">
       <div className="flex items-center justify-between gap-3">
         <div>
           <h2 id="featured-title" className="text-xl font-bold text-slate-900 sm:text-2xl">كتب مميزة اليوم</h2>
@@ -95,16 +95,16 @@ export function FeaturedBooksSection({ books }: { books: FeaturedBookItem[] }) {
           لا توجد كتب مميزة الآن. سنضيف توصيات جديدة قريبًا.
         </p>
       ) : (
-        <div className="mt-5 grid gap-4 sm:grid-cols-2 lg:grid-cols-3">
+        <div className="mt-4 grid gap-3 sm:grid-cols-2 lg:grid-cols-3">
           {books.map((book, index) => (
-            <article key={book.id} className="group flex h-full flex-col overflow-hidden rounded-2xl border border-slate-200 bg-white shadow-sm transition hover:-translate-y-0.5 hover:shadow-md">
+            <article key={book.id} className="group flex h-full flex-col overflow-hidden rounded-xl border border-slate-200 bg-white shadow-sm transition hover:-translate-y-0.5 hover:shadow-md">
               <div className="relative">
                 <CoverImage
                   src={book.coverImageUrl}
                   alt={`غلاف كتاب ${book.title}`}
                   width={600}
                   height={900}
-                  className="h-72 w-full object-contain bg-slate-100 p-2 transition duration-300 group-hover:scale-[1.02]"
+                  className="h-64 w-full object-contain bg-slate-100 p-2 transition duration-300 group-hover:scale-[1.02]"
                 />
                 <div className="pointer-events-none absolute inset-x-0 bottom-0 h-20 bg-gradient-to-t from-slate-950/80 via-slate-950/45 to-transparent" />
                 <div className="absolute inset-x-3 top-3 flex items-center justify-between gap-2 text-[11px]">
@@ -142,7 +142,7 @@ export function RecommendedBooksSection({ books }: { books: RecommendedBookItem[
   }
 
   return (
-    <section className="store-surface border border-slate-200/80" aria-labelledby="recommended-title">
+    <section className="store-surface rounded-2xl border border-slate-200/80 p-4 sm:p-5" aria-labelledby="recommended-title">
       <div className="flex items-center justify-between gap-3">
         <div>
           <h2 id="recommended-title" className="text-xl font-bold text-slate-900 sm:text-2xl">مقترح لك</h2>
@@ -154,9 +154,9 @@ export function RecommendedBooksSection({ books }: { books: RecommendedBookItem[
 
       <div className="mt-3 grid gap-3 sm:grid-cols-2 lg:grid-cols-3">
         {books.map((book) => (
-          <article key={book.id} className="group flex h-full flex-col overflow-hidden rounded-2xl border border-slate-200 bg-white shadow-sm transition hover:-translate-y-0.5 hover:shadow-md">
-            <CoverImage src={book.coverImageUrl} alt={`غلاف ${book.title}`} width={520} height={760} className="h-56 w-full bg-slate-100 object-contain p-2 transition duration-300 group-hover:scale-[1.02]" />
-            <div className="flex h-full flex-col gap-2.5 p-3.5">
+          <article key={book.id} className="group flex h-full flex-col overflow-hidden rounded-xl border border-slate-200 bg-white shadow-sm transition hover:-translate-y-0.5 hover:shadow-md">
+            <CoverImage src={book.coverImageUrl} alt={`غلاف ${book.title}`} width={520} height={760} className="h-52 w-full bg-slate-100 object-contain p-2 transition duration-300 group-hover:scale-[1.02]" />
+            <div className="flex h-full flex-col gap-2.5 p-3">
               <div className="min-w-0 space-y-1.5">
                 <h3 className="line-clamp-2 min-h-10 text-sm font-extrabold text-slate-900">{book.title}</h3>
                 <p className="text-xs font-medium text-slate-600">{book.author}</p>
@@ -185,10 +185,10 @@ export function RecommendedBooksSection({ books }: { books: RecommendedBookItem[
 
 export function CategoriesPreviewSection({ categories }: { categories: CategoryPreviewItem[] }) {
   return (
-    <section className="store-surface border border-slate-200/90" aria-labelledby="categories-title">
+    <section className="store-surface rounded-2xl border border-slate-200/90 p-4 sm:p-5" aria-labelledby="categories-title">
       <div className="flex items-center justify-between gap-3">
         <div>
-          <h2 id="categories-title" className="text-xl font-bold text-slate-900 sm:text-2xl">ابدأ من التصنيف المناسب لك</h2>
+          <h2 id="categories-title" className="text-xl font-bold text-slate-900 sm:text-2xl">تسوق حسب التصنيف</h2>
         </div>
         <Link href="/books" className="store-btn-secondary h-9 px-4">
           كل التصنيفات
@@ -200,11 +200,10 @@ export function CategoriesPreviewSection({ categories }: { categories: CategoryP
           لم تتم إضافة تصنيفات بعد. يمكنك العودة لاحقًا لاستكشاف الأقسام الجديدة.
         </p>
       ) : (
-        <div className="mt-5 grid gap-3 sm:grid-cols-2 lg:grid-cols-4">
+        <div className="mt-4 grid gap-3 sm:grid-cols-2 lg:grid-cols-4">
           {categories.map((category) => (
-            <article key={category.name} className="rounded-xl border border-slate-200 bg-gradient-to-b from-white to-slate-50 p-4 shadow-sm">
-              <h3 className="text-sm font-bold text-slate-900">{category.name}</h3>
-              <p className="mt-1.5 text-xs leading-6 text-slate-600">{category.description}</p>
+            <article key={category.name} className="rounded-xl border border-slate-200 bg-gradient-to-b from-white to-slate-50 p-3.5 shadow-sm">
+              <h3 className="line-clamp-1 text-sm font-bold text-slate-900">{category.name}</h3>
               <Link href={`/books?category=${category.slug}`} className="store-btn-secondary mt-3 h-8 px-3 text-[11px]">
                 عرض الكتب
               </Link>
@@ -597,14 +596,14 @@ export function BooksGrid({
         </p>
       </div>
 
-      <div className="grid gap-3.5 sm:grid-cols-2 lg:grid-cols-3 2xl:grid-cols-4">
+      <div className="grid gap-3 sm:grid-cols-2 lg:grid-cols-3 2xl:grid-cols-4">
         {books.map((book) => (
-          <article key={book.id} className="group flex h-full flex-col overflow-hidden rounded-2xl bg-white shadow-sm ring-1 ring-slate-200 transition hover:-translate-y-0.5 hover:shadow-md focus-within:ring-indigo-300">
+          <article key={book.id} className="group flex h-full flex-col overflow-hidden rounded-xl bg-white shadow-sm ring-1 ring-slate-200 transition hover:-translate-y-0.5 hover:shadow-md focus-within:ring-indigo-300">
             <div className="relative">
-              <CoverImage src={book.coverImageUrl} alt={`غلاف كتاب ${book.title}`} width={600} height={900} className="h-60 w-full bg-slate-100 object-contain p-2 transition duration-300 group-hover:scale-[1.02]" />
+              <CoverImage src={book.coverImageUrl} alt={`غلاف كتاب ${book.title}`} width={600} height={900} className="h-56 w-full bg-slate-100 object-contain p-2 transition duration-300 group-hover:scale-[1.02]" />
               <div className="pointer-events-none absolute inset-x-0 bottom-0 h-16 bg-gradient-to-t from-slate-950/20 to-transparent" />
             </div>
-            <div className="flex h-full flex-col gap-3 p-4">
+            <div className="flex h-full flex-col gap-2.5 p-3.5">
               <div className="space-y-1">
                 <h3 className="line-clamp-2 min-h-12 text-base font-extrabold text-slate-900">{book.title}</h3>
                 <p className="line-clamp-1 text-xs font-medium text-slate-600">{book.author}</p>
