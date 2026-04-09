@@ -77,8 +77,8 @@ export default async function RootLayout({
         </a>
         <ServiceWorkerRegister />
         <div className="store-page-shell min-h-screen">
+          <SiteHeader />
           <div className="store-container flex min-h-screen flex-col pb-5 pt-2 sm:pb-7 sm:pt-3 lg:pt-4">
-            <SiteHeader />
             <div id="main-content" className="flex-1">
               {children}
             </div>

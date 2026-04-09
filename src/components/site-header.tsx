@@ -8,6 +8,7 @@ import { CartLink } from "@/components/cart-link";
 import { getCurrentUser } from "@/lib/auth-session";
 import { getStoreLocale } from "@/lib/locale";
 import { CART_COOKIE_NAME, getCartItemsCount, parseCartCookie } from "@/lib/cart";
+import { StorefrontHeaderShell } from "@/components/storefront-header-shell";
 
 const translations = {
   ar: {
@@ -80,90 +81,91 @@ export async function SiteHeader() {
   const canAccessAdmin = user?.role === "ADMIN";
 
   return (
-    <header className="sticky top-0 z-40 mb-2 overflow-visible rounded-2xl bg-slate-950 text-white shadow-[0_16px_40px_-25px_rgba(2,6,23,1)] ring-1 ring-slate-800/90 sm:mb-2.5">
-      <div className="px-2.5 py-2 sm:px-3.5 sm:py-2.5">
-        <div className="grid items-center gap-2.5 lg:grid-cols-[minmax(0,220px)_minmax(0,1fr)_auto] lg:gap-3">
-          <div className="flex min-w-0 items-center justify-start">
-            <Link
-              href="/"
-              className="inline-flex min-w-[8.5rem] flex-col rounded-lg border border-slate-700/80 bg-slate-900/80 px-2.5 py-1.5 focus-visible:outline-none focus-visible:ring-2 focus-visible:ring-amber-300"
-            >
-              <p className="text-[1.4rem] font-black leading-none tracking-tight text-white sm:text-[1.55rem]">أمجد</p>
-              <p className="mt-0.5 text-[10px] font-semibold uppercase tracking-[0.16em] text-amber-300">{t.brandSub}</p>
-            </Link>
-          </div>
-
-          <form action="/books" method="get" className="order-last w-full lg:order-none">
-            <div className="flex overflow-hidden rounded-md border border-slate-700 bg-white shadow-[0_0_0_2px_rgba(15,23,42,0.35)] ring-1 ring-transparent transition focus-within:border-amber-400 focus-within:ring-amber-100">
-              <span className="inline-flex h-9 shrink-0 items-center border-s border-slate-200 bg-slate-100 px-2.5 text-[11px] font-semibold text-slate-700 sm:h-10 sm:px-3">
-                {t.all}
-              </span>
-              <input
-                type="search"
-                name="q"
-                placeholder={t.searchPlaceholder}
-                className="h-9 w-full border-0 px-3 text-sm text-slate-900 outline-none placeholder:text-slate-400 sm:h-10"
-                aria-label={t.searchAria}
-              />
-              <button
-                type="submit"
-                className="h-9 bg-amber-400 px-4 text-xs font-black text-slate-950 transition hover:bg-amber-300 focus-visible:outline-none focus-visible:ring-2 focus-visible:ring-amber-200 sm:h-10 sm:px-5"
+    <StorefrontHeaderShell>
+      <header className="w-full overflow-visible border-b border-slate-800/90 bg-slate-950 text-white shadow-[0_16px_40px_-25px_rgba(2,6,23,1)]">
+        <div className="px-2.5 py-2 sm:px-3.5 sm:py-2.5">
+          <div className="grid items-center gap-2.5 lg:grid-cols-[minmax(0,220px)_minmax(0,1fr)_auto] lg:gap-3">
+            <div className="flex min-w-0 items-center justify-start">
+              <Link
+                href="/"
+                className="inline-flex min-w-[8.5rem] flex-col rounded-lg border border-slate-700/80 bg-slate-900/80 px-2.5 py-1.5 focus-visible:outline-none focus-visible:ring-2 focus-visible:ring-amber-300"
               >
-                {t.searchCta}
-              </button>
+                <p className="text-[1.4rem] font-black leading-none tracking-tight text-white sm:text-[1.55rem]">أمجد</p>
+                <p className="mt-0.5 text-[10px] font-semibold uppercase tracking-[0.16em] text-amber-300">{t.brandSub}</p>
+              </Link>
             </div>
-          </form>
 
-          <div className="flex items-center gap-1 lg:justify-end">
-            <LanguageSwitcher locale={locale} />
+            <form action="/books" method="get" className="order-last w-full lg:order-none">
+              <div className="flex overflow-hidden rounded-md border border-slate-700 bg-white shadow-[0_0_0_2px_rgba(15,23,42,0.35)] ring-1 ring-transparent transition focus-within:border-amber-400 focus-within:ring-amber-100">
+                <span className="inline-flex h-9 shrink-0 items-center border-s border-slate-200 bg-slate-100 px-2.5 text-[11px] font-semibold text-slate-700 sm:h-10 sm:px-3">
+                  {t.all}
+                </span>
+                <input
+                  type="search"
+                  name="q"
+                  placeholder={t.searchPlaceholder}
+                  className="h-9 w-full border-0 px-3 text-sm text-slate-900 outline-none placeholder:text-slate-400 sm:h-10"
+                  aria-label={t.searchAria}
+                />
+                <button
+                  type="submit"
+                  className="h-9 bg-amber-400 px-4 text-xs font-black text-slate-950 transition hover:bg-amber-300 focus-visible:outline-none focus-visible:ring-2 focus-visible:ring-amber-200 sm:h-10 sm:px-5"
+                >
+                  {t.searchCta}
+                </button>
+              </div>
+            </form>
 
-            <CartLink href="/cart" className="inline-flex h-8 items-center justify-center rounded-md border border-slate-600 bg-slate-900 px-2.5 text-xs font-semibold text-slate-100 transition hover:bg-slate-800 focus-visible:outline-none focus-visible:ring-2 focus-visible:ring-amber-300 sm:h-9 sm:px-3" label={t.cart} initialCount={cartCount} />
+            <div className="flex items-center gap-1 lg:justify-end">
+              <LanguageSwitcher locale={locale} />
 
-            {user ? (
-              <Link href="/account" className="inline-flex h-8 items-center justify-center rounded-md bg-slate-800 px-2.5 text-xs font-semibold text-white transition hover:bg-slate-700 focus-visible:outline-none focus-visible:ring-2 focus-visible:ring-amber-300 sm:h-9 sm:px-3">
-                {t.myAccount}
-              </Link>
-            ) : (
-              <Link href="/login" className="inline-flex h-8 items-center justify-center rounded-md border border-slate-600 bg-slate-900 px-2.5 text-xs font-semibold text-slate-100 transition hover:bg-slate-800 focus-visible:outline-none focus-visible:ring-2 focus-visible:ring-amber-300 sm:h-9 sm:px-3">
-                {t.signIn}
-              </Link>
-            )}
+              <CartLink href="/cart" className="inline-flex h-8 items-center justify-center rounded-md border border-slate-600 bg-slate-900 px-2.5 text-xs font-semibold text-slate-100 transition hover:bg-slate-800 focus-visible:outline-none focus-visible:ring-2 focus-visible:ring-amber-300 sm:h-9 sm:px-3" label={t.cart} initialCount={cartCount} />
+
+              {user ? (
+                <Link href="/account" className="inline-flex h-8 items-center justify-center rounded-md bg-slate-800 px-2.5 text-xs font-semibold text-white transition hover:bg-slate-700 focus-visible:outline-none focus-visible:ring-2 focus-visible:ring-amber-300 sm:h-9 sm:px-3">
+                  {t.myAccount}
+                </Link>
+              ) : (
+                <Link href="/login" className="inline-flex h-8 items-center justify-center rounded-md border border-slate-600 bg-slate-900 px-2.5 text-xs font-semibold text-slate-100 transition hover:bg-slate-800 focus-visible:outline-none focus-visible:ring-2 focus-visible:ring-amber-300 sm:h-9 sm:px-3">
+                  {t.signIn}
+                </Link>
+              )}
+            </div>
           </div>
         </div>
 
-      </div>
-
-      <nav aria-label="التنقل الرئيسي" className="border-t border-slate-800 bg-slate-900 px-2.5 py-1.5 sm:px-3.5">
-        <ul className="flex min-w-0 flex-wrap items-center gap-0.5 overflow-x-auto py-px">
-          <li>
-            <SiteDrawerNav
-              locale={locale}
-              primaryLinks={primaryLinks}
-              accountLinks={accountNavigation}
-              userSignedIn={Boolean(user)}
-              canAccessStudio={canAccessStudio}
-              canAccessAdmin={canAccessAdmin}
-              logoutAction={signOutAction}
-              triggerLabel={t.all}
-              triggerClassName="inline-flex h-6.5 items-center gap-1 rounded-md border border-slate-700 bg-slate-800 px-2 text-xs font-medium text-slate-100 transition hover:bg-slate-700 hover:text-white focus-visible:outline-none focus-visible:ring-2 focus-visible:ring-amber-300 sm:px-2.5"
-              triggerIconClassName="text-[0.9rem] leading-none"
-            />
-          </li>
-          {primaryLinks.map((link) => (
-            <li key={link.href}>
-              <SiteHeaderTabLink href={link.href} label={link.label} />
+        <nav aria-label="التنقل الرئيسي" className="border-t border-slate-800 bg-slate-900 px-2.5 py-1.5 sm:px-3.5">
+          <ul className="flex min-w-0 flex-wrap items-center gap-0.5 overflow-x-auto py-px">
+            <li>
+              <SiteDrawerNav
+                locale={locale}
+                primaryLinks={primaryLinks}
+                accountLinks={accountNavigation}
+                userSignedIn={Boolean(user)}
+                canAccessStudio={canAccessStudio}
+                canAccessAdmin={canAccessAdmin}
+                logoutAction={signOutAction}
+                triggerLabel={t.all}
+                triggerClassName="inline-flex h-6.5 items-center gap-1 rounded-md border border-slate-700 bg-slate-800 px-2 text-xs font-medium text-slate-100 transition hover:bg-slate-700 hover:text-white focus-visible:outline-none focus-visible:ring-2 focus-visible:ring-amber-300 sm:px-2.5"
+                triggerIconClassName="text-[0.9rem] leading-none"
+              />
             </li>
-          ))}
+            {primaryLinks.map((link) => (
+              <li key={link.href}>
+                <SiteHeaderTabLink href={link.href} label={link.label} />
+              </li>
+            ))}
 
-          {accountNavigation.length > 0 ? <li aria-hidden className="mx-0.5 h-4 w-px bg-slate-300" /> : null}
+            {accountNavigation.length > 0 ? <li aria-hidden className="mx-0.5 h-4 w-px bg-slate-300" /> : null}
 
-          {accountNavigation.map((link) => (
-            <li key={link.href}>
-              <SiteHeaderTabLink href={link.href} label={link.label} />
-            </li>
-          ))}
-        </ul>
-      </nav>
-    </header>
+            {accountNavigation.map((link) => (
+              <li key={link.href}>
+                <SiteHeaderTabLink href={link.href} label={link.label} />
+              </li>
+            ))}
+          </ul>
+        </nav>
+      </header>
+    </StorefrontHeaderShell>
   );
 }
