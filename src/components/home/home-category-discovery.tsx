@@ -30,7 +30,7 @@ export function HomeCategoryDiscovery({ categories }: { categories: DiscoveryCat
 
   return (
     <section
-      className="space-y-3 rounded-2xl border border-white/40 bg-white/70 p-3 shadow-[0_22px_45px_-35px_rgba(15,23,42,0.65)] backdrop-blur-sm sm:p-4"
+      className="space-y-4 rounded-2xl border border-slate-200 bg-white p-3 shadow-[0_18px_40px_-35px_rgba(15,23,42,0.45)] sm:p-4"
       aria-label="اكتشاف حسب التصنيف"
     >
       <div className="flex flex-wrap items-center justify-between gap-2">
@@ -58,12 +58,12 @@ export function HomeCategoryDiscovery({ categories }: { categories: DiscoveryCat
                 alt={`غلاف كتاب ${book.title}`}
                 width={320}
                 height={460}
-                className="h-48 w-full object-cover transition duration-300 group-hover:scale-[1.02]"
+                className="h-44 w-full bg-slate-100 object-contain p-2 transition duration-300 group-hover:scale-[1.02]"
               />
               <div className="space-y-1.5 p-3">
                 <h4 className="line-clamp-2 min-h-10 text-sm font-extrabold text-slate-900 sm:text-base">{book.title}</h4>
                 <p className="line-clamp-1 text-xs text-slate-600 sm:text-sm">{book.author}</p>
-                <p className="text-xs font-bold text-indigo-700 sm:text-sm">{book.pricingLabel}</p>
+                <p className="text-xs font-bold text-rose-700 sm:text-sm">{book.pricingLabel}</p>
                 <p className="text-[11px] text-amber-600">
                   {book.averageRating > 0 ? `★ ${book.averageRating.toFixed(1)} (${book.reviewsCount})` : "بدون تقييمات بعد"}
                 </p>

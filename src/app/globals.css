@@ -57,25 +57,25 @@ a {
     font-size: 0.8125rem;
     font-weight: 500;
     line-height: 1;
-    color: rgb(51 65 85 / 1);
+    color: rgb(226 232 240 / 1);
     text-decoration: none;
     transition: color 180ms ease-out, background-color 180ms ease-out;
   }
 
   .store-header-tab:hover {
-    color: rgb(15 23 42 / 1);
-    background-color: rgb(226 232 240 / 0.55);
+    color: rgb(255 255 255 / 1);
+    background-color: rgb(51 65 85 / 0.8);
   }
 
   .store-header-tab-active {
-    color: rgb(15 23 42 / 1);
+    color: rgb(255 255 255 / 1);
     font-weight: 600;
-    background-color: rgb(226 232 240 / 0.9);
+    background-color: rgb(71 85 105 / 0.9);
   }
 
   .store-header-tab:focus-visible {
-    color: rgb(15 23 42 / 1);
-    outline: 2px solid rgb(129 140 248 / 1);
+    color: rgb(255 255 255 / 1);
+    outline: 2px solid rgb(251 191 36 / 1);
     outline-offset: 2px;
   }
 
