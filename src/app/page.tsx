@@ -131,8 +131,8 @@ export default async function HomePage() {
   const fallbackBillboard = HOME_BILLBOARD_FALLBACKS[0];
 
   return (
-    <main className="bg-gradient-to-b from-slate-200 via-slate-100 to-slate-50">
-      <div className="space-y-4 pb-8 sm:space-y-5">
+    <main className="bg-gradient-to-b from-slate-300/90 via-slate-100 to-slate-50">
+      <div className="space-y-3 pb-8 sm:space-y-4">
         <HomeDiscoveryHero
           billboard={fallbackBillboard}
           categories={discoveryCategories

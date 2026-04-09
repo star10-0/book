@@ -64,13 +64,13 @@ a {
 
   .store-header-tab:hover {
     color: rgb(255 255 255 / 1);
-    background-color: rgb(51 65 85 / 0.8);
+    background-color: rgb(51 65 85 / 0.9);
   }
 
   .store-header-tab-active {
     color: rgb(255 255 255 / 1);
     font-weight: 600;
-    background-color: rgb(71 85 105 / 0.9);
+    background-color: rgb(71 85 105 / 1);
   }
 
   .store-header-tab:focus-visible {
