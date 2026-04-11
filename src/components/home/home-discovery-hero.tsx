@@ -24,21 +24,19 @@ export function HomeDiscoveryHero({ billboard, categories }: HomeDiscoveryHeroPr
         {billboard.title}
       </h1>
       <div className="relative overflow-hidden border-y border-slate-300 bg-slate-200">
-        <div className="relative min-h-[360px] sm:min-h-[430px] lg:min-h-[520px]">
-          <div className="h-[340px] border-b border-slate-300 bg-[linear-gradient(180deg,#e5e7eb_0%,#f1f5f9_45%,#ffffff_100%)] sm:h-[400px] lg:h-[480px]">
-            <div className="mx-auto flex h-full max-w-[1600px] items-start justify-between px-2 pt-2 sm:px-3 sm:pt-3">
-              <button type="button" className="h-9 w-9 border border-slate-300 bg-white/80 text-slate-500" aria-label="السابق">
-                ‹
-              </button>
-              <button type="button" className="h-9 w-9 border border-slate-300 bg-white/80 text-slate-500" aria-label="التالي">
-                ›
-              </button>
-            </div>
+        <div className="h-[230px] border-b border-slate-300 bg-[linear-gradient(180deg,#e5e7eb_0%,#f1f5f9_45%,#ffffff_100%)] sm:h-[280px] lg:h-[330px]">
+          <div className="mx-auto flex h-full max-w-[1600px] items-start justify-between px-2 pt-2 sm:px-3 sm:pt-3">
+            <button type="button" className="h-9 w-9 border border-slate-300 bg-white/80 text-slate-500" aria-label="السابق">
+              ‹
+            </button>
+            <button type="button" className="h-9 w-9 border border-slate-300 bg-white/80 text-slate-500" aria-label="التالي">
+              ›
+            </button>
           </div>
         </div>
       </div>
 
-      <div className="relative z-10 -mt-20 grid gap-1.5 border-b border-slate-200 bg-transparent px-1.5 pb-1.5 sm:-mt-24 sm:grid-cols-2 sm:gap-2 sm:px-2 sm:pb-2 lg:grid-cols-4">
+      <div className="relative z-10 -mt-32 grid gap-1 border-b border-slate-200 bg-transparent px-0 pb-0 sm:-mt-36 sm:grid-cols-2 sm:gap-1.5 sm:px-0 sm:pb-0 lg:-mt-40 lg:grid-cols-4">
         {merchPanels.map((category) => (
           <section key={category.slug} className="h-full border border-slate-200 bg-white p-2.5 sm:p-3" aria-label={`عروض ${category.name}`}>
             <div className="mb-2 flex items-center justify-between gap-2">
