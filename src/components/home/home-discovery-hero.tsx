@@ -126,7 +126,8 @@ export function HomeDiscoveryHero({ billboard, categories, heroBanners = [] }: H
         {billboard.title}
       </h1>
 
-      <div className="relative w-full overflow-hidden border-y border-slate-300 bg-[#cde8d6]">
+      <div className="relative w-full overflow-hidden border-b border-slate-300 bg-[#cde8d6]">
+        <div className="pointer-events-none absolute inset-x-0 top-0 z-[1] h-14 bg-gradient-to-b from-slate-950/35 to-transparent" />
         <div className="relative min-h-[200px] sm:min-h-[260px] lg:min-h-[330px]">
           {isSafeBannerUrl(activeSlide.clickUrl) ? (
             <Link href={activeSlide.clickUrl as string} aria-label={activeSlide.altText} className="absolute inset-0 block">

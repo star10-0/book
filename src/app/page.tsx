@@ -136,7 +136,7 @@ export default async function HomePage() {
 
   return (
     <main className="-mx-4 bg-gradient-to-b from-slate-300/90 via-slate-100 to-slate-50 sm:-mx-6 lg:-mx-8">
-      <div className="space-y-0 pb-5">
+      <div className="-mt-2 space-y-0 pb-5 sm:-mt-3 lg:-mt-4">
         <HomeDiscoveryHero
           billboard={fallbackBillboard}
           heroBanners={homeHeroBanners}
