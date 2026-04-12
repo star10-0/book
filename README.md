@@ -10,6 +10,23 @@
 - Prisma + PostgreSQL
 - Cookie-based credentials authentication (signed HTTP-only session cookie)
 
+## Storefront Banner Upload Guide (Admin)
+
+Recommended source dimensions for predictable rendering:
+
+- Desktop banner: **2400×900 px**
+- Tablet banner: **1600×900 px** (tablet currently uses desktop source if no dedicated variant exists)
+- Mobile banner: **1080×1350 px**
+
+Safe content area:
+
+- Keep key text/logo in the center **80% width × 60% height** to reduce cropping risk.
+
+Current fit/crop behavior:
+
+- Storefront banners use admin-controlled fit/position (`COVER`/`CONTAIN` + `CENTER`/`TOP`/`BOTTOM`/`LEFT`/`RIGHT`).
+- Home discovery hero banners render as `object-cover` with a slight upward focus (`object-position: center 30%`).
+
 ## Quick Start (Local Development)
 
 1. Install dependencies:

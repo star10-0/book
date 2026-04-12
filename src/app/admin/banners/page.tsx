@@ -49,6 +49,16 @@ export default async function AdminBannersPage() {
           title="إدارة بانرات المتجر"
           description="تحكم بصور الهيرو والإعلانات بشكل آمن: المقاس، التموضع، الارتفاع، الرابط، والتفعيل بدون تعديل الكود."
         />
+        <div className="mb-4 rounded-xl border border-indigo-100 bg-indigo-50/70 p-3 text-xs leading-6 text-indigo-950">
+          <p className="font-bold">توصيات رفع صور البانر (لنتيجة ثابتة عبر الأجهزة):</p>
+          <ul className="mt-1 list-inside list-disc space-y-0.5">
+            <li>سطح المكتب: <span className="font-semibold">2400×900px</span></li>
+            <li>التابلت: <span className="font-semibold">1600×900px</span> (يُستخدم عند عدم تخصيص صورة مستقلة للتابلت)</li>
+            <li>الجوال: <span className="font-semibold">1080×1350px</span></li>
+            <li>منطقة المحتوى الآمنة: منتصف الصورة ضمن <span className="font-semibold">80% عرض × 60% ارتفاع</span> لتفادي القص</li>
+            <li>سلوك القص الحالي: الوضع الافتراضي هو <span className="font-semibold">COVER</span> مع موضع <span className="font-semibold">CENTER</span>، ويمكن تغييره من إعدادات الملاءمة والتموضع.</li>
+          </ul>
+        </div>
 
         <form action={createBannerAction} className="grid gap-3 md:grid-cols-2">
           <input name="name" required placeholder="اسم إداري للبانر" className="rounded-xl border border-slate-300 px-3 py-2 text-sm" />
