@@ -3,15 +3,10 @@ import { prisma } from "@/lib/prisma";
 import { HOME_BILLBOARD_FALLBACKS } from "@/lib/home-billboards";
 import { SiteFooter } from "@/components/site-footer";
 import { HomeDiscoveryHero } from "@/components/home/home-discovery-hero";
-import {
-  CategoriesPreviewSection,
-  FeaturedBooksSection,
-  RecommendedBooksSection,
-} from "@/components/storefront";
 import { StorefrontBannerList } from "@/components/home/storefront-banner-list";
-import { getCurrentUser } from "@/lib/auth-session";
 import { formatArabicCurrency } from "@/lib/formatters/intl";
 import { BannerPlacement, getActiveBannersByPlacement } from "@/lib/storefront-banners";
+import { HomeMerchandisingRows, HomeRecommendationRail } from "@/components/home/home-merchandising-sections";
 
 export const metadata: Metadata = {
   title: "الرئيسية",
@@ -36,29 +31,7 @@ function getPricingLabel(
 }
 
 export default async function HomePage() {
-  const [user, featuredBooks, recommendedBooks, discoveryCategories, homeHeroBanners, secondaryBanners] = await Promise.all([
-    getCurrentUser(),
-    prisma.book.findMany({
-      where: { status: "PUBLISHED", format: "DIGITAL" },
-      orderBy: { createdAt: "desc" },
-      take: 4,
-      include: {
-        author: { select: { nameAr: true } },
-        category: { select: { nameAr: true } },
-        offers: {
-          where: { isActive: true },
-          orderBy: { priceCents: "asc" },
-          select: {
-            id: true,
-            type: true,
-            priceCents: true,
-            currency: true,
-            rentalDays: true,
-          },
-        },
-        reviews: { select: { rating: true } },
-      },
-    }),
+  const [recommendedBooks, discoveryCategories, homeHeroBanners, secondaryBanners] = await Promise.all([
     prisma.book.findMany({
       where: {
         status: "PUBLISHED",
@@ -67,7 +40,7 @@ export default async function HomePage() {
           some: { isActive: true },
         },
       },
-      take: 8,
+      take: 24,
       orderBy: { createdAt: "desc" },
       include: {
         author: { select: { nameAr: true } },
@@ -96,7 +69,7 @@ export default async function HomePage() {
         },
       },
       orderBy: { books: { _count: "desc" } },
-      take: 6,
+      take: 16,
       select: {
         slug: true,
         nameAr: true,
@@ -107,7 +80,7 @@ export default async function HomePage() {
             format: "DIGITAL",
           },
           orderBy: { createdAt: "desc" },
-          take: 8,
+          take: 4,
           select: {
             id: true,
             slug: true,
@@ -133,6 +106,57 @@ export default async function HomePage() {
   ]);
 
   const fallbackBillboard = HOME_BILLBOARD_FALLBACKS[0];
+  const recommendationRailBooks = recommendedBooks.slice(0, 18).map((book) => ({
+    id: book.id,
+    slug: book.slug,
+    title: book.titleAr,
+    coverImageUrl: book.coverImageUrl,
+  }));
+  const categoryMerchandisingBlocks = discoveryCategories
+    .filter((category) => category.books.length >= 4)
+    .map((category) => ({
+      id: category.slug,
+      label: category.nameAr,
+      href: `/catalog/${category.slug}`,
+      books: category.books.slice(0, 4).map((book) => ({
+        id: book.id,
+        slug: book.slug,
+        title: book.titleAr,
+        coverImageUrl: book.coverImageUrl,
+      })),
+    }));
+  const fallbackBookCovers = recommendedBooks.map((book) => ({
+    id: book.id,
+    slug: book.slug,
+    title: book.titleAr,
+    coverImageUrl: book.coverImageUrl,
+  }));
+  const fallbackBlocks = Array.from({ length: Math.floor(fallbackBookCovers.length / 4) }, (_, index) => {
+    const start = index * 4;
+    return {
+      id: `latest-${index + 1}`,
+      label: `اكتشاف رقمي ${index + 1}`,
+      href: "/books",
+      books: fallbackBookCovers.slice(start, start + 4),
+    };
+  });
+  const mergedBlocks = [...categoryMerchandisingBlocks, ...fallbackBlocks].filter((block) => block.books.length === 4);
+  const paddedBlocks = [...mergedBlocks];
+
+  if (paddedBlocks.length > 0 && paddedBlocks.length < 4) {
+    let loopIndex = 0;
+    while (paddedBlocks.length < 4) {
+      const candidate = mergedBlocks[loopIndex % mergedBlocks.length];
+      paddedBlocks.push({
+        ...candidate,
+        id: `${candidate.id}-repeat-${loopIndex + 1}`,
+      });
+      loopIndex += 1;
+    }
+  }
+
+  const fullRowsBlocksCount = Math.floor(paddedBlocks.length / 4) * 4;
+  const merchandisingBlocks = paddedBlocks.slice(0, fullRowsBlocksCount);
 
   return (
     <main className="-mx-4 bg-gradient-to-b from-slate-300/90 via-slate-100 to-slate-50 sm:-mx-6 lg:-mx-8">
@@ -163,86 +187,9 @@ export default async function HomePage() {
         />
         <StorefrontBannerList banners={secondaryBanners} />
 
-        <CategoriesPreviewSection
-          categories={discoveryCategories
-            .map((category) => ({
-              slug: category.slug,
-              name: category.nameAr,
-              coverImageUrl: category.books[0]?.coverImageUrl ?? null,
-              sampleTitle: category.books[0]?.titleAr,
-            }))
-            .slice(0, 4)}
-        />
+        <HomeRecommendationRail books={recommendationRailBooks} />
 
-        <FeaturedBooksSection
-          books={featuredBooks.map((book) => ({
-            id: book.id,
-            slug: book.slug,
-            title: book.titleAr,
-            author: book.author.nameAr,
-            category: book.category.nameAr,
-            coverImageUrl: book.coverImageUrl,
-            offers: book.offers,
-            isLoggedIn: Boolean(user),
-            publisher:
-              book.metadata && typeof book.metadata === "object" && !Array.isArray(book.metadata) && typeof book.metadata.publisher === "string"
-                ? book.metadata.publisher
-                : null,
-            averageRating:
-              book.reviews.length > 0
-                ? book.reviews.reduce((sum, review) => sum + review.rating, 0) / book.reviews.length
-                : 0,
-            reviewsCount: book.reviews.length,
-          }))}
-        />
-
-        <RecommendedBooksSection
-          books={recommendedBooks
-            .map((book, index) => {
-              const reviewsCount = book.reviews.length;
-              const averageRating = reviewsCount > 0 ? book.reviews.reduce((sum, review) => sum + review.rating, 0) / reviewsCount : 0;
-
-              return {
-                id: book.id,
-                slug: book.slug,
-                title: book.titleAr,
-                author: book.author.nameAr,
-                coverImageUrl: book.coverImageUrl,
-                rank: index,
-                reviewsCount,
-                averageRating,
-                offers: book.offers,
-                category: book.category.nameAr,
-                metadata: book.metadata,
-              };
-            })
-            .sort((a, b) => {
-              if (b.averageRating === a.averageRating) {
-                return b.reviewsCount - a.reviewsCount;
-              }
-
-              return b.averageRating - a.averageRating;
-            })
-            .slice(0, 4)
-            .map((book) => ({
-              id: book.id,
-              slug: book.slug,
-              title: book.title,
-              author: book.author,
-              coverImageUrl: book.coverImageUrl,
-              offers: book.offers,
-              category: book.category,
-              isLoggedIn: Boolean(user),
-              publisher:
-                book.metadata && typeof book.metadata === "object" && !Array.isArray(book.metadata) && typeof book.metadata.publisher === "string"
-                  ? book.metadata.publisher
-                  : null,
-              reason:
-                book.reviewsCount > 0
-                  ? `تقييم ${book.averageRating.toFixed(1)} من ${book.reviewsCount} مراجعة`
-                  : "ضمن أحدث الكتب المضافة",
-            }))}
-        />
+        <HomeMerchandisingRows blocks={merchandisingBlocks} />
       </div>
       <SiteFooter />
     </main>
