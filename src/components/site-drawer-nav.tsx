@@ -1,7 +1,15 @@
 "use client";
 
 import Link from "next/link";
-import { useEffect, useId, useMemo, useRef, useState } from "react";
+import {
+  useCallback,
+  useEffect,
+  useId,
+  useMemo,
+  useRef,
+  useState,
+} from "react";
+import { createPortal } from "react-dom";
 import type { StoreLocale } from "@/lib/locale";
 
 type NavLink = {
@@ -35,10 +43,51 @@ export function SiteDrawerNav({
   triggerIconClassName,
 }: SiteDrawerNavProps) {
   const [isOpen, setIsOpen] = useState(false);
+  const [panelStyle, setPanelStyle] = useState<{
+    top: number;
+    left: number;
+  } | null>(null);
   const titleId = useId();
   const menuId = useId();
   const closeButtonRef = useRef<HTMLButtonElement | null>(null);
-  const containerRef = useRef<HTMLDivElement | null>(null);
+  const triggerRef = useRef<HTMLButtonElement | null>(null);
+  const panelRef = useRef<HTMLDivElement | null>(null);
+  const computePanelStyle = useCallback(() => {
+    const trigger = triggerRef.current;
+    if (!trigger) {
+      return null;
+    }
+
+    const gap = 8;
+    const viewportPadding = 8;
+    const maxPanelWidth = 384;
+    const rect = trigger.getBoundingClientRect();
+    const viewportWidth = window.innerWidth;
+    const viewportHeight = window.innerHeight;
+    const panelWidth = Math.min(
+      maxPanelWidth,
+      viewportWidth - viewportPadding * 2,
+    );
+    const panelHeight = Math.min(576, viewportHeight - viewportPadding * 2);
+    const minTop = viewportPadding;
+    const maxTop = viewportHeight - panelHeight - viewportPadding;
+    const top = Math.max(minTop, Math.min(rect.top, Math.max(minTop, maxTop)));
+    const rtlPreferredLeft = rect.left - panelWidth - gap;
+    const ltrPreferredLeft = rect.right + gap;
+    const oppositeLeft = locale === "ar" ? ltrPreferredLeft : rtlPreferredLeft;
+    const preferredLeft = locale === "ar" ? rtlPreferredLeft : ltrPreferredLeft;
+    const maxLeft = viewportWidth - panelWidth - viewportPadding;
+    const minLeft = viewportPadding;
+    const preferredFits = preferredLeft >= minLeft && preferredLeft <= maxLeft;
+    const oppositeFits = oppositeLeft >= minLeft && oppositeLeft <= maxLeft;
+    const left = preferredFits
+      ? preferredLeft
+      : oppositeFits
+        ? oppositeLeft
+        : Math.max(minLeft, Math.min(preferredLeft, maxLeft));
+
+    return { top, left };
+  }, [locale]);
 
   const t =
     locale === "en"
@@ -95,8 +144,13 @@ export function SiteDrawerNav({
   const discoveryLinks = useMemo(() => {
     const seen = new Set<string>();
     const discovery = [
-      ...primaryLinks.filter((link) => link.href === "/" || link.href === "/books"),
-      ...primaryLinks.filter((link) => !["/about", "/help", "/contact", "/", "/books"].includes(link.href)),
+      ...primaryLinks.filter(
+        (link) => link.href === "/" || link.href === "/books",
+      ),
+      ...primaryLinks.filter(
+        (link) =>
+          !["/about", "/help", "/contact", "/", "/books"].includes(link.href),
+      ),
     ];
 
     return discovery.filter((link) => {
@@ -114,7 +168,9 @@ export function SiteDrawerNav({
       label: userSignedIn ? t.accountHome : t.signIn,
     },
     {
-      href: userSignedIn ? "/account/library" : "/login?callbackUrl=%2Faccount%2Flibrary",
+      href: userSignedIn
+        ? "/account/library"
+        : "/login?callbackUrl=%2Faccount%2Flibrary",
       label: t.myLibrary,
     },
     {
@@ -122,11 +178,15 @@ export function SiteDrawerNav({
       label: t.creator,
     },
     {
-      href: userSignedIn ? "/account/profile" : "/login?callbackUrl=%2Faccount%2Fprofile",
+      href: userSignedIn
+        ? "/account/profile"
+        : "/login?callbackUrl=%2Faccount%2Fprofile",
       label: t.profile,
     },
     {
-      href: userSignedIn ? "/account/orders" : "/login?callbackUrl=%2Faccount%2Forders",
+      href: userSignedIn
+        ? "/account/orders"
+        : "/login?callbackUrl=%2Faccount%2Forders",
       label: t.orders,
     },
     ...accountLinks,
@@ -178,7 +238,10 @@ export function SiteDrawerNav({
         return;
       }
 
-      if (containerRef.current?.contains(target)) {
+      if (
+        panelRef.current?.contains(target) ||
+        triggerRef.current?.contains(target)
+      ) {
         return;
       }
 
@@ -189,16 +252,44 @@ export function SiteDrawerNav({
     return () => document.removeEventListener("pointerdown", onPointerDown);
   }, [isOpen]);
 
-  const panelSideAlignment =
-    locale === "ar"
-      ? "start-[calc(100%+0.5rem)] top-0 origin-top-right max-[480px]:start-auto max-[480px]:end-0 max-[480px]:top-full max-[480px]:mt-2"
-      : "start-[calc(100%+0.5rem)] top-0 origin-top-left max-[480px]:start-0 max-[480px]:top-full max-[480px]:mt-2";
+  useEffect(() => {
+    if (!isOpen) {
+      return;
+    }
+
+    const updatePanelPosition = () => {
+      const nextStyle = computePanelStyle();
+      if (nextStyle) {
+        setPanelStyle(nextStyle);
+      }
+    };
+
+    updatePanelPosition();
+    window.addEventListener("resize", updatePanelPosition);
+    window.addEventListener("scroll", updatePanelPosition, true);
+    return () => {
+      window.removeEventListener("resize", updatePanelPosition);
+      window.removeEventListener("scroll", updatePanelPosition, true);
+    };
+  }, [computePanelStyle, isOpen]);
 
   return (
-    <div ref={containerRef} className="relative inline-flex z-[120]">
+    <div className="inline-flex">
       <button
+        ref={triggerRef}
         type="button"
-        onClick={() => setIsOpen((prev) => !prev)}
+        onClick={() =>
+          setIsOpen((prev) => {
+            const next = !prev;
+            if (next) {
+              const nextStyle = computePanelStyle();
+              if (nextStyle) {
+                setPanelStyle(nextStyle);
+              }
+            }
+            return next;
+          })
+        }
         aria-haspopup="dialog"
         aria-expanded={isOpen}
         aria-controls={menuId}
@@ -214,130 +305,174 @@ export function SiteDrawerNav({
         {triggerLabel ? <span>{triggerLabel}</span> : null}
       </button>
 
-      <div
-        id={menuId}
-        role="dialog"
-        aria-modal="false"
-        aria-labelledby={titleId}
-        className={`absolute ${panelSideAlignment} w-[min(24rem,calc(100vw-1rem))] max-h-[min(80vh,36rem)] overflow-hidden rounded-2xl border border-slate-200 bg-white shadow-[0_24px_56px_-28px_rgba(15,23,42,0.75)] transition duration-200 ${
-          isOpen ? "pointer-events-auto translate-y-0 opacity-100 scale-100" : "pointer-events-none -translate-y-1 opacity-0 scale-95"
-        }`}
-        aria-hidden={!isOpen}
-      >
-        <div className="flex items-center justify-between border-b border-slate-200 bg-white/95 px-4 py-3 backdrop-blur supports-[backdrop-filter]:bg-white/85">
-          <p id={titleId} className="text-sm font-extrabold text-slate-900">
-            {t.browseStore}
-          </p>
-          <button
-            ref={closeButtonRef}
-            type="button"
-            onClick={() => setIsOpen(false)}
-            className="inline-flex h-9 w-9 items-center justify-center rounded-lg border border-slate-200 bg-white text-slate-600 transition hover:bg-slate-100 focus-visible:outline-none focus-visible:ring-2 focus-visible:ring-indigo-300"
-            aria-label={t.closeMenu}
-            tabIndex={isOpen ? 0 : -1}
-          >
-            ✕
-          </button>
-        </div>
+      {typeof document !== "undefined" && isOpen && panelStyle
+        ? createPortal(
+            <div
+              ref={panelRef}
+              id={menuId}
+              role="dialog"
+              aria-modal="false"
+              aria-labelledby={titleId}
+              className={`fixed overflow-hidden rounded-2xl border border-slate-200 bg-white shadow-[0_24px_56px_-28px_rgba(15,23,42,0.75)] transition duration-200 z-[220] ${
+                isOpen
+                  ? "pointer-events-auto translate-y-0 opacity-100 scale-100"
+                  : "pointer-events-none -translate-y-1 opacity-0 scale-95"
+              }`}
+              style={{
+                top: `${panelStyle.top}px`,
+                left: `${panelStyle.left}px`,
+                width: "min(24rem, calc(100vw - 1rem))",
+                maxHeight: "min(80vh, 36rem)",
+                transformOrigin: locale === "ar" ? "top right" : "top left",
+              }}
+              aria-hidden={!isOpen}
+              dir={locale === "ar" ? "rtl" : "ltr"}
+            >
+              <div className="flex items-center justify-between border-b border-slate-200 bg-white/95 px-4 py-3 backdrop-blur supports-[backdrop-filter]:bg-white/85">
+                <p
+                  id={titleId}
+                  className="text-sm font-extrabold text-slate-900"
+                >
+                  {t.browseStore}
+                </p>
+                <button
+                  ref={closeButtonRef}
+                  type="button"
+                  onClick={() => setIsOpen(false)}
+                  className="inline-flex h-9 w-9 items-center justify-center rounded-lg border border-slate-200 bg-white text-slate-600 transition hover:bg-slate-100 focus-visible:outline-none focus-visible:ring-2 focus-visible:ring-indigo-300"
+                  aria-label={t.closeMenu}
+                  tabIndex={isOpen ? 0 : -1}
+                >
+                  ✕
+                </button>
+              </div>
 
-        <div className="overflow-y-auto p-4 text-sm">
-          <div className="space-y-4">
-              <section aria-label={t.shopping} className="rounded-2xl border border-slate-200 bg-slate-50/70 p-3.5">
-                <p className="mb-2 text-xs font-bold tracking-wide text-slate-500">{t.shopping}</p>
-                <div className="grid gap-2">
-                  <Link
-                    href="/books"
-                    onClick={() => setIsOpen(false)}
-                    className="flex items-center justify-between rounded-xl bg-indigo-600 px-3 py-2.5 font-semibold text-white transition hover:bg-indigo-700"
+              <div
+                className="overflow-y-auto p-4 text-sm"
+                style={{
+                  maxHeight: "calc(min(80vh, 36rem) - 3.75rem)",
+                }}
+              >
+                <div className="space-y-4">
+                  <section
+                    aria-label={t.shopping}
+                    className="rounded-2xl border border-slate-200 bg-slate-50/70 p-3.5"
                   >
-                    {t.allBooks}
-                  </Link>
-                  <div className="grid grid-cols-2 gap-2">
-                    <Link
-                      href="/books?offer=buy"
-                      onClick={() => setIsOpen(false)}
-                      className="rounded-lg border border-slate-200 bg-white px-3 py-2 text-center font-semibold text-slate-700 transition hover:bg-slate-50"
-                    >
-                      {t.buyDigital}
-                    </Link>
-                    <Link
-                      href="/books?offer=rent"
-                      onClick={() => setIsOpen(false)}
-                      className="rounded-lg border border-slate-200 bg-white px-3 py-2 text-center font-semibold text-slate-700 transition hover:bg-slate-50"
-                    >
-                      {t.rentDigital}
-                    </Link>
-                  </div>
-                </div>
-              </section>
-
-              <section aria-label={t.discover} className="rounded-2xl border border-slate-200 bg-white p-3.5">
-                <p className="mb-2 text-xs font-bold tracking-wide text-slate-500">{t.discover}</p>
-                <ul className="space-y-1">
-                  {discoveryLinks.map((link) => (
-                    <li key={link.href}>
+                    <p className="mb-2 text-xs font-bold tracking-wide text-slate-500">
+                      {t.shopping}
+                    </p>
+                    <div className="grid gap-2">
                       <Link
-                        href={link.href}
+                        href="/books"
                         onClick={() => setIsOpen(false)}
-                        className="block rounded-lg px-3 py-2 text-slate-700 transition hover:bg-slate-100"
+                        className="flex items-center justify-between rounded-xl bg-indigo-600 px-3 py-2.5 font-semibold text-white transition hover:bg-indigo-700"
                       >
-                        {link.label}
+                        {t.allBooks}
                       </Link>
-                    </li>
-                  ))}
-                </ul>
-              </section>
-
-              {infoLinks.length > 0 ? (
-                <section aria-label={t.info} className="rounded-2xl border border-slate-200 bg-white p-3.5">
-                  <p className="mb-2 text-xs font-bold tracking-wide text-slate-500">{t.info}</p>
-                  <ul className="space-y-1">
-                    {infoLinks.map((link) => (
-                      <li key={link.href}>
+                      <div className="grid grid-cols-2 gap-2">
                         <Link
-                          href={link.href}
+                          href="/books?offer=buy"
                           onClick={() => setIsOpen(false)}
-                          className="block rounded-lg px-3 py-2 text-slate-700 transition hover:bg-slate-100"
+                          className="rounded-lg border border-slate-200 bg-white px-3 py-2 text-center font-semibold text-slate-700 transition hover:bg-slate-50"
                         >
-                          {link.label}
+                          {t.buyDigital}
                         </Link>
-                      </li>
-                    ))}
-                  </ul>
-                </section>
-              ) : null}
-
-              <section aria-label={t.account} className="rounded-2xl border border-slate-200 bg-white p-3.5">
-                <p className="mb-2 text-xs font-bold tracking-wide text-slate-500">{t.account}</p>
-                <ul className="space-y-1">
-                  {accountActionLinks.map((link) => (
-                    <li key={link.href}>
-                      <Link
-                        href={link.href}
-                        onClick={() => setIsOpen(false)}
-                        className="block rounded-lg px-3 py-2 text-slate-700 transition hover:bg-slate-100"
-                      >
-                        {link.label}
-                      </Link>
-                    </li>
-                  ))}
-                  {userSignedIn && logoutAction ? (
-                    <li className="pt-2">
-                      <form action={logoutAction}>
-                        <button
-                          type="submit"
-                          className="block w-full rounded-lg bg-rose-50 px-3 py-2 text-right font-semibold text-rose-700 transition hover:bg-rose-100"
+                        <Link
+                          href="/books?offer=rent"
+                          onClick={() => setIsOpen(false)}
+                          className="rounded-lg border border-slate-200 bg-white px-3 py-2 text-center font-semibold text-slate-700 transition hover:bg-slate-50"
                         >
-                          {t.logout}
-                        </button>
-                      </form>
-                    </li>
+                          {t.rentDigital}
+                        </Link>
+                      </div>
+                    </div>
+                  </section>
+
+                  <section
+                    aria-label={t.discover}
+                    className="rounded-2xl border border-slate-200 bg-white p-3.5"
+                  >
+                    <p className="mb-2 text-xs font-bold tracking-wide text-slate-500">
+                      {t.discover}
+                    </p>
+                    <ul className="space-y-1">
+                      {discoveryLinks.map((link) => (
+                        <li key={link.href}>
+                          <Link
+                            href={link.href}
+                            onClick={() => setIsOpen(false)}
+                            className="block rounded-lg px-3 py-2 text-slate-700 transition hover:bg-slate-100"
+                          >
+                            {link.label}
+                          </Link>
+                        </li>
+                      ))}
+                    </ul>
+                  </section>
+
+                  {infoLinks.length > 0 ? (
+                    <section
+                      aria-label={t.info}
+                      className="rounded-2xl border border-slate-200 bg-white p-3.5"
+                    >
+                      <p className="mb-2 text-xs font-bold tracking-wide text-slate-500">
+                        {t.info}
+                      </p>
+                      <ul className="space-y-1">
+                        {infoLinks.map((link) => (
+                          <li key={link.href}>
+                            <Link
+                              href={link.href}
+                              onClick={() => setIsOpen(false)}
+                              className="block rounded-lg px-3 py-2 text-slate-700 transition hover:bg-slate-100"
+                            >
+                              {link.label}
+                            </Link>
+                          </li>
+                        ))}
+                      </ul>
+                    </section>
                   ) : null}
-                </ul>
-            </section>
-          </div>
-        </div>
-      </div>
+
+                  <section
+                    aria-label={t.account}
+                    className="rounded-2xl border border-slate-200 bg-white p-3.5"
+                  >
+                    <p className="mb-2 text-xs font-bold tracking-wide text-slate-500">
+                      {t.account}
+                    </p>
+                    <ul className="space-y-1">
+                      {accountActionLinks.map((link) => (
+                        <li key={link.href}>
+                          <Link
+                            href={link.href}
+                            onClick={() => setIsOpen(false)}
+                            className="block rounded-lg px-3 py-2 text-slate-700 transition hover:bg-slate-100"
+                          >
+                            {link.label}
+                          </Link>
+                        </li>
+                      ))}
+                      {userSignedIn && logoutAction ? (
+                        <li className="pt-2">
+                          <form action={logoutAction}>
+                            <button
+                              type="submit"
+                              className="block w-full rounded-lg bg-rose-50 px-3 py-2 text-right font-semibold text-rose-700 transition hover:bg-rose-100"
+                            >
+                              {t.logout}
+                            </button>
+                          </form>
+                        </li>
+                      ) : null}
+                    </ul>
+                  </section>
+                </div>
+              </div>
+            </div>,
+            document.body,
+          )
+        : null}
     </div>
   );
 }
