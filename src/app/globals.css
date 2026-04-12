@@ -21,6 +21,17 @@ a {
   @apply transition-colors;
 }
 
+@layer utilities {
+  .hide-scrollbar {
+    -ms-overflow-style: none;
+    scrollbar-width: none;
+  }
+
+  .hide-scrollbar::-webkit-scrollbar {
+    display: none;
+  }
+}
+
 @layer components {
   .store-page-shell {
     @apply w-full overflow-x-clip bg-slate-50;
