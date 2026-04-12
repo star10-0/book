@@ -7,7 +7,8 @@ import { CoverImage } from "@/components/ui/cover-image";
 type CategoryPreviewItem = {
   slug: string;
   name: string;
-  description: string;
+  coverImageUrl: string | null;
+  sampleTitle?: string;
 };
 
 type FeaturedBookItem = {
@@ -95,7 +96,7 @@ export function FeaturedBooksSection({ books }: { books: FeaturedBookItem[] }) {
           لا توجد كتب مميزة الآن. سنضيف توصيات جديدة قريبًا.
         </p>
       ) : (
-        <div className="mt-4 grid gap-3 sm:grid-cols-2 lg:grid-cols-3">
+        <div className="mt-4 grid gap-3 sm:grid-cols-2 xl:grid-cols-4">
           {books.map((book, index) => (
             <article key={book.id} className="group flex h-full flex-col overflow-hidden rounded-xl border border-slate-200 bg-white shadow-sm transition hover:-translate-y-0.5 hover:shadow-md">
               <div className="relative">
@@ -104,7 +105,7 @@ export function FeaturedBooksSection({ books }: { books: FeaturedBookItem[] }) {
                   alt={`غلاف كتاب ${book.title}`}
                   width={600}
                   height={900}
-                  className="h-64 w-full object-contain bg-slate-100 p-2 transition duration-300 group-hover:scale-[1.02]"
+                  className="h-72 w-full object-contain bg-slate-100 p-2 transition duration-300 group-hover:scale-[1.02]"
                 />
                 <div className="pointer-events-none absolute inset-x-0 bottom-0 h-20 bg-gradient-to-t from-slate-950/80 via-slate-950/45 to-transparent" />
                 <div className="absolute inset-x-3 top-3 flex items-center justify-between gap-2 text-[11px]">
@@ -124,9 +125,7 @@ export function FeaturedBooksSection({ books }: { books: FeaturedBookItem[] }) {
                     عرض التفاصيل
                   </Link>
                 </div>
-                <p className="mt-2 line-clamp-1 text-[11px] font-semibold text-slate-500">
-                  {book.averageRating > 0 ? `★ ${book.averageRating.toFixed(1)} (${book.reviewsCount})` : "بدون تقييم"}
-                </p>
+                {book.averageRating > 0 ? <p className="mt-2 line-clamp-1 text-[11px] font-semibold text-slate-500">★ {book.averageRating.toFixed(1)}</p> : null}
               </div>
             </article>
           ))}
@@ -155,20 +154,15 @@ export function RecommendedBooksSection({ books }: { books: RecommendedBookItem[
       <div className="mt-3 grid gap-3 sm:grid-cols-2 lg:grid-cols-3">
         {books.map((book) => (
           <article key={book.id} className="group flex h-full flex-col overflow-hidden rounded-xl border border-slate-200 bg-white shadow-sm transition hover:-translate-y-0.5 hover:shadow-md">
-            <CoverImage src={book.coverImageUrl} alt={`غلاف ${book.title}`} width={520} height={760} className="h-52 w-full bg-slate-100 object-contain p-2 transition duration-300 group-hover:scale-[1.02]" />
-            <div className="flex h-full flex-col gap-2.5 p-3">
-              <div className="min-w-0 space-y-1.5">
+            <CoverImage src={book.coverImageUrl} alt={`غلاف ${book.title}`} width={520} height={760} className="h-64 w-full bg-slate-100 object-contain p-2 transition duration-300 group-hover:scale-[1.02]" />
+            <div className="flex h-full flex-col gap-2 p-3">
+              <div className="min-w-0 space-y-1">
                 <h3 className="line-clamp-2 min-h-10 text-sm font-extrabold text-slate-900">{book.title}</h3>
-                <p className="text-xs font-medium text-slate-600">{book.author}</p>
-                <div className="flex flex-wrap items-center gap-1.5 text-[11px]">
-                  {book.category ? <span className="rounded-full bg-slate-100 px-2 py-1 font-semibold text-slate-700">{book.category}</span> : null}
-                  <span className="rounded-full bg-indigo-50 px-2 py-1 font-semibold text-indigo-700">{book.reason}</span>
-                </div>
+                <p className="line-clamp-1 text-xs font-medium text-slate-600">{book.author}</p>
               </div>
               <div className="rounded-lg border border-indigo-100 bg-indigo-50/40 px-2.5 py-2">
                 <OfferPricingSummary offers={book.offers} compact />
               </div>
-              {book.publisher ? <p className="line-clamp-1 text-[11px] text-slate-500">{book.publisher}</p> : null}
               <div className="grid gap-2 sm:grid-cols-2">
                 <AddToCartAction bookId={book.id} bookSlug={book.slug} offers={book.offers} isLoggedIn={book.isLoggedIn} />
                 <Link href={`/books/${book.slug}`} className="store-btn-secondary h-10 w-full px-3 text-xs">
@@ -202,11 +196,28 @@ export function CategoriesPreviewSection({ categories }: { categories: CategoryP
       ) : (
         <div className="mt-4 grid gap-3 sm:grid-cols-2 lg:grid-cols-4">
           {categories.map((category) => (
-            <article key={category.name} className="rounded-xl border border-slate-200 bg-gradient-to-b from-white to-slate-50 p-3.5 shadow-sm">
-              <h3 className="line-clamp-1 text-sm font-bold text-slate-900">{category.name}</h3>
-              <Link href={`/books?category=${category.slug}`} className="store-btn-secondary mt-3 h-8 px-3 text-[11px]">
-                عرض الكتب
+            <article key={category.name} className="group overflow-hidden rounded-xl border border-slate-200 bg-white shadow-sm transition hover:-translate-y-0.5 hover:shadow-md">
+              <Link href={`/books?category=${category.slug}`} className="block">
+                <div className="relative">
+                  <CoverImage
+                    src={category.coverImageUrl}
+                    alt={`غلاف ممثل لتصنيف ${category.name}`}
+                    width={420}
+                    height={620}
+                    className="h-60 w-full bg-slate-100 object-contain p-2 transition duration-300 group-hover:scale-[1.02]"
+                  />
+                  <div className="pointer-events-none absolute inset-x-0 bottom-0 h-20 bg-gradient-to-t from-slate-950/85 via-slate-950/45 to-transparent" />
+                  <div className="absolute inset-x-3 bottom-3">
+                    <h3 className="line-clamp-1 text-sm font-extrabold text-white">{category.name}</h3>
+                    {category.sampleTitle ? <p className="mt-1 line-clamp-1 text-[11px] text-slate-100/90">{category.sampleTitle}</p> : null}
+                  </div>
+                </div>
               </Link>
+              <div className="p-3">
+                <Link href={`/books?category=${category.slug}`} className="store-btn-secondary h-8 w-full px-3 text-[11px]">
+                  عرض الكتب
+                </Link>
+              </div>
             </article>
           ))}
         </div>
