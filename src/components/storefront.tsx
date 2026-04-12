@@ -96,36 +96,32 @@ export function FeaturedBooksSection({ books }: { books: FeaturedBookItem[] }) {
           لا توجد كتب مميزة الآن. سنضيف توصيات جديدة قريبًا.
         </p>
       ) : (
-        <div className="mt-4 grid gap-3 sm:grid-cols-2 xl:grid-cols-4">
-          {books.map((book, index) => (
-            <article key={book.id} className="group flex h-full flex-col overflow-hidden rounded-xl border border-slate-200 bg-white shadow-sm transition hover:-translate-y-0.5 hover:shadow-md">
-              <div className="relative">
-                <CoverImage
-                  src={book.coverImageUrl}
-                  alt={`غلاف كتاب ${book.title}`}
-                  width={600}
-                  height={900}
-                  className="h-72 w-full object-contain bg-slate-100 p-2 transition duration-300 group-hover:scale-[1.02]"
-                />
-                <div className="pointer-events-none absolute inset-x-0 bottom-0 h-20 bg-gradient-to-t from-slate-950/80 via-slate-950/45 to-transparent" />
-                <div className="absolute inset-x-3 top-3 flex items-center justify-between gap-2 text-[11px]">
-                  <span className="rounded-full bg-white/95 px-2.5 py-1 font-semibold text-amber-800 ring-1 ring-amber-200">الأكثر تميزًا</span>
-                  <span className="rounded-full bg-slate-900/85 px-2.5 py-1 font-bold text-white">#{index + 1}</span>
+        <div className="mt-4 grid gap-4 sm:grid-cols-2 xl:grid-cols-4">
+          {books.map((book) => (
+            <article key={book.id} className="group flex h-full flex-col overflow-hidden rounded-2xl border border-slate-200 bg-white shadow-sm transition hover:-translate-y-0.5 hover:shadow-md">
+              <div className="relative p-3 pb-2">
+                <div className="overflow-hidden rounded-xl bg-slate-100">
+                  <CoverImage
+                    src={book.coverImageUrl}
+                    alt={`غلاف كتاب ${book.title}`}
+                    width={600}
+                    height={900}
+                    className="aspect-[3/4] w-full bg-slate-50 object-contain p-3 transition duration-300 group-hover:scale-[1.02]"
+                  />
                 </div>
-                <div className="absolute inset-x-3 bottom-3 min-w-0 text-white">
-                  <h3 className="line-clamp-2 text-sm font-extrabold leading-5 drop-shadow-sm">{book.title}</h3>
-                  <p className="line-clamp-1 mt-1 text-[11px] font-medium text-slate-100/95">{book.author}</p>
-                </div>
+                <span className="absolute start-5 top-5 rounded-full bg-white/95 px-2.5 py-1 text-[11px] font-semibold text-amber-800 ring-1 ring-amber-200">
+                  مميز
+                </span>
               </div>
 
-              <div className="p-3">
-                <div className="grid gap-2 sm:grid-cols-2">
-                  <AddToCartAction bookId={book.id} bookSlug={book.slug} offers={book.offers} isLoggedIn={book.isLoggedIn} />
-                  <Link href={`/books/${book.slug}`} className="store-btn-secondary h-10 w-full px-3 text-xs">
-                    عرض التفاصيل
+              <div className="flex h-full flex-col gap-2 px-3 pb-3">
+                <h3 className="line-clamp-2 text-sm font-extrabold text-slate-900">{book.title}</h3>
+                <div className="mt-auto flex items-center justify-between gap-2">
+                  <AddToCartAction bookId={book.id} bookSlug={book.slug} offers={book.offers} isLoggedIn={book.isLoggedIn} compact />
+                  <Link href={`/books/${book.slug}`} className="text-xs font-semibold text-slate-600 transition hover:text-indigo-700">
+                    التفاصيل
                   </Link>
                 </div>
-                {book.averageRating > 0 ? <p className="mt-2 line-clamp-1 text-[11px] font-semibold text-slate-500">★ {book.averageRating.toFixed(1)}</p> : null}
               </div>
             </article>
           ))}
@@ -151,27 +147,43 @@ export function RecommendedBooksSection({ books }: { books: RecommendedBookItem[
         </Link>
       </div>
 
-      <div className="mt-3 grid gap-3 sm:grid-cols-2 lg:grid-cols-3">
-        {books.map((book) => (
-          <article key={book.id} className="group flex h-full flex-col overflow-hidden rounded-xl border border-slate-200 bg-white shadow-sm transition hover:-translate-y-0.5 hover:shadow-md">
-            <CoverImage src={book.coverImageUrl} alt={`غلاف ${book.title}`} width={520} height={760} className="h-64 w-full bg-slate-100 object-contain p-2 transition duration-300 group-hover:scale-[1.02]" />
-            <div className="flex h-full flex-col gap-2 p-3">
-              <div className="min-w-0 space-y-1">
-                <h3 className="line-clamp-2 min-h-10 text-sm font-extrabold text-slate-900">{book.title}</h3>
-                <p className="line-clamp-1 text-xs font-medium text-slate-600">{book.author}</p>
+      <div className="mt-4 grid gap-4 sm:grid-cols-2 xl:grid-cols-4">
+        {books.map((book) => {
+          const primaryOffer = getPrimaryOffer(book.offers);
+
+          return (
+            <article key={book.id} className="group flex h-full flex-col overflow-hidden rounded-2xl border border-slate-200 bg-white shadow-sm transition hover:-translate-y-0.5 hover:shadow-md">
+              <div className="p-3 pb-2">
+                <div className="overflow-hidden rounded-xl bg-slate-100">
+                  <CoverImage
+                    src={book.coverImageUrl}
+                    alt={`غلاف ${book.title}`}
+                    width={520}
+                    height={760}
+                    className="aspect-[3/4] w-full bg-slate-50 object-contain p-3 transition duration-300 group-hover:scale-[1.02]"
+                  />
+                </div>
               </div>
-              <div className="rounded-lg border border-indigo-100 bg-indigo-50/40 px-2.5 py-2">
-                <OfferPricingSummary offers={book.offers} compact />
+              <div className="flex h-full flex-col gap-2 px-3 pb-3">
+                <div className="min-w-0">
+                  <h3 className="line-clamp-2 text-sm font-extrabold text-slate-900">{book.title}</h3>
+                  <p className="line-clamp-1 text-[11px] font-medium text-slate-500">{book.author}</p>
+                </div>
+                {primaryOffer ? (
+                  <p className="rounded-lg bg-indigo-50/60 px-2 py-1 text-[11px] font-semibold text-indigo-700">
+                    يبدأ من {primaryOffer.price}
+                  </p>
+                ) : null}
+                <div className="mt-auto flex items-center justify-between gap-2">
+                  <AddToCartAction bookId={book.id} bookSlug={book.slug} offers={book.offers} isLoggedIn={book.isLoggedIn} compact />
+                  <Link href={`/books/${book.slug}`} className="text-xs font-semibold text-slate-600 transition hover:text-indigo-700">
+                    التفاصيل
+                  </Link>
+                </div>
               </div>
-              <div className="grid gap-2 sm:grid-cols-2">
-                <AddToCartAction bookId={book.id} bookSlug={book.slug} offers={book.offers} isLoggedIn={book.isLoggedIn} />
-                <Link href={`/books/${book.slug}`} className="store-btn-secondary h-10 w-full px-3 text-xs">
-                  اقرأ المزيد
-                </Link>
-              </div>
-            </div>
-          </article>
-        ))}
+            </article>
+          );
+        })}
       </div>
     </section>
   );
@@ -381,11 +393,13 @@ function AddToCartAction({
   bookSlug,
   offers,
   isLoggedIn = false,
+  compact = false,
 }: {
   bookId: string;
   bookSlug: string;
   offers: BookCardOffer[];
   isLoggedIn?: boolean;
+  compact?: boolean;
 }) {
   const primaryOffer = getPrimaryOffer(offers);
 
@@ -405,9 +419,9 @@ function AddToCartAction({
     return (
       <Link
         href={`/login?callbackUrl=${encodeURIComponent(`/books/${bookSlug}`)}`}
-        className="store-btn-primary h-10 w-full px-3 text-[11px] sm:w-auto sm:min-w-[10rem] sm:text-xs"
+        className={compact ? "store-btn-primary h-10 w-full px-3 text-xs" : "store-btn-primary h-10 w-full px-3 text-[11px] sm:w-auto sm:min-w-[10rem] sm:text-xs"}
       >
-        سجّل الدخول للإضافة إلى السلة
+        {compact ? "سجّل الدخول" : "سجّل الدخول للإضافة إلى السلة"}
       </Link>
     );
   }
@@ -416,8 +430,8 @@ function AddToCartAction({
     <AddToCartButton
       bookId={bookId}
       offerId={primaryOffer.id}
-      label="أضف إلى السلة"
-      className="store-btn-primary h-10 w-full px-3 text-xs sm:w-auto sm:min-w-[8.5rem]"
+      label={compact ? "أضف" : "أضف إلى السلة"}
+      className={compact ? "store-btn-primary h-10 w-full px-3 text-xs" : "store-btn-primary h-10 w-full px-3 text-xs sm:w-auto sm:min-w-[8.5rem]"}
     />
   );
 }
