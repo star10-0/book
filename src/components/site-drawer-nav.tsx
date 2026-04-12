@@ -2,7 +2,6 @@
 
 import Link from "next/link";
 import {
-  useCallback,
   useEffect,
   useId,
   useMemo,
@@ -43,51 +42,11 @@ export function SiteDrawerNav({
   triggerIconClassName,
 }: SiteDrawerNavProps) {
   const [isOpen, setIsOpen] = useState(false);
-  const [panelStyle, setPanelStyle] = useState<{
-    top: number;
-    left: number;
-  } | null>(null);
   const titleId = useId();
   const menuId = useId();
   const closeButtonRef = useRef<HTMLButtonElement | null>(null);
   const triggerRef = useRef<HTMLButtonElement | null>(null);
   const panelRef = useRef<HTMLDivElement | null>(null);
-  const computePanelStyle = useCallback(() => {
-    const trigger = triggerRef.current;
-    if (!trigger) {
-      return null;
-    }
-
-    const gap = 8;
-    const viewportPadding = 8;
-    const maxPanelWidth = 384;
-    const rect = trigger.getBoundingClientRect();
-    const viewportWidth = window.innerWidth;
-    const viewportHeight = window.innerHeight;
-    const panelWidth = Math.min(
-      maxPanelWidth,
-      viewportWidth - viewportPadding * 2,
-    );
-    const panelHeight = Math.min(576, viewportHeight - viewportPadding * 2);
-    const minTop = viewportPadding;
-    const maxTop = viewportHeight - panelHeight - viewportPadding;
-    const top = Math.max(minTop, Math.min(rect.top, Math.max(minTop, maxTop)));
-    const rtlPreferredLeft = rect.left - panelWidth - gap;
-    const ltrPreferredLeft = rect.right + gap;
-    const oppositeLeft = locale === "ar" ? ltrPreferredLeft : rtlPreferredLeft;
-    const preferredLeft = locale === "ar" ? rtlPreferredLeft : ltrPreferredLeft;
-    const maxLeft = viewportWidth - panelWidth - viewportPadding;
-    const minLeft = viewportPadding;
-    const preferredFits = preferredLeft >= minLeft && preferredLeft <= maxLeft;
-    const oppositeFits = oppositeLeft >= minLeft && oppositeLeft <= maxLeft;
-    const left = preferredFits
-      ? preferredLeft
-      : oppositeFits
-        ? oppositeLeft
-        : Math.max(minLeft, Math.min(preferredLeft, maxLeft));
-
-    return { top, left };
-  }, [locale]);
 
   const t =
     locale === "en"
@@ -257,39 +216,20 @@ export function SiteDrawerNav({
       return;
     }
 
-    const updatePanelPosition = () => {
-      const nextStyle = computePanelStyle();
-      if (nextStyle) {
-        setPanelStyle(nextStyle);
-      }
-    };
+    const previousOverflow = document.body.style.overflow;
+    document.body.style.overflow = "hidden";
 
-    updatePanelPosition();
-    window.addEventListener("resize", updatePanelPosition);
-    window.addEventListener("scroll", updatePanelPosition, true);
     return () => {
-      window.removeEventListener("resize", updatePanelPosition);
-      window.removeEventListener("scroll", updatePanelPosition, true);
+      document.body.style.overflow = previousOverflow;
     };
-  }, [computePanelStyle, isOpen]);
+  }, [isOpen]);
 
   return (
     <div className="inline-flex">
       <button
         ref={triggerRef}
         type="button"
-        onClick={() =>
-          setIsOpen((prev) => {
-            const next = !prev;
-            if (next) {
-              const nextStyle = computePanelStyle();
-              if (nextStyle) {
-                setPanelStyle(nextStyle);
-              }
-            }
-            return next;
-          })
-        }
+        onClick={() => setIsOpen((prev) => !prev)}
         aria-haspopup="dialog"
         aria-expanded={isOpen}
         aria-controls={menuId}
@@ -305,121 +245,92 @@ export function SiteDrawerNav({
         {triggerLabel ? <span>{triggerLabel}</span> : null}
       </button>
 
-      {typeof document !== "undefined" && isOpen && panelStyle
+      {typeof document !== "undefined" && isOpen
         ? createPortal(
             <div
-              ref={panelRef}
-              id={menuId}
-              role="dialog"
-              aria-modal="false"
-              aria-labelledby={titleId}
-              className={`fixed overflow-hidden rounded-2xl border border-slate-200 bg-white shadow-[0_24px_56px_-28px_rgba(15,23,42,0.75)] transition duration-200 z-[220] ${
-                isOpen
-                  ? "pointer-events-auto translate-y-0 opacity-100 scale-100"
-                  : "pointer-events-none -translate-y-1 opacity-0 scale-95"
-              }`}
-              style={{
-                top: `${panelStyle.top}px`,
-                left: `${panelStyle.left}px`,
-                width: "min(24rem, calc(100vw - 1rem))",
-                maxHeight: "min(80vh, 36rem)",
-                transformOrigin: locale === "ar" ? "top right" : "top left",
-              }}
-              aria-hidden={!isOpen}
+              className="fixed inset-0 z-[220]"
               dir={locale === "ar" ? "rtl" : "ltr"}
             >
-              <div className="flex items-center justify-between border-b border-slate-200 bg-white/95 px-4 py-3 backdrop-blur supports-[backdrop-filter]:bg-white/85">
-                <p
-                  id={titleId}
-                  className="text-sm font-extrabold text-slate-900"
-                >
-                  {t.browseStore}
-                </p>
-                <button
-                  ref={closeButtonRef}
-                  type="button"
-                  onClick={() => setIsOpen(false)}
-                  className="inline-flex h-9 w-9 items-center justify-center rounded-lg border border-slate-200 bg-white text-slate-600 transition hover:bg-slate-100 focus-visible:outline-none focus-visible:ring-2 focus-visible:ring-indigo-300"
-                  aria-label={t.closeMenu}
-                  tabIndex={isOpen ? 0 : -1}
-                >
-                  ✕
-                </button>
-              </div>
-
+              <button
+                type="button"
+                className="absolute inset-0 z-0 bg-slate-950/40 backdrop-blur-[1px]"
+                onClick={() => setIsOpen(false)}
+                aria-label={t.closeMenu}
+              />
               <div
-                className="overflow-y-auto p-4 text-sm"
-                style={{
-                  maxHeight: "calc(min(80vh, 36rem) - 3.75rem)",
-                }}
+                ref={panelRef}
+                id={menuId}
+                role="dialog"
+                aria-modal="true"
+                aria-labelledby={titleId}
+                className="fixed inset-y-0 start-0 z-10 flex h-[100dvh] w-[min(24rem,92vw)] max-w-full flex-col overflow-hidden border-slate-200 bg-white shadow-[0_10px_30px_rgba(2,6,23,0.35)] rtl:border-l ltr:border-r"
+                aria-hidden={!isOpen}
+                dir={locale === "ar" ? "rtl" : "ltr"}
               >
-                <div className="space-y-4">
-                  <section
-                    aria-label={t.shopping}
-                    className="rounded-2xl border border-slate-200 bg-slate-50/70 p-3.5"
+                <div className="flex items-center justify-between border-b border-slate-200 bg-white/95 px-4 py-3 backdrop-blur supports-[backdrop-filter]:bg-white/85">
+                  <p
+                    id={titleId}
+                    className="text-sm font-extrabold text-slate-900"
                   >
-                    <p className="mb-2 text-xs font-bold tracking-wide text-slate-500">
-                      {t.shopping}
-                    </p>
-                    <div className="grid gap-2">
-                      <Link
-                        href="/books"
-                        onClick={() => setIsOpen(false)}
-                        className="flex items-center justify-between rounded-xl bg-indigo-600 px-3 py-2.5 font-semibold text-white transition hover:bg-indigo-700"
-                      >
-                        {t.allBooks}
-                      </Link>
-                      <div className="grid grid-cols-2 gap-2">
-                        <Link
-                          href="/books?offer=buy"
-                          onClick={() => setIsOpen(false)}
-                          className="rounded-lg border border-slate-200 bg-white px-3 py-2 text-center font-semibold text-slate-700 transition hover:bg-slate-50"
-                        >
-                          {t.buyDigital}
-                        </Link>
-                        <Link
-                          href="/books?offer=rent"
-                          onClick={() => setIsOpen(false)}
-                          className="rounded-lg border border-slate-200 bg-white px-3 py-2 text-center font-semibold text-slate-700 transition hover:bg-slate-50"
-                        >
-                          {t.rentDigital}
-                        </Link>
-                      </div>
-                    </div>
-                  </section>
-
-                  <section
-                    aria-label={t.discover}
-                    className="rounded-2xl border border-slate-200 bg-white p-3.5"
+                    {t.browseStore}
+                  </p>
+                  <button
+                    ref={closeButtonRef}
+                    type="button"
+                    onClick={() => setIsOpen(false)}
+                    className="inline-flex h-9 w-9 items-center justify-center rounded-lg border border-slate-200 bg-white text-slate-600 transition hover:bg-slate-100 focus-visible:outline-none focus-visible:ring-2 focus-visible:ring-indigo-300"
+                    aria-label={t.closeMenu}
+                    tabIndex={isOpen ? 0 : -1}
                   >
-                    <p className="mb-2 text-xs font-bold tracking-wide text-slate-500">
-                      {t.discover}
-                    </p>
-                    <ul className="space-y-1">
-                      {discoveryLinks.map((link) => (
-                        <li key={link.href}>
-                          <Link
-                            href={link.href}
-                            onClick={() => setIsOpen(false)}
-                            className="block rounded-lg px-3 py-2 text-slate-700 transition hover:bg-slate-100"
-                          >
-                            {link.label}
-                          </Link>
-                        </li>
-                      ))}
-                    </ul>
-                  </section>
+                    ✕
+                  </button>
+                </div>
 
-                  {infoLinks.length > 0 ? (
+                <div className="min-h-0 flex-1 overflow-y-auto p-4 text-sm">
+                  <div className="space-y-4">
                     <section
-                      aria-label={t.info}
+                      aria-label={t.shopping}
+                      className="rounded-2xl border border-slate-200 bg-slate-50/70 p-3.5"
+                    >
+                      <p className="mb-2 text-xs font-bold tracking-wide text-slate-500">
+                        {t.shopping}
+                      </p>
+                      <div className="grid gap-2">
+                        <Link
+                          href="/books"
+                          onClick={() => setIsOpen(false)}
+                          className="flex items-center justify-between rounded-xl bg-indigo-600 px-3 py-2.5 font-semibold text-white transition hover:bg-indigo-700"
+                        >
+                          {t.allBooks}
+                        </Link>
+                        <div className="grid grid-cols-2 gap-2">
+                          <Link
+                            href="/books?offer=buy"
+                            onClick={() => setIsOpen(false)}
+                            className="rounded-lg border border-slate-200 bg-white px-3 py-2 text-center font-semibold text-slate-700 transition hover:bg-slate-50"
+                          >
+                            {t.buyDigital}
+                          </Link>
+                          <Link
+                            href="/books?offer=rent"
+                            onClick={() => setIsOpen(false)}
+                            className="rounded-lg border border-slate-200 bg-white px-3 py-2 text-center font-semibold text-slate-700 transition hover:bg-slate-50"
+                          >
+                            {t.rentDigital}
+                          </Link>
+                        </div>
+                      </div>
+                    </section>
+
+                    <section
+                      aria-label={t.discover}
                       className="rounded-2xl border border-slate-200 bg-white p-3.5"
                     >
                       <p className="mb-2 text-xs font-bold tracking-wide text-slate-500">
-                        {t.info}
+                        {t.discover}
                       </p>
                       <ul className="space-y-1">
-                        {infoLinks.map((link) => (
+                        {discoveryLinks.map((link) => (
                           <li key={link.href}>
                             <Link
                               href={link.href}
@@ -432,41 +343,65 @@ export function SiteDrawerNav({
                         ))}
                       </ul>
                     </section>
-                  ) : null}
 
-                  <section
-                    aria-label={t.account}
-                    className="rounded-2xl border border-slate-200 bg-white p-3.5"
-                  >
-                    <p className="mb-2 text-xs font-bold tracking-wide text-slate-500">
-                      {t.account}
-                    </p>
-                    <ul className="space-y-1">
-                      {accountActionLinks.map((link) => (
-                        <li key={link.href}>
-                          <Link
-                            href={link.href}
-                            onClick={() => setIsOpen(false)}
-                            className="block rounded-lg px-3 py-2 text-slate-700 transition hover:bg-slate-100"
-                          >
-                            {link.label}
-                          </Link>
-                        </li>
-                      ))}
-                      {userSignedIn && logoutAction ? (
-                        <li className="pt-2">
-                          <form action={logoutAction}>
-                            <button
-                              type="submit"
-                              className="block w-full rounded-lg bg-rose-50 px-3 py-2 text-right font-semibold text-rose-700 transition hover:bg-rose-100"
+                    {infoLinks.length > 0 ? (
+                      <section
+                        aria-label={t.info}
+                        className="rounded-2xl border border-slate-200 bg-white p-3.5"
+                      >
+                        <p className="mb-2 text-xs font-bold tracking-wide text-slate-500">
+                          {t.info}
+                        </p>
+                        <ul className="space-y-1">
+                          {infoLinks.map((link) => (
+                            <li key={link.href}>
+                              <Link
+                                href={link.href}
+                                onClick={() => setIsOpen(false)}
+                                className="block rounded-lg px-3 py-2 text-slate-700 transition hover:bg-slate-100"
+                              >
+                                {link.label}
+                              </Link>
+                            </li>
+                          ))}
+                        </ul>
+                      </section>
+                    ) : null}
+
+                    <section
+                      aria-label={t.account}
+                      className="rounded-2xl border border-slate-200 bg-white p-3.5"
+                    >
+                      <p className="mb-2 text-xs font-bold tracking-wide text-slate-500">
+                        {t.account}
+                      </p>
+                      <ul className="space-y-1">
+                        {accountActionLinks.map((link) => (
+                          <li key={link.href}>
+                            <Link
+                              href={link.href}
+                              onClick={() => setIsOpen(false)}
+                              className="block rounded-lg px-3 py-2 text-slate-700 transition hover:bg-slate-100"
                             >
-                              {t.logout}
-                            </button>
-                          </form>
-                        </li>
-                      ) : null}
-                    </ul>
-                  </section>
+                              {link.label}
+                            </Link>
+                          </li>
+                        ))}
+                        {userSignedIn && logoutAction ? (
+                          <li className="pt-2">
+                            <form action={logoutAction}>
+                              <button
+                                type="submit"
+                                className="block w-full rounded-lg bg-rose-50 px-3 py-2 text-right font-semibold text-rose-700 transition hover:bg-rose-100"
+                              >
+                                {t.logout}
+                              </button>
+                            </form>
+                          </li>
+                        ) : null}
+                      </ul>
+                    </section>
+                  </div>
                 </div>
               </div>
             </div>,
