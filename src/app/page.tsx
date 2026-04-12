@@ -8,8 +8,10 @@ import {
   FeaturedBooksSection,
   RecommendedBooksSection,
 } from "@/components/storefront";
+import { StorefrontBannerList } from "@/components/home/storefront-banner-list";
 import { getCurrentUser } from "@/lib/auth-session";
 import { formatArabicCurrency } from "@/lib/formatters/intl";
+import { BannerPlacement, getActiveBannersByPlacement } from "@/lib/storefront-banners";
 
 export const metadata: Metadata = {
   title: "الرئيسية",
@@ -34,7 +36,7 @@ function getPricingLabel(
 }
 
 export default async function HomePage() {
-  const [user, featuredBooks, recommendedBooks, discoveryCategories] = await Promise.all([
+  const [user, featuredBooks, recommendedBooks, discoveryCategories, homeHeroBanners, secondaryBanners] = await Promise.all([
     getCurrentUser(),
     prisma.book.findMany({
       where: { status: "PUBLISHED", format: "DIGITAL" },
@@ -126,6 +128,8 @@ export default async function HomePage() {
         },
       },
     }),
+    getActiveBannersByPlacement(BannerPlacement.HOME_HERO, 3),
+    getActiveBannersByPlacement(BannerPlacement.SECONDARY, 4),
   ]);
 
   const fallbackBillboard = HOME_BILLBOARD_FALLBACKS[0];
@@ -135,6 +139,7 @@ export default async function HomePage() {
       <div className="space-y-0 pb-5">
         <HomeDiscoveryHero
           billboard={fallbackBillboard}
+          heroBanner={homeHeroBanners[0] ?? null}
           categories={discoveryCategories
             .map((category) => ({
               slug: category.slug,
@@ -156,6 +161,7 @@ export default async function HomePage() {
             }))
             .filter((category) => category.books.length > 0)}
         />
+        <StorefrontBannerList banners={secondaryBanners} />
 
         <CategoriesPreviewSection
           categories={discoveryCategories
