@@ -159,7 +159,7 @@ export function HomeDiscoveryHero({ billboard, categories }: HomeDiscoveryHeroPr
       </h1>
 
       <div className="relative w-full overflow-hidden border-y border-slate-300 bg-[#cde8d6]">
-        <div className="relative min-h-[230px] sm:min-h-[320px] lg:min-h-[420px]">
+        <div className="relative min-h-[220px] sm:min-h-[300px] lg:min-h-[390px]">
           <CoverImage
             src={HERO_BANNER_IMAGE}
             alt="عروض خاصة بعيد الأم"
@@ -188,7 +188,7 @@ export function HomeDiscoveryHero({ billboard, categories }: HomeDiscoveryHeroPr
         </div>
       </div>
 
-      <div className="relative z-10 -mt-16 grid grid-cols-1 gap-2 px-0 sm:-mt-20 sm:grid-cols-2 sm:gap-2.5 lg:-mt-24 lg:grid-cols-4 lg:gap-3" dir="rtl">
+      <div className="relative z-10 -mt-24 grid grid-cols-1 gap-2 px-0 sm:-mt-28 sm:grid-cols-2 sm:gap-2.5 lg:-mt-32 lg:grid-cols-4 lg:gap-3" dir="rtl">
         {HERO_SHOWCASE_PANELS.map((panel) => {
           if (panel.featured) {
             const featuredCard = panel.cards[0];
@@ -209,7 +209,7 @@ export function HomeDiscoveryHero({ billboard, categories }: HomeDiscoveryHeroPr
                       alt={featuredCard.imageAlt}
                       width={640}
                       height={640}
-                      className="h-[240px] w-full object-cover transition duration-300 group-hover:scale-[1.02] sm:h-[280px] lg:h-[320px]"
+                      className="h-[220px] w-full object-cover transition duration-300 group-hover:scale-[1.02] sm:h-[250px] lg:h-[280px]"
                     />
                   </div>
                   <p className="mt-1.5 text-xs font-medium text-slate-700">{featuredCard.title}</p>
@@ -240,7 +240,7 @@ export function HomeDiscoveryHero({ billboard, categories }: HomeDiscoveryHeroPr
                         alt={card.imageAlt}
                         width={280}
                         height={210}
-                        className="h-24 w-full object-cover transition duration-300 group-hover:scale-[1.03] sm:h-28"
+                        className="h-[88px] w-full object-cover transition duration-300 group-hover:scale-[1.03] sm:h-24"
                       />
                     </div>
                     <p className="mt-1 text-[11px] font-medium text-slate-700">{card.title}</p>
