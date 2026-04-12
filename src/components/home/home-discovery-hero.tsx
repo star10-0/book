@@ -1,11 +1,14 @@
 import Link from "next/link";
 import type { HomeBillboard } from "@/lib/home-billboards";
+import type { StorefrontBannerView } from "@/lib/storefront-banners";
 import type { DiscoveryCategory } from "@/components/home/home-category-discovery";
 import { CoverImage } from "@/components/ui/cover-image";
+import { StorefrontBanner } from "@/components/home/storefront-banner";
 
 type HomeDiscoveryHeroProps = {
   billboard: HomeBillboard;
   categories: DiscoveryCategory[];
+  heroBanner?: StorefrontBannerView | null;
 };
 
 type HeroShowcaseCard = {
@@ -149,7 +152,7 @@ const HERO_SHOWCASE_PANELS: HeroShowcasePanel[] = [
   },
 ];
 
-export function HomeDiscoveryHero({ billboard, categories }: HomeDiscoveryHeroProps) {
+export function HomeDiscoveryHero({ billboard, categories, heroBanner = null }: HomeDiscoveryHeroProps) {
   const hasCategories = categories.length > 0;
 
   return (
@@ -159,15 +162,21 @@ export function HomeDiscoveryHero({ billboard, categories }: HomeDiscoveryHeroPr
       </h1>
 
       <div className="relative w-full overflow-hidden border-y border-slate-300 bg-[#cde8d6]">
-        <div className="relative min-h-[200px] sm:min-h-[260px] lg:min-h-[330px]">
-          <CoverImage
-            src={HERO_BANNER_IMAGE}
-            alt="عروض خاصة بعيد الأم"
-            fill
-            priority
-            sizes="100vw"
-            className="object-cover object-[center_30%]"
-          />
+        <div className="relative">
+          {heroBanner ? (
+            <StorefrontBanner banner={heroBanner} priority className="border-0" />
+          ) : (
+            <div className="relative min-h-[200px] sm:min-h-[260px] lg:min-h-[330px]">
+              <CoverImage
+                src={HERO_BANNER_IMAGE}
+                alt="عروض خاصة بعيد الأم"
+                fill
+                priority
+                sizes="100vw"
+                className="object-cover object-[center_30%]"
+              />
+            </div>
+          )}
           <div className="pointer-events-none absolute inset-0 bg-gradient-to-l from-transparent via-transparent to-[#cde8d6]/45" />
           <div className="pointer-events-none absolute inset-x-0 bottom-0 h-28 bg-gradient-to-t from-[#eaedef] via-[#eaedef]/55 to-transparent" />
 

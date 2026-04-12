@@ -163,6 +163,40 @@ enum PromoRedemptionStatus {
   VOIDED
 }
 
+enum BannerPlacement {
+  HOME_HERO
+  CATALOG_HERO
+  SECONDARY
+}
+
+enum BannerFitMode {
+  COVER
+  CONTAIN
+}
+
+enum BannerImagePosition {
+  CENTER
+  TOP
+  BOTTOM
+  LEFT
+  RIGHT
+}
+
+enum BannerHeightPreset {
+  SHORT
+  MEDIUM
+  TALL
+}
+
+enum BannerOverlayColor {
+  NONE
+  BLACK
+  SLATE
+  INDIGO
+  EMERALD
+  AMBER
+}
+
 model User {
   id                String            @id @default(cuid())
   email             String            @unique
@@ -272,6 +306,30 @@ model Category {
   @@unique([parentId, slug])
   @@index([isActive, sortOrder])
   @@index([kind, sortOrder])
+}
+
+model StorefrontBanner {
+  id             String              @id @default(cuid())
+  name           String
+  desktopImageUrl String
+  mobileImageUrl String?
+  clickUrl       String?
+  altText        String
+  isActive       Boolean             @default(true)
+  sortOrder      Int                 @default(0)
+  placement      BannerPlacement     @default(HOME_HERO)
+  fitMode        BannerFitMode       @default(COVER)
+  imagePosition  BannerImagePosition @default(CENTER)
+  heightDesktop  BannerHeightPreset  @default(MEDIUM)
+  heightTablet   BannerHeightPreset  @default(MEDIUM)
+  heightMobile   BannerHeightPreset  @default(SHORT)
+  overlayColor   BannerOverlayColor  @default(NONE)
+  overlayOpacity Int                 @default(0)
+  createdAt      DateTime            @default(now())
+  updatedAt      DateTime            @updatedAt
+
+  @@index([placement, isActive, sortOrder])
+  @@index([isActive, sortOrder])
 }
 
 model Book {

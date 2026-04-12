@@ -8,6 +8,8 @@ import { getCurrentUser } from "@/lib/auth-session";
 import { buildCatalogBreadcrumbHref, buildCatalogPath } from "@/lib/categories/path";
 import { getPublicCategorySiblings, getPublicRootCategories, resolvePublicCategoryPath } from "@/lib/categories/service";
 import { prisma } from "@/lib/prisma";
+import { BannerPlacement, getActiveBannersByPlacement } from "@/lib/storefront-banners";
+import { StorefrontBanner } from "@/components/home/storefront-banner";
 
 type CatalogPageProps = {
   params: Promise<{
@@ -119,7 +121,11 @@ function CategoryCardsGrid({ items, buildHref, activeCategoryId }: { items: Publ
 
 export default async function CatalogBrowsePage({ params }: CatalogPageProps) {
   const { slug } = await params;
-  const user = await getCurrentUser();
+  const [user, catalogHeroBanners] = await Promise.all([
+    getCurrentUser(),
+    getActiveBannersByPlacement(BannerPlacement.CATALOG_HERO, 1),
+  ]);
+  const catalogHeroBanner = catalogHeroBanners[0] ?? null;
 
   if (!slug || slug.length === 0) {
     const sections = await getPublicRootCategories();
@@ -131,6 +137,7 @@ export default async function CatalogBrowsePage({ params }: CatalogPageProps) {
           <h1 className="mt-2 text-3xl font-black text-slate-900 sm:text-4xl">استعرض الأقسام التعليمية</h1>
           <p className="mt-3 max-w-3xl text-sm leading-7 text-slate-700 sm:text-base">ابدأ من قسم رئيسي ثم تابع التدرج حتى تصل إلى الكتب أو المحتوى المطلوب.</p>
         </section>
+        {catalogHeroBanner ? <StorefrontBanner banner={catalogHeroBanner} className="rounded-3xl border-indigo-100" /> : null}
 
         {sections.length === 0 ? (
           <p className="rounded-2xl border border-dashed border-slate-300 p-6 text-sm text-slate-600">لا توجد أقسام نشطة حاليًا.</p>
@@ -216,6 +223,7 @@ export default async function CatalogBrowsePage({ params }: CatalogPageProps) {
 
   return (
     <div className="store-shell space-y-6 pb-10 pt-6 sm:space-y-8 sm:pt-8">
+      {catalogHeroBanner ? <StorefrontBanner banner={catalogHeroBanner} className="rounded-3xl border-indigo-100" /> : null}
       <section className="rounded-3xl border border-indigo-100 bg-gradient-to-l from-white via-indigo-50/60 to-violet-50/70 p-6 shadow-sm sm:p-8">
         <nav aria-label="مسار التصفح" className="flex flex-wrap items-center gap-1.5 text-xs font-semibold text-slate-600">
           <Link href={buildCatalogPath([])} className="rounded-full bg-indigo-100 px-2.5 py-1 text-indigo-700 hover:bg-indigo-200">
