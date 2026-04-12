@@ -139,7 +139,7 @@ export default async function HomePage() {
       <div className="space-y-0 pb-5">
         <HomeDiscoveryHero
           billboard={fallbackBillboard}
-          heroBanner={homeHeroBanners[0] ?? null}
+          heroBanners={homeHeroBanners}
           categories={discoveryCategories
             .map((category) => ({
               slug: category.slug,
