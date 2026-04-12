@@ -536,3 +536,31 @@ npx tsx --test src/lib/payments/__tests__/ui-state.test.ts
 Notes:
 - Hydration warnings caused only by browser extensions (for example injected attributes like `fdprocessedid`) are intentionally deferred and should not be treated as app defects unless reproducible in a clean browser profile.
 - No additional schema migration is required specifically for this hardening pass beyond running normal `prisma:migrate:deploy`.
+
+## Home Deals Section Image Slots (Manual Upload)
+
+The home page hero now renders a Mother's Day style promotional layout using fixed image paths under `public/home-deals`.
+
+Place your images manually in these exact paths:
+
+- Banner:
+  - `public/home-deals/banner/mothers-day-hero.jpg`
+- Game panel:
+  - `public/home-deals/panels/game-ready/gaming-setup.jpg`
+- Home panel:
+  - `public/home-deals/panels/home-under-50/kitchen.jpg`
+  - `public/home-deals/panels/home-under-50/home-upgrade.jpg`
+  - `public/home-deals/panels/home-under-50/decor.jpg`
+  - `public/home-deals/panels/home-under-50/bedding.jpg`
+- Fashion panel:
+  - `public/home-deals/panels/fashion-under-50/jeans.jpg`
+  - `public/home-deals/panels/fashion-under-50/shirts.jpg`
+  - `public/home-deals/panels/fashion-under-50/dresses.jpg`
+  - `public/home-deals/panels/fashion-under-50/boots.jpg`
+- Gifts for mom panel:
+  - `public/home-deals/panels/gifts-for-mom/fashion.jpg`
+  - `public/home-deals/panels/gifts-for-mom/shoes.jpg`
+  - `public/home-deals/panels/gifts-for-mom/jewelry.jpg`
+  - `public/home-deals/panels/gifts-for-mom/bags.jpg`
+
+If any image is missing, the app will fall back to the default placeholder image.
