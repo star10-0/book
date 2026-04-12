@@ -21,6 +21,7 @@ export function AdminSidebar({ canManageContent }: AdminSidebarProps) {
           { href: "/admin/books/new", label: "+ إضافة كتاب", highlight: true },
           { href: "/admin/categories", label: "التصنيفات" },
           { href: "/admin/authors", label: "المؤلفون" },
+          { href: "/admin/banners", label: "بانرات المتجر" },
         ]
       : []),
     { href: "/admin/orders", label: "الطلبات" },
