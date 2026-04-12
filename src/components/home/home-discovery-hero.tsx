@@ -159,14 +159,14 @@ export function HomeDiscoveryHero({ billboard, categories }: HomeDiscoveryHeroPr
       </h1>
 
       <div className="relative w-full overflow-hidden border-y border-slate-300 bg-[#cde8d6]">
-        <div className="relative min-h-[220px] sm:min-h-[300px] lg:min-h-[390px]">
+        <div className="relative min-h-[200px] sm:min-h-[260px] lg:min-h-[330px]">
           <CoverImage
             src={HERO_BANNER_IMAGE}
             alt="عروض خاصة بعيد الأم"
             fill
             priority
             sizes="100vw"
-            className="object-cover"
+            className="object-cover object-[center_30%]"
           />
           <div className="pointer-events-none absolute inset-0 bg-gradient-to-l from-transparent via-transparent to-[#cde8d6]/45" />
           <div className="pointer-events-none absolute inset-x-0 bottom-0 h-28 bg-gradient-to-t from-[#eaedef] via-[#eaedef]/55 to-transparent" />
