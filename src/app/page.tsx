@@ -223,7 +223,7 @@ export default async function HomePage() {
 
               return b.averageRating - a.averageRating;
             })
-            .slice(0, 3)
+            .slice(0, 4)
             .map((book) => ({
               id: book.id,
               slug: book.slug,
