@@ -32,7 +32,7 @@ export function CartLink({ href, className, label, initialCount }: CartLinkProps
     <Link href={href} className={className}>
       <span>{label}</span>
       {count > 0 ? (
-        <span className="mr-1 inline-flex min-w-5 items-center justify-center rounded-full bg-indigo-600 px-1.5 text-[10px] font-bold leading-4 text-white">
+        <span className="ms-1 inline-flex min-w-5 items-center justify-center rounded-full border border-indigo-300/30 bg-indigo-500 px-1.5 text-[10px] font-bold leading-4 text-white">
           {count}
         </span>
       ) : null}
