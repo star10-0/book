@@ -38,6 +38,7 @@ export function SiteDrawerNav({
   const titleId = useId();
   const menuId = useId();
   const closeButtonRef = useRef<HTMLButtonElement | null>(null);
+  const containerRef = useRef<HTMLDivElement | null>(null);
 
   const t =
     locale === "en"
@@ -159,18 +160,42 @@ export function SiteDrawerNav({
     };
 
     window.addEventListener("keydown", onEscape);
-    const originalOverflow = document.body.style.overflow;
-    document.body.style.overflow = "hidden";
     closeButtonRef.current?.focus();
 
     return () => {
       window.removeEventListener("keydown", onEscape);
-      document.body.style.overflow = originalOverflow;
     };
   }, [isOpen]);
 
+  useEffect(() => {
+    if (!isOpen) {
+      return;
+    }
+
+    const onPointerDown = (event: PointerEvent) => {
+      const target = event.target;
+      if (!(target instanceof Node)) {
+        return;
+      }
+
+      if (containerRef.current?.contains(target)) {
+        return;
+      }
+
+      setIsOpen(false);
+    };
+
+    document.addEventListener("pointerdown", onPointerDown);
+    return () => document.removeEventListener("pointerdown", onPointerDown);
+  }, [isOpen]);
+
+  const panelSideAlignment =
+    locale === "ar"
+      ? "start-[calc(100%+0.5rem)] top-0 origin-top-right max-[480px]:start-auto max-[480px]:end-0 max-[480px]:top-full max-[480px]:mt-2"
+      : "start-[calc(100%+0.5rem)] top-0 origin-top-left max-[480px]:start-0 max-[480px]:top-full max-[480px]:mt-2";
+
   return (
-    <div className="inline-flex">
+    <div ref={containerRef} className="relative inline-flex z-[120]">
       <button
         type="button"
         onClick={() => setIsOpen((prev) => !prev)}
@@ -190,41 +215,33 @@ export function SiteDrawerNav({
       </button>
 
       <div
-        className={`fixed inset-0 z-[120] transition-opacity duration-200 ${isOpen ? "pointer-events-auto opacity-100" : "pointer-events-none opacity-0"}`}
+        id={menuId}
+        role="dialog"
+        aria-modal="false"
+        aria-labelledby={titleId}
+        className={`absolute ${panelSideAlignment} w-[min(24rem,calc(100vw-1rem))] max-h-[min(80vh,36rem)] overflow-hidden rounded-2xl border border-slate-200 bg-white shadow-[0_24px_56px_-28px_rgba(15,23,42,0.75)] transition duration-200 ${
+          isOpen ? "pointer-events-auto translate-y-0 opacity-100 scale-100" : "pointer-events-none -translate-y-1 opacity-0 scale-95"
+        }`}
         aria-hidden={!isOpen}
       >
-        <button
-          type="button"
-          onClick={() => setIsOpen(false)}
-          className="absolute inset-0 bg-slate-950/70 backdrop-blur-[2px]"
-          aria-label={t.closeMenu}
-          tabIndex={isOpen ? 0 : -1}
-        />
-        <div
-          id={menuId}
-          role="dialog"
-          aria-modal="true"
-          aria-labelledby={titleId}
-          className={`absolute inset-y-0 end-0 flex h-full w-[min(24rem,92vw)] flex-col overflow-hidden border-s border-slate-200 bg-white shadow-[0_25px_80px_-35px_rgba(2,6,23,0.7)] transition-transform duration-300 ease-out ${isOpen ? "translate-x-0" : "translate-x-full"}`}
-        >
-          <div className="flex items-center justify-between border-b border-slate-200 bg-white/95 px-4 py-3 backdrop-blur supports-[backdrop-filter]:bg-white/85">
-            <p id={titleId} className="text-sm font-extrabold text-slate-900">
-              {t.browseStore}
-            </p>
-            <button
-              ref={closeButtonRef}
-              type="button"
-              onClick={() => setIsOpen(false)}
-              className="inline-flex h-9 w-9 items-center justify-center rounded-lg border border-slate-200 bg-white text-slate-600 transition hover:bg-slate-100 focus-visible:outline-none focus-visible:ring-2 focus-visible:ring-indigo-300"
-              aria-label={t.closeMenu}
-              tabIndex={isOpen ? 0 : -1}
-            >
-              ✕
-            </button>
-          </div>
+        <div className="flex items-center justify-between border-b border-slate-200 bg-white/95 px-4 py-3 backdrop-blur supports-[backdrop-filter]:bg-white/85">
+          <p id={titleId} className="text-sm font-extrabold text-slate-900">
+            {t.browseStore}
+          </p>
+          <button
+            ref={closeButtonRef}
+            type="button"
+            onClick={() => setIsOpen(false)}
+            className="inline-flex h-9 w-9 items-center justify-center rounded-lg border border-slate-200 bg-white text-slate-600 transition hover:bg-slate-100 focus-visible:outline-none focus-visible:ring-2 focus-visible:ring-indigo-300"
+            aria-label={t.closeMenu}
+            tabIndex={isOpen ? 0 : -1}
+          >
+            ✕
+          </button>
+        </div>
 
-          <div className="flex-1 overflow-y-auto p-4 text-sm">
-            <div className="space-y-4">
+        <div className="overflow-y-auto p-4 text-sm">
+          <div className="space-y-4">
               <section aria-label={t.shopping} className="rounded-2xl border border-slate-200 bg-slate-50/70 p-3.5">
                 <p className="mb-2 text-xs font-bold tracking-wide text-slate-500">{t.shopping}</p>
                 <div className="grid gap-2">
@@ -317,8 +334,7 @@ export function SiteDrawerNav({
                     </li>
                   ) : null}
                 </ul>
-              </section>
-            </div>
+            </section>
           </div>
         </div>
       </div>
