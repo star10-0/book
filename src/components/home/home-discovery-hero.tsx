@@ -194,10 +194,10 @@ export function HomeDiscoveryHero({ billboard, categories }: HomeDiscoveryHeroPr
             const featuredCard = panel.cards[0];
 
             return (
-              <section key={panel.id} className="h-full border border-slate-200 bg-white p-3 sm:p-3.5" aria-label={`عروض ${panel.title}`}>
+              <section key={panel.id} className="h-full border border-slate-200 bg-white p-3 sm:p-4" aria-label={`عروض ${panel.title}`}>
                 <div className="mb-2 flex items-center justify-between gap-2">
                   <h2 className="line-clamp-1 text-base font-bold text-slate-900">{panel.title}</h2>
-                  <Link href={panel.href} className="text-[11px] font-semibold text-slate-600 hover:text-slate-900">
+                  <Link href={panel.href} className="text-xs font-semibold text-slate-600 hover:text-slate-900">
                     المزيد
                   </Link>
                 </div>
@@ -219,10 +219,10 @@ export function HomeDiscoveryHero({ billboard, categories }: HomeDiscoveryHeroPr
           }
 
           return (
-            <section key={panel.id} className="h-full border border-slate-200 bg-white p-3 sm:p-3.5" aria-label={`عروض ${panel.title}`}>
+            <section key={panel.id} className="h-full border border-slate-200 bg-white p-3 sm:p-4" aria-label={`عروض ${panel.title}`}>
               <div className="mb-2 flex items-center justify-between gap-2">
                 <h2 className="line-clamp-1 text-base font-bold text-slate-900">{panel.title}</h2>
-                <Link href={panel.href} className="text-[11px] font-semibold text-slate-600 hover:text-slate-900">
+                <Link href={panel.href} className="text-xs font-semibold text-slate-600 hover:text-slate-900">
                   المزيد
                 </Link>
               </div>
