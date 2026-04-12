@@ -41,7 +41,7 @@ export default async function HomePage() {
     prisma.book.findMany({
       where: { status: "PUBLISHED", format: "DIGITAL" },
       orderBy: { createdAt: "desc" },
-      take: 3,
+      take: 4,
       include: {
         author: { select: { nameAr: true } },
         category: { select: { nameAr: true } },
@@ -168,7 +168,8 @@ export default async function HomePage() {
             .map((category) => ({
               slug: category.slug,
               name: category.nameAr,
-              description: category.description ?? "اكتشف أبرز الكتب المتاحة ضمن هذا التصنيف.",
+              coverImageUrl: category.books[0]?.coverImageUrl ?? null,
+              sampleTitle: category.books[0]?.titleAr,
             }))
             .slice(0, 4)}
         />
