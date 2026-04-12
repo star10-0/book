@@ -191,6 +191,10 @@ export function HomeDiscoveryHero({ billboard, categories }: HomeDiscoveryHeroPr
         {HERO_SHOWCASE_PANELS.map((panel) => {
           const isGamePanel = panel.id === "game-ready";
 
+      <div className="relative z-10 -mt-32 grid gap-2 border-b border-slate-200 bg-transparent px-0 pb-0 sm:-mt-36 sm:grid-cols-2 sm:gap-2.5 lg:-mt-40 lg:grid-cols-4">
+        {HERO_SHOWCASE_PANELS.map((panel) => {
+          const isGamePanel = panel.id === "game-ready";
+
           return (
             <section key={panel.id} className="h-full border border-slate-200 bg-white p-3 sm:p-4" aria-label={`عروض ${panel.title}`}>
               <div className="mb-2 flex items-center justify-between gap-2">
