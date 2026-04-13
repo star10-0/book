@@ -238,9 +238,9 @@ export function HomeDiscoveryHero({ billboard, categories, heroBanners = [] }: H
                     <CoverImage
                       src={featuredCard.imageSrc}
                       alt={featuredCard.imageAlt}
-                      width={640}
-                      height={640}
-                      className="h-[220px] w-full bg-white object-cover p-1 transition duration-300 group-hover:scale-[1.02] sm:h-[250px] lg:h-[280px]"
+                      width={320}
+                      height={480}
+                      className="aspect-[3/4] w-full rounded-md bg-white object-cover shadow-sm shadow-slate-900/10 ring-1 ring-slate-100 transition duration-300 group-hover:opacity-95"
                     />
                   </div>
                   <p className="mt-1.5 line-clamp-1 text-xs font-semibold text-slate-800">{featuredCard.title}</p>
@@ -270,9 +270,9 @@ export function HomeDiscoveryHero({ billboard, categories, heroBanners = [] }: H
                       <CoverImage
                         src={card.imageSrc}
                         alt={card.imageAlt}
-                        width={280}
-                        height={210}
-                        className="h-[88px] w-full bg-white object-cover p-0.5 transition duration-300 group-hover:scale-[1.03] sm:h-24"
+                        width={260}
+                        height={380}
+                        className="aspect-[3/4] w-full rounded-md bg-white object-cover shadow-sm shadow-slate-900/10 ring-1 ring-slate-100 transition duration-300 group-hover:opacity-95"
                       />
                     </div>
                     <p className="mt-1 line-clamp-1 text-[11px] font-medium text-slate-700">{card.title}</p>
