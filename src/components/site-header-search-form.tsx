@@ -89,8 +89,8 @@ export function SiteHeaderSearchForm({ action, searchPlaceholder, searchAria, se
           </button>
 
           {isDropdownOpen ? (
-            <div className="absolute start-0 top-[calc(100%+0.35rem)] z-[90] w-52 overflow-hidden rounded-xl border border-slate-700/90 bg-slate-900/98 shadow-xl ring-1 ring-black/25">
-              <div className="max-h-64 overflow-y-auto py-1">
+            <div className="absolute start-0 top-[calc(100%+0.2rem)] z-[100] w-52 overflow-hidden rounded-xl border border-slate-600 bg-slate-950 shadow-2xl ring-1 ring-black">
+              <div className="max-h-64 overflow-y-auto bg-slate-950 py-1">
                 <button
                   type="button"
                   onClick={() => {
@@ -98,8 +98,8 @@ export function SiteHeaderSearchForm({ action, searchPlaceholder, searchAria, se
                     setIsDropdownOpen(false);
                     setVisibleCount(INITIAL_VISIBLE_CATEGORIES);
                   }}
-                  className={`flex w-full items-center justify-between px-3 py-2 text-right text-xs font-semibold transition-colors ${
-                    selectedCategory.value === "all" ? "bg-slate-800/90 text-amber-200" : "text-slate-100 hover:bg-slate-800/70"
+                  className={`flex w-full items-center justify-between px-3 py-2 text-right text-[13px] font-semibold leading-5 transition-colors ${
+                    selectedCategory.value === "all" ? "bg-slate-800 text-amber-200" : "text-slate-50 hover:bg-slate-800"
                   }`}
                 >
                   <span>{allLabel}</span>
@@ -116,8 +116,8 @@ export function SiteHeaderSearchForm({ action, searchPlaceholder, searchAria, se
                         setSelectedValue(item.value);
                         setIsDropdownOpen(false);
                       }}
-                      className={`flex w-full items-center justify-between px-3 py-2 text-right text-xs transition-colors ${
-                        isSelected ? "bg-slate-800/90 font-semibold text-amber-200" : "text-slate-100 hover:bg-slate-800/70"
+                      className={`flex w-full items-center justify-between px-3 py-2 text-right text-[13px] leading-5 transition-colors ${
+                        isSelected ? "bg-slate-800 font-semibold text-amber-200" : "text-slate-50 hover:bg-slate-800"
                       }`}
                     >
                       <span className="line-clamp-1">{item.label}</span>
@@ -131,7 +131,7 @@ export function SiteHeaderSearchForm({ action, searchPlaceholder, searchAria, se
                 <button
                   type="button"
                   onClick={() => setVisibleCount((count) => Math.min(count + INITIAL_VISIBLE_CATEGORIES, categories.length))}
-                  className="w-full border-t border-slate-700/80 px-3 py-2 text-xs font-semibold text-amber-200 transition-colors hover:bg-slate-800/80"
+                  className="w-full border-t border-slate-700 px-3 py-2 text-xs font-semibold text-amber-200 transition-colors hover:bg-slate-800"
                 >
                   عرض المزيد
                 </button>
