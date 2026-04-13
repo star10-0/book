@@ -1,7 +1,7 @@
 "use client";
 
 import Link from "next/link";
-import { useRef } from "react";
+import { useId, useRef } from "react";
 import { CoverImage } from "@/components/ui/cover-image";
 
 type CoverBook = {
@@ -20,6 +20,7 @@ type MerchandisingBlock = {
 
 export function HomeRecommendationRail({ books }: { books: CoverBook[] }) {
   const railRef = useRef<HTMLDivElement | null>(null);
+  const titleId = useId();
 
   if (books.length === 0) {
     return null;
@@ -37,9 +38,9 @@ export function HomeRecommendationRail({ books }: { books: CoverBook[] }) {
   };
 
   return (
-    <section className="rounded-2xl bg-[#FAFAF7] px-1 pt-4 sm:px-0" aria-labelledby="home-recommended-rail-title">
+    <section className="rounded-2xl bg-[#FAFAF7] px-1 pt-4 sm:px-0" aria-labelledby={titleId}>
       <div className="mb-1.5 flex items-center justify-between">
-        <h2 id="home-recommended-rail-title" className="text-[11px] font-medium text-slate-500">
+        <h2 id={titleId} className="text-[11px] font-medium text-slate-500">
           مقترح لك
         </h2>
       </div>
@@ -81,6 +82,8 @@ export function HomeRecommendationRail({ books }: { books: CoverBook[] }) {
 }
 
 export function HomeMerchandisingRows({ blocks }: { blocks: MerchandisingBlock[] }) {
+  const titleId = useId();
+
   if (blocks.length === 0) {
     return null;
   }
@@ -91,8 +94,8 @@ export function HomeMerchandisingRows({ blocks }: { blocks: MerchandisingBlock[]
   }
 
   return (
-    <section className="space-y-4 rounded-2xl bg-[#FAFAF7] px-1 pb-2 sm:px-0" aria-labelledby="home-merchandising-title">
-      <h2 id="home-merchandising-title" className="sr-only">
+    <section className="space-y-4 rounded-2xl bg-[#FAFAF7] px-1 pb-2 sm:px-0" aria-labelledby={titleId}>
+      <h2 id={titleId} className="sr-only">
         صفوف اكتشاف الكتب
       </h2>
 

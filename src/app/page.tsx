@@ -157,6 +157,10 @@ export default async function HomePage() {
 
   const fullRowsBlocksCount = Math.floor(paddedBlocks.length / 4) * 4;
   const merchandisingBlocks = paddedBlocks.slice(0, fullRowsBlocksCount);
+  const secondaryRecommendationRailBooks =
+    recommendationRailBooks.slice(9, 18).length === 9 ? recommendationRailBooks.slice(9, 18) : recommendationRailBooks.slice(0, 9);
+  const secondaryMerchandisingBlocks =
+    merchandisingBlocks.slice(4, 8).length === 4 ? merchandisingBlocks.slice(4, 8) : merchandisingBlocks.slice(0, 4);
 
   return (
     <main className="-mx-4 bg-gradient-to-b from-[#FCFCF9] via-[#FAFAF7] to-[#FCFCF9] sm:-mx-6 lg:-mx-8">
@@ -190,6 +194,10 @@ export default async function HomePage() {
         <HomeRecommendationRail books={recommendationRailBooks} />
 
         <HomeMerchandisingRows blocks={merchandisingBlocks} />
+
+        <HomeRecommendationRail books={secondaryRecommendationRailBooks} />
+
+        <HomeMerchandisingRows blocks={secondaryMerchandisingBlocks} />
       </div>
       <SiteFooter />
     </main>
