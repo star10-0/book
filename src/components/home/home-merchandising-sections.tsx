@@ -37,7 +37,7 @@ export function HomeRecommendationRail({ books }: { books: CoverBook[] }) {
   };
 
   return (
-    <section className="px-1 pt-4 sm:px-0" aria-labelledby="home-recommended-rail-title">
+    <section className="rounded-2xl bg-[#FAFAF7] px-1 pt-4 sm:px-0" aria-labelledby="home-recommended-rail-title">
       <div className="mb-1.5 flex items-center justify-between">
         <h2 id="home-recommended-rail-title" className="text-[11px] font-medium text-slate-500">
           مقترح لك
@@ -49,7 +49,7 @@ export function HomeRecommendationRail({ books }: { books: CoverBook[] }) {
           type="button"
           onClick={scrollRail}
           aria-label="تمرير المقترحات"
-          className="absolute left-1 top-1/2 z-10 flex h-7 w-7 -translate-y-1/2 items-center justify-center rounded-full bg-white/90 text-base text-slate-700 shadow-sm transition hover:bg-white"
+          className="absolute left-1 top-1/2 z-10 flex h-7 w-7 -translate-y-1/2 items-center justify-center rounded-full bg-white/95 text-base text-slate-700 shadow-sm shadow-slate-900/10 transition hover:bg-white"
         >
           ‹
         </button>
@@ -70,7 +70,7 @@ export function HomeRecommendationRail({ books }: { books: CoverBook[] }) {
                 alt={`غلاف ${book.title}`}
                 width={320}
                 height={480}
-                className="aspect-[3/4] w-full bg-slate-100 object-cover transition duration-300 group-hover:opacity-95"
+                className="aspect-[3/4] w-full rounded-md bg-white object-cover shadow-sm shadow-slate-900/10 ring-1 ring-slate-100 transition duration-300 group-hover:opacity-95"
               />
             </Link>
           ))}
@@ -91,7 +91,7 @@ export function HomeMerchandisingRows({ blocks }: { blocks: MerchandisingBlock[]
   }
 
   return (
-    <section className="space-y-4 px-1 pb-2 sm:px-0" aria-labelledby="home-merchandising-title">
+    <section className="space-y-4 rounded-2xl bg-[#FAFAF7] px-1 pb-2 sm:px-0" aria-labelledby="home-merchandising-title">
       <h2 id="home-merchandising-title" className="sr-only">
         صفوف اكتشاف الكتب
       </h2>
@@ -101,7 +101,7 @@ export function HomeMerchandisingRows({ blocks }: { blocks: MerchandisingBlock[]
           <p className="text-[11px] font-medium text-slate-500">{rowIndex === 0 ? "تصنيفات" : "اكتشف المزيد"}</p>
           <div className="grid grid-cols-1 gap-2 sm:grid-cols-2 lg:grid-cols-4 lg:gap-3">
             {row.map((block) => (
-              <article key={block.id} className="p-1.5 sm:p-2">
+              <article key={block.id} className="rounded-xl bg-[#FCFCF9] p-1.5 shadow-sm shadow-slate-900/5 sm:p-2">
                 <div className="mb-1.5 flex items-center justify-between gap-2">
                   {block.href ? <Link href={block.href} className="line-clamp-1 text-[11px] font-medium text-slate-500 hover:text-slate-700">{block.label}</Link> : <p className="line-clamp-1 text-[11px] font-medium text-slate-500">{block.label}</p>}
                 </div>
@@ -114,7 +114,7 @@ export function HomeMerchandisingRows({ blocks }: { blocks: MerchandisingBlock[]
                         alt={`غلاف ${book.title}`}
                         width={260}
                         height={380}
-                        className="aspect-[3/4] w-full bg-slate-100 object-cover transition duration-300 group-hover:opacity-95"
+                        className="aspect-[3/4] w-full rounded-md bg-white object-cover shadow-sm shadow-slate-900/10 ring-1 ring-slate-100 transition duration-300 group-hover:opacity-95"
                       />
                     </Link>
                   ))}
