@@ -195,7 +195,7 @@ export function HomeDiscoveryHero({ billboard, categories, heroBanners = [] }: H
             </>
           )}
           <div className="pointer-events-none absolute inset-0 bg-gradient-to-l from-transparent via-transparent to-[#cde8d6]/45" />
-          <div className="pointer-events-none absolute inset-x-0 bottom-0 h-28 bg-gradient-to-t from-[#eaedef] via-[#eaedef]/55 to-transparent" />
+          <div className="pointer-events-none absolute inset-x-0 bottom-0 h-28 bg-gradient-to-t from-[#FAFAF7] via-[#FAFAF7]/55 to-transparent" />
 
           <button
             type="button"
@@ -225,7 +225,7 @@ export function HomeDiscoveryHero({ billboard, categories, heroBanners = [] }: H
             }
 
             return (
-              <section key={panel.id} className="h-full border border-slate-200 bg-white p-3 sm:p-4" aria-label={`كتب ${panel.title}`}>
+              <section key={panel.id} className="h-full rounded-2xl bg-[#FCFCF9] p-3 shadow-sm shadow-slate-900/5 sm:p-4" aria-label={`كتب ${panel.title}`}>
                 <div className="mb-2 flex items-center justify-between gap-2">
                   <h2 className="line-clamp-1 text-base font-bold text-slate-900">{panel.title}</h2>
                   <Link href={panel.href} className="text-xs font-semibold text-slate-600 hover:text-slate-900">
@@ -234,13 +234,13 @@ export function HomeDiscoveryHero({ billboard, categories, heroBanners = [] }: H
                 </div>
 
                 <Link href={featuredCard.href} className="group block">
-                  <div className="overflow-hidden border border-slate-200 bg-slate-100">
+                  <div className="overflow-hidden rounded-lg bg-white shadow-sm shadow-slate-900/10 ring-1 ring-slate-100">
                     <CoverImage
                       src={featuredCard.imageSrc}
                       alt={featuredCard.imageAlt}
                       width={640}
                       height={640}
-                      className="h-[220px] w-full object-cover transition duration-300 group-hover:scale-[1.02] sm:h-[250px] lg:h-[280px]"
+                      className="h-[220px] w-full bg-white object-cover p-1 transition duration-300 group-hover:scale-[1.02] sm:h-[250px] lg:h-[280px]"
                     />
                   </div>
                   <p className="mt-1.5 line-clamp-1 text-xs font-semibold text-slate-800">{featuredCard.title}</p>
@@ -253,7 +253,7 @@ export function HomeDiscoveryHero({ billboard, categories, heroBanners = [] }: H
           return (
             <section
               key={panel.id}
-              className="h-full border border-slate-200 bg-white p-3 sm:p-4"
+              className="h-full rounded-2xl bg-[#FCFCF9] p-3 shadow-sm shadow-slate-900/5 sm:p-4"
               aria-label={`كتب ${panel.title}`}
             >
               <div className="mb-2 flex items-center justify-between gap-2">
@@ -266,13 +266,13 @@ export function HomeDiscoveryHero({ billboard, categories, heroBanners = [] }: H
               <div className="grid grid-cols-2 gap-2">
                 {panel.cards.map((card) => (
                   <Link key={card.id} href={card.href} className="group block">
-                    <div className="overflow-hidden border border-slate-200 bg-slate-100">
+                    <div className="overflow-hidden rounded-lg bg-white shadow-sm shadow-slate-900/10 ring-1 ring-slate-100">
                       <CoverImage
                         src={card.imageSrc}
                         alt={card.imageAlt}
                         width={280}
                         height={210}
-                        className="h-[88px] w-full object-cover transition duration-300 group-hover:scale-[1.03] sm:h-24"
+                        className="h-[88px] w-full bg-white object-cover p-0.5 transition duration-300 group-hover:scale-[1.03] sm:h-24"
                       />
                     </div>
                     <p className="mt-1 line-clamp-1 text-[11px] font-medium text-slate-700">{card.title}</p>
