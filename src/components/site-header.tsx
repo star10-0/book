@@ -9,6 +9,8 @@ import { getCurrentUser } from "@/lib/auth-session";
 import { getStoreLocale } from "@/lib/locale";
 import { CART_COOKIE_NAME, getCartItemsCount, parseCartCookie } from "@/lib/cart";
 import { StorefrontHeaderShell } from "@/components/storefront-header-shell";
+import { prisma } from "@/lib/prisma";
+import { SiteHeaderSearchForm } from "@/components/site-header-search-form";
 
 const translations = {
   ar: {
@@ -56,7 +58,32 @@ const translations = {
 } as const;
 
 export async function SiteHeader() {
-  const [user, locale, cookieStore] = await Promise.all([getCurrentUser(), getStoreLocale(), cookies()]);
+  const [user, locale, cookieStore, searchCategories] = await Promise.all([
+    getCurrentUser(),
+    getStoreLocale(),
+    cookies(),
+    prisma.category.findMany({
+      where: {
+        isActive: true,
+        books: {
+          some: {
+            status: "PUBLISHED",
+            format: "DIGITAL",
+            offers: {
+              some: {
+                isActive: true,
+              },
+            },
+          },
+        },
+      },
+      orderBy: [{ sortOrder: "asc" }, { nameAr: "asc" }],
+      select: {
+        id: true,
+        nameAr: true,
+      },
+    }),
+  ]);
   const t = translations[locale];
   const cartCount = getCartItemsCount(parseCartCookie(cookieStore.get(CART_COOKIE_NAME)?.value));
 
@@ -99,23 +126,14 @@ export async function SiteHeader() {
               </Link>
             </div>
 
-            <form action="/books" method="get" className="order-last w-full lg:order-none lg:mx-auto lg:max-w-3xl">
-              <div className="flex overflow-hidden rounded-xl border border-slate-600/85 bg-slate-900/60 ring-1 ring-slate-700/70 transition-colors duration-200 focus-within:border-amber-300/55 focus-within:ring-amber-200/30">
-                <span className="inline-flex h-10 shrink-0 items-center border-s border-slate-700/90 bg-slate-800/95 px-3 text-[11px] font-semibold text-slate-200 sm:px-3.5">
-                  {t.all}
-                </span>
-                <input
-                  type="search"
-                  name="q"
-                  placeholder={t.searchPlaceholder}
-                  className="h-10 w-full border-0 bg-transparent px-3.5 text-sm text-slate-50 outline-none placeholder:text-slate-400"
-                  aria-label={t.searchAria}
-                />
-                <button type="submit" className="h-10 border-s border-amber-200/35 bg-amber-300/90 px-4 text-xs font-bold text-slate-950 transition-colors duration-200 hover:bg-amber-200 focus-visible:outline-none focus-visible:ring-2 focus-visible:ring-amber-200 sm:px-5">
-                  {t.searchCta}
-                </button>
-              </div>
-            </form>
+            <SiteHeaderSearchForm
+              action="/books"
+              searchPlaceholder={t.searchPlaceholder}
+              searchAria={t.searchAria}
+              searchCta={t.searchCta}
+              allLabel={t.all}
+              categories={searchCategories.map((item) => ({ value: `id:${item.id}`, label: item.nameAr }))}
+            />
 
             <div className="flex items-center justify-end gap-1.5 lg:gap-2">
               <LanguageSwitcher locale={locale} />
